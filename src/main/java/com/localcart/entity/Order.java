@@ -24,6 +24,11 @@ public class Order {
     @JsonIgnore
     private User customer;
 
+    @ManyToOne
+    @JoinColumn(name = "delivery_partner_id")
+    @JsonIgnore
+    private User deliveryPartner;
+
     private double totalAmount;
 
     @Enumerated(EnumType.STRING)
@@ -32,7 +37,10 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private DeliveryMode deliveryMode;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @OneToMany(
+            mappedBy = "order",
+            cascade = CascadeType.ALL
+    )
     @JsonManagedReference
     private List<OrderItem> items = new ArrayList<>();
 
@@ -41,6 +49,10 @@ public class Order {
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public Shop getShop() {
@@ -57,6 +69,14 @@ public class Order {
 
     public void setCustomer(User customer) {
         this.customer = customer;
+    }
+
+    public User getDeliveryPartner() {
+        return deliveryPartner;
+    }
+
+    public void setDeliveryPartner(User deliveryPartner) {
+        this.deliveryPartner = deliveryPartner;
     }
 
     public double getTotalAmount() {

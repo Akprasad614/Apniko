@@ -16,8 +16,7 @@ public class CreateOrderRequest {
     private DeliveryMode deliveryMode;
 
     @NotEmpty
-    @Valid
-    private List<OrderItemRequest> items;
+    private List<@Valid OrderItemRequest> items;
 
     public CreateOrderRequest() {
     }

@@ -3,6 +3,7 @@ package com.localcart.service;
 import com.localcart.dto.CreateOrderRequest;
 import com.localcart.dto.OrderItemRequest;
 import com.localcart.entity.Cart;
+import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderItem;
 import com.localcart.entity.OrderStatus;
@@ -50,6 +51,10 @@ public class OrderService {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
     }
+
+    // =========================================================
+    // CUSTOMER ORDER CREATION
+    // =========================================================
 
     @Transactional
     public Optional<Order> createOrder(
@@ -101,7 +106,7 @@ public class OrderService {
     public Order checkoutCart(
             String email,
             Long shopId,
-            com.localcart.entity.DeliveryMode deliveryMode) {
+            DeliveryMode deliveryMode) {
 
         User customer = getCustomer(email);
 
@@ -174,7 +179,7 @@ public class OrderService {
             User customer,
             Shop shop,
             List<OrderItemRequest> items,
-            com.localcart.entity.DeliveryMode deliveryMode) {
+            DeliveryMode deliveryMode) {
 
         if (items == null || items.isEmpty()) {
             return Optional.empty();
@@ -285,6 +290,10 @@ public class OrderService {
         return customer;
     }
 
+    // =========================================================
+    // GENERAL ORDER GETTERS
+    // =========================================================
+
     public Optional<Order> getOrderById(Long id) {
         return orderRepository.findById(id);
     }
@@ -317,8 +326,12 @@ public class OrderService {
         );
     }
 
+    // =========================================================
+    // SHOPKEEPER ORDER STATUS
+    // =========================================================
+
     @Transactional
-    public Optional<Order> updateOrderStatus(
+    public Optional<Order> updateShopkeeperOrderStatus(
             Long orderId,
             OrderStatus newStatus) {
 
@@ -331,22 +344,30 @@ public class OrderService {
 
         Order order = orderOptional.get();
 
-        OrderStatus currentStatus = order.getStatus();
+        OrderStatus currentStatus =
+                order.getStatus();
 
-        if (!isValidStatusChange(currentStatus, newStatus)) {
+        if (!isValidShopkeeperStatusChange(
+                currentStatus,
+                newStatus)) {
+
             return Optional.empty();
         }
 
         order.setStatus(newStatus);
 
-        return Optional.of(orderRepository.save(order));
+        return Optional.of(
+                orderRepository.save(order)
+        );
     }
 
-    private boolean isValidStatusChange(
+    private boolean isValidShopkeeperStatusChange(
             OrderStatus currentStatus,
             OrderStatus newStatus) {
 
-        if (currentStatus == null || newStatus == null) {
+        if (currentStatus == null ||
+                newStatus == null) {
+
             return false;
         }
 
@@ -362,16 +383,202 @@ public class OrderService {
             return newStatus == OrderStatus.READY;
         }
 
-        if (currentStatus == OrderStatus.READY) {
-            return newStatus == OrderStatus.OUT_FOR_DELIVERY;
-        }
-
-        if (currentStatus == OrderStatus.OUT_FOR_DELIVERY) {
-            return newStatus == OrderStatus.DELIVERED;
-        }
-
         return false;
     }
+
+    // =========================================================
+    // DELIVERY PARTNER
+    // =========================================================
+
+    public List<Order> getAvailableDeliveryOrders() {
+
+        return orderRepository
+                .findByStatusAndDeliveryPartnerIsNull(
+                        OrderStatus.READY
+                )
+                .stream()
+                .filter(order ->
+                        order.getDeliveryMode()
+                                == DeliveryMode.PLATFORM_DELIVERY
+                )
+                .toList();
+    }
+
+    public List<Order> getMyDeliveryOrders(
+            String email) {
+
+        User deliveryPartner =
+                getDeliveryPartner(email);
+
+        return orderRepository.findByDeliveryPartnerId(
+                deliveryPartner.getId()
+        );
+    }
+
+    @Transactional
+    public Order acceptDeliveryOrder(
+            Long orderId,
+            String email) {
+
+        User deliveryPartner =
+                getDeliveryPartner(email);
+
+        Order order =
+                orderRepository.findByIdForUpdate(orderId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Order not found"
+                                ));
+
+        if (order.getStatus() != OrderStatus.READY) {
+            throw new BadRequestException(
+                    "Only READY orders can be accepted"
+            );
+        }
+
+        if (order.getDeliveryMode()
+                != DeliveryMode.PLATFORM_DELIVERY) {
+
+            throw new BadRequestException(
+                    "This order is not assigned to platform delivery"
+            );
+        }
+
+        if (order.getDeliveryPartner() != null) {
+            throw new BadRequestException(
+                    "Order is already assigned to a delivery partner"
+            );
+        }
+
+        order.setDeliveryPartner(deliveryPartner);
+
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order pickupOrder(
+            Long orderId,
+            String email) {
+
+        User deliveryPartner =
+                getDeliveryPartner(email);
+
+        Order order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Order not found"
+                                ));
+
+        verifyDeliveryPartnerOwnership(
+                order,
+                deliveryPartner
+        );
+
+        if (order.getStatus() != OrderStatus.READY) {
+            throw new BadRequestException(
+                    "Only READY orders can be picked up"
+            );
+        }
+
+        order.setStatus(
+                OrderStatus.OUT_FOR_DELIVERY
+        );
+
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order deliverOrder(
+            Long orderId,
+            String email) {
+
+        User deliveryPartner =
+                getDeliveryPartner(email);
+
+        Order order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Order not found"
+                                ));
+
+        verifyDeliveryPartnerOwnership(
+                order,
+                deliveryPartner
+        );
+
+        if (order.getStatus()
+                != OrderStatus.OUT_FOR_DELIVERY) {
+
+            throw new BadRequestException(
+                    "Only OUT_FOR_DELIVERY orders can be delivered"
+            );
+        }
+
+        order.setStatus(
+                OrderStatus.DELIVERED
+        );
+
+        return orderRepository.save(order);
+    }
+
+    private User getDeliveryPartner(
+            String email) {
+
+        if (email == null) {
+            throw new BadRequestException(
+                    "User is not authenticated"
+            );
+        }
+
+        User deliveryPartner =
+                userRepository.findByEmail(email)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "User not found"
+                                ));
+
+        if (deliveryPartner.getRole()
+                != Role.DELIVERY_PARTNER) {
+
+            throw new BadRequestException(
+                    "Only a delivery partner can perform this action"
+            );
+        }
+
+        if (!deliveryPartner.isActive()) {
+            throw new BadRequestException(
+                    "Delivery partner account is inactive"
+            );
+        }
+
+        return deliveryPartner;
+    }
+
+    private void verifyDeliveryPartnerOwnership(
+            Order order,
+            User deliveryPartner) {
+
+        if (order.getDeliveryPartner() == null) {
+            throw new BadRequestException(
+                    "Order is not assigned to a delivery partner"
+            );
+        }
+
+        if (!order.getDeliveryPartner()
+                .getId()
+                .equals(deliveryPartner.getId())) {
+
+            throw new BadRequestException(
+                    "This order is assigned to another delivery partner"
+            );
+        }
+    }
+
+    // =========================================================
+    // CANCEL ORDER
+    // =========================================================
 
     @Transactional
     public Optional<Order> cancelOrder(Long id) {
@@ -419,7 +626,9 @@ public class OrderService {
             }
         }
 
-        order.setStatus(OrderStatus.CANCELLED);
+        order.setStatus(
+                OrderStatus.CANCELLED
+        );
 
         return Optional.of(
                 orderRepository.save(order)

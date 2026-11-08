@@ -32,7 +32,6 @@ public class ShopkeeperOrderController {
         this.orderService = orderService;
     }
 
-    // Get all orders belonging to the current shopkeeper's shops
     @GetMapping
     public ResponseEntity<List<Order>> getMyOrders() {
 
@@ -42,15 +41,13 @@ public class ShopkeeperOrderController {
             return ResponseEntity.status(401).build();
         }
 
-        List<Order> orders =
+        return ResponseEntity.ok(
                 orderRepository.findByShopOwnerId(
                         shopkeeper.getId()
-                );
-
-        return ResponseEntity.ok(orders);
+                )
+        );
     }
 
-    // Get one order belonging to the current shopkeeper
     @GetMapping("/{orderId}")
     public ResponseEntity<Order> getMyOrder(
             @PathVariable Long orderId) {
@@ -77,7 +74,6 @@ public class ShopkeeperOrderController {
         return ResponseEntity.ok(order);
     }
 
-    // Update order status
     @PutMapping("/{orderId}/status")
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
@@ -103,19 +99,18 @@ public class ShopkeeperOrderController {
         }
 
         Optional<Order> updatedOrder =
-                orderService.updateOrderStatus(
+                orderService.updateShopkeeperOrderStatus(
                         orderId,
                         status
                 );
 
-        if (updatedOrder.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        return ResponseEntity.ok(updatedOrder.get());
+        return updatedOrder
+                .map(ResponseEntity::ok)
+                .orElse(
+                        ResponseEntity.badRequest().build()
+                );
     }
 
-    // Cancel order
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<Order> cancelOrder(
             @PathVariable Long orderId) {
@@ -142,14 +137,13 @@ public class ShopkeeperOrderController {
         Optional<Order> cancelledOrder =
                 orderService.cancelOrder(orderId);
 
-        if (cancelledOrder.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        return ResponseEntity.ok(cancelledOrder.get());
+        return cancelledOrder
+                .map(ResponseEntity::ok)
+                .orElse(
+                        ResponseEntity.badRequest().build()
+                );
     }
 
-    // Get the currently authenticated shopkeeper
     private User getCurrentShopkeeper() {
 
         String email =
@@ -178,7 +172,6 @@ public class ShopkeeperOrderController {
         return user;
     }
 
-    // Check whether the order belongs to one of the shopkeeper's shops
     private boolean isOwner(
             Order order,
             User shopkeeper) {
