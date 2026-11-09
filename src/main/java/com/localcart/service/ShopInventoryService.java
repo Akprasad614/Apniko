@@ -1,8 +1,13 @@
 package com.localcart.service;
 
 import com.localcart.dto.AddInventoryRequest;
+import com.localcart.dto.InventoryMovementResponse;
 import com.localcart.dto.InventoryResponse;
+import com.localcart.dto.RestockInventoryRequest;
 import com.localcart.dto.UpdateInventoryRequest;
+import com.localcart.dto.UpdateLowStockThresholdRequest;
+import com.localcart.entity.InventoryMovement;
+import com.localcart.entity.InventoryMovementType;
 import com.localcart.entity.Product;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
@@ -10,29 +15,37 @@ import com.localcart.entity.ShopInventory;
 import com.localcart.entity.User;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
+import com.localcart.repository.InventoryMovementRepository;
 import com.localcart.repository.ProductRepository;
 import com.localcart.repository.ShopInventoryRepository;
 import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class ShopInventoryService {
 
+    private static final int DEFAULT_LOW_STOCK_THRESHOLD = 5;
+
     private final ShopInventoryRepository inventoryRepository;
+    private final InventoryMovementRepository movementRepository;
     private final ShopRepository shopRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
     public ShopInventoryService(
             ShopInventoryRepository inventoryRepository,
+            InventoryMovementRepository movementRepository,
             ShopRepository shopRepository,
             ProductRepository productRepository,
             UserRepository userRepository) {
 
         this.inventoryRepository = inventoryRepository;
+        this.movementRepository = movementRepository;
         this.shopRepository = shopRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
@@ -44,52 +57,45 @@ public class ShopInventoryService {
             AddInventoryRequest request) {
 
         User owner = getShopkeeper(email);
-
         Shop shop = shopRepository.findById(shopId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Shop not found"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         checkOwnership(shop, owner);
 
         Product product = productRepository.findById(request.getProductId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-        if (inventoryRepository
-                .findByShopIdAndProductId(shopId, request.getProductId())
-                .isPresent()) {
+        if (request.getPrice() < 0 || request.getStockQuantity() < 0) {
+            throw new BadRequestException("Price and stock quantity cannot be negative");
+        }
 
-            throw new BadRequestException(
-                    "Product already exists in this shop inventory");
+        if (inventoryRepository.findByShopIdAndProductId(shopId, request.getProductId()).isPresent()) {
+            throw new BadRequestException("Product already exists in this shop inventory");
         }
 
         ShopInventory inventory = new ShopInventory();
-
         inventory.setShop(shop);
         inventory.setProduct(product);
         inventory.setPrice(request.getPrice());
         inventory.setStockQuantity(request.getStockQuantity());
         inventory.setAvailable(request.getStockQuantity() > 0);
+        inventory.setLowStockThreshold(DEFAULT_LOW_STOCK_THRESHOLD);
 
-        return toResponse(inventoryRepository.save(inventory));
+        ShopInventory saved = inventoryRepository.save(inventory);
+        recordMovement(saved, InventoryMovementType.INITIAL_STOCK,
+                0, saved.getStockQuantity(), owner,
+                "Initial inventory entry");
+        return toResponse(saved);
     }
 
-    public List<InventoryResponse> getMyInventory(
-            String email,
-            Long shopId) {
-
+    @Transactional(readOnly = true)
+    public List<InventoryResponse> getMyInventory(String email, Long shopId) {
         User owner = getShopkeeper(email);
-
         Shop shop = shopRepository.findById(shopId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Shop not found"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         checkOwnership(shop, owner);
 
         return inventoryRepository.findByShopId(shopId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                .stream().map(this::toResponse).toList();
     }
 
     public InventoryResponse updateInventory(
@@ -98,62 +104,150 @@ public class ShopInventoryService {
             UpdateInventoryRequest request) {
 
         User owner = getShopkeeper(email);
-
-        ShopInventory inventory = inventoryRepository.findById(inventoryId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Inventory not found"));
-
+        ShopInventory inventory = inventoryRepository.findByIdForUpdate(inventoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
         checkOwnership(inventory.getShop(), owner);
 
-        inventory.setPrice(request.getPrice());
-        inventory.setStockQuantity(request.getStockQuantity());
-
-        if (request.getStockQuantity() == 0) {
-            inventory.setAvailable(false);
-        } else {
-            inventory.setAvailable(request.isAvailable());
+        if (request.getPrice() < 0 || request.getStockQuantity() < 0) {
+            throw new BadRequestException("Price and stock quantity cannot be negative");
         }
 
+        int previousQuantity = inventory.getStockQuantity();
+        inventory.setPrice(request.getPrice());
+        inventory.setStockQuantity(request.getStockQuantity());
+        inventory.setAvailable(request.getStockQuantity() > 0 && request.isAvailable());
+
+        ShopInventory saved = inventoryRepository.save(inventory);
+        if (previousQuantity != saved.getStockQuantity()) {
+            recordMovement(saved, InventoryMovementType.ADJUSTMENT,
+                    previousQuantity, saved.getStockQuantity(), owner,
+                    "Stock quantity manually adjusted");
+        }
+        return toResponse(saved);
+    }
+
+    public InventoryResponse restock(
+            String email,
+            Long shopId,
+            Long inventoryId,
+            RestockInventoryRequest request) {
+
+        User owner = getShopkeeper(email);
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
+        checkOwnership(shop, owner);
+
+        ShopInventory inventory = inventoryRepository
+                .findByIdAndShopIdForUpdate(inventoryId, shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found in this shop"));
+
+        int previousQuantity = inventory.getStockQuantity();
+        int newQuantity;
+        try {
+            newQuantity = Math.addExact(previousQuantity, request.getQuantity());
+        } catch (ArithmeticException exception) {
+            throw new BadRequestException("Restock quantity exceeds the supported stock limit");
+        }
+
+        inventory.setStockQuantity(newQuantity);
+        inventory.setAvailable(newQuantity > 0);
+        ShopInventory saved = inventoryRepository.save(inventory);
+
+        String note = request.getNote() == null || request.getNote().isBlank()
+                ? "Stock replenished"
+                : request.getNote().trim();
+        recordMovement(saved, InventoryMovementType.RESTOCK,
+                previousQuantity, newQuantity, owner, note);
+        return toResponse(saved);
+    }
+
+    public InventoryResponse updateLowStockThreshold(
+            String email,
+            Long shopId,
+            Long inventoryId,
+            UpdateLowStockThresholdRequest request) {
+
+        User owner = getShopkeeper(email);
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
+        checkOwnership(shop, owner);
+
+        ShopInventory inventory = inventoryRepository
+                .findByIdAndShopIdForUpdate(inventoryId, shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found in this shop"));
+
+        inventory.setLowStockThreshold(request.getLowStockThreshold());
         return toResponse(inventoryRepository.save(inventory));
     }
 
-    private User getShopkeeper(String email) {
+    @Transactional(readOnly = true)
+    public List<InventoryResponse> getLowStockItems(String email, Long shopId) {
+        User owner = getShopkeeper(email);
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
+        checkOwnership(shop, owner);
 
+        return inventoryRepository.findByShopId(shopId).stream()
+                .filter(item -> item.getStockQuantity() <= effectiveThreshold(item))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<InventoryMovementResponse> getMovementHistory(
+            String email,
+            Long shopId,
+            Long inventoryId) {
+
+        User owner = getShopkeeper(email);
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
+        checkOwnership(shop, owner);
+
+        ShopInventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found in this shop"));
+        if (!inventory.getShop().getId().equals(shopId)) {
+            throw new ResourceNotFoundException("Inventory item not found in this shop");
+        }
+
+        return movementRepository
+                .findByInventoryIdAndShopIdOrderByCreatedAtDescIdDesc(inventoryId, shopId)
+                .stream()
+                .map(InventoryMovementResponse::from)
+                .toList();
+    }
+
+    private User getShopkeeper(String email) {
         if (email == null) {
             throw new BadRequestException("User is not authenticated");
         }
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         if (user.getRole() != Role.SHOPKEEPER) {
-            throw new BadRequestException(
-                    "Only a shopkeeper can perform this action");
+            throw new BadRequestException("Only a shopkeeper can perform this action");
         }
-
         if (!user.isActive()) {
-            throw new BadRequestException(
-                    "Shopkeeper account is inactive");
+            throw new BadRequestException("Shopkeeper account is inactive");
         }
-
         return user;
     }
 
     private void checkOwnership(Shop shop, User owner) {
-
-        if (shop.getOwner() == null ||
-                !shop.getOwner().getId().equals(owner.getId())) {
-
-            throw new BadRequestException(
-                    "You do not own this shop");
+        if (shop.getOwner() == null || !shop.getOwner().getId().equals(owner.getId())) {
+            throw new BadRequestException("You do not own this shop");
         }
     }
 
+    private int effectiveThreshold(ShopInventory inventory) {
+        return inventory.getLowStockThreshold() == null
+                ? DEFAULT_LOW_STOCK_THRESHOLD
+                : inventory.getLowStockThreshold();
+    }
+
     private InventoryResponse toResponse(ShopInventory inventory) {
-
+        int threshold = effectiveThreshold(inventory);
         InventoryResponse response = new InventoryResponse();
-
         response.setId(inventory.getId());
         response.setShopId(inventory.getShop().getId());
         response.setShopName(inventory.getShop().getName());
@@ -163,7 +257,34 @@ public class ShopInventoryService {
         response.setPrice(inventory.getPrice());
         response.setStockQuantity(inventory.getStockQuantity());
         response.setAvailable(inventory.isAvailable());
-
+        response.setLowStockThreshold(threshold);
+        response.setLowStock(inventory.getStockQuantity() <= threshold);
         return response;
+    }
+
+    private void recordMovement(
+            ShopInventory inventory,
+            InventoryMovementType movementType,
+            int previousQuantity,
+            int newQuantity,
+            User actor,
+            String note) {
+
+        InventoryMovement movement = new InventoryMovement();
+        movement.setInventory(inventory);
+        movement.setShopId(inventory.getShop().getId());
+        movement.setProductId(inventory.getProduct().getId());
+        movement.setProductName(inventory.getProduct().getName());
+        movement.setMovementType(movementType);
+        movement.setPreviousQuantity(previousQuantity);
+        movement.setNewQuantity(newQuantity);
+        movement.setQuantityChange(newQuantity - previousQuantity);
+        if (actor != null) {
+            movement.setPerformedByUserId(actor.getId());
+            movement.setPerformedByName(actor.getName());
+            movement.setPerformedByRole(actor.getRole().name());
+        }
+        movement.setNote(note);
+        movementRepository.save(movement);
     }
 }

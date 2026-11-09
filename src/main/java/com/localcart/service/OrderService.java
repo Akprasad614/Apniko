@@ -2,11 +2,16 @@ package com.localcart.service;
 
 import com.localcart.dto.CreateOrderRequest;
 import com.localcart.dto.OrderItemRequest;
+import com.localcart.dto.OrderStatusHistoryResponse;
 import com.localcart.entity.Cart;
 import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderItem;
 import com.localcart.entity.OrderStatus;
+import com.localcart.entity.OrderStatusHistory;
+import com.localcart.entity.PaymentStatus;
+import com.localcart.entity.InventoryMovement;
+import com.localcart.entity.InventoryMovementType;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
@@ -16,6 +21,9 @@ import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.CartRepository;
 import com.localcart.repository.OrderItemRepository;
 import com.localcart.repository.OrderRepository;
+import com.localcart.repository.OrderStatusHistoryRepository;
+import com.localcart.repository.PaymentRepository;
+import com.localcart.repository.InventoryMovementRepository;
 import com.localcart.repository.ShopInventoryRepository;
 import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
@@ -23,6 +31,7 @@ import com.localcart.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +39,9 @@ import java.util.Optional;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private final PaymentRepository paymentRepository;
+    private final InventoryMovementRepository inventoryMovementRepository;
     private final OrderItemRepository orderItemRepository;
     private final ShopRepository shopRepository;
     private final ShopInventoryRepository shopInventoryRepository;
@@ -38,6 +50,9 @@ public class OrderService {
 
     public OrderService(
             OrderRepository orderRepository,
+            OrderStatusHistoryRepository orderStatusHistoryRepository,
+            PaymentRepository paymentRepository,
+            InventoryMovementRepository inventoryMovementRepository,
             OrderItemRepository orderItemRepository,
             ShopRepository shopRepository,
             ShopInventoryRepository shopInventoryRepository,
@@ -45,6 +60,9 @@ public class OrderService {
             CartRepository cartRepository) {
 
         this.orderRepository = orderRepository;
+        this.orderStatusHistoryRepository = orderStatusHistoryRepository;
+        this.paymentRepository = paymentRepository;
+        this.inventoryMovementRepository = inventoryMovementRepository;
         this.orderItemRepository = orderItemRepository;
         this.shopRepository = shopRepository;
         this.shopInventoryRepository = shopInventoryRepository;
@@ -193,6 +211,13 @@ public class OrderService {
         order.setDeliveryMode(deliveryMode);
 
         order = orderRepository.save(order);
+        recordStatusChange(
+                order,
+                null,
+                OrderStatus.PLACED,
+                customer,
+                "Order placed"
+        );
 
         double totalAmount = 0;
 
@@ -240,9 +265,9 @@ public class OrderService {
             totalAmount +=
                     price * itemRequest.getQuantity();
 
+            int previousQuantity = inventory.getStockQuantity();
             inventory.setStockQuantity(
-                    inventory.getStockQuantity()
-                            - itemRequest.getQuantity()
+                    previousQuantity - itemRequest.getQuantity()
             );
 
             inventory.setAvailable(
@@ -250,6 +275,14 @@ public class OrderService {
             );
 
             shopInventoryRepository.save(inventory);
+            recordInventoryMovement(
+                    inventory,
+                    InventoryMovementType.ORDER_DEDUCTION,
+                    previousQuantity,
+                    inventory.getStockQuantity(),
+                    customer,
+                    "Stock deducted for order " + order.getId()
+            );
             orderItemRepository.save(orderItem);
         }
 
@@ -333,32 +366,42 @@ public class OrderService {
     @Transactional
     public Optional<Order> updateShopkeeperOrderStatus(
             Long orderId,
-            OrderStatus newStatus) {
+            OrderStatus newStatus,
+            String email) {
 
-        Optional<Order> orderOptional =
-                orderRepository.findById(orderId);
+        User shopkeeper = getShopkeeper(email);
 
-        if (orderOptional.isEmpty()) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElse(null);
+
+        if (order == null) {
             return Optional.empty();
         }
 
-        Order order = orderOptional.get();
+        if (order.getShop() == null
+                || order.getShop().getOwner() == null
+                || !order.getShop().getOwner().getId().equals(shopkeeper.getId())) {
+            throw new BadRequestException(
+                    "You are not authorized to update this order"
+            );
+        }
 
-        OrderStatus currentStatus =
-                order.getStatus();
+        OrderStatus currentStatus = order.getStatus();
 
-        if (!isValidShopkeeperStatusChange(
+        if (!isValidShopkeeperStatusChange(currentStatus, newStatus)) {
+            return Optional.empty();
+        }
+
+        recordStatusChange(
+                order,
                 currentStatus,
-                newStatus)) {
-
-            return Optional.empty();
-        }
+                newStatus,
+                shopkeeper,
+                "Order status updated by shopkeeper"
+        );
 
         order.setStatus(newStatus);
-
-        return Optional.of(
-                orderRepository.save(order)
-        );
+        return Optional.of(orderRepository.save(order));
     }
 
     private boolean isValidShopkeeperStatusChange(
@@ -464,7 +507,7 @@ public class OrderService {
                 getDeliveryPartner(email);
 
         Order order =
-                orderRepository.findById(orderId)
+                orderRepository.findByIdForUpdate(orderId)
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Order not found"
@@ -481,8 +524,14 @@ public class OrderService {
             );
         }
 
-        order.setStatus(
-                OrderStatus.OUT_FOR_DELIVERY
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(OrderStatus.OUT_FOR_DELIVERY);
+        recordStatusChange(
+                order,
+                previousStatus,
+                OrderStatus.OUT_FOR_DELIVERY,
+                deliveryPartner,
+                "Delivery partner picked up the order"
         );
 
         return orderRepository.save(order);
@@ -497,7 +546,7 @@ public class OrderService {
                 getDeliveryPartner(email);
 
         Order order =
-                orderRepository.findById(orderId)
+                orderRepository.findByIdForUpdate(orderId)
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Order not found"
@@ -516,11 +565,45 @@ public class OrderService {
             );
         }
 
-        order.setStatus(
-                OrderStatus.DELIVERED
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(OrderStatus.DELIVERED);
+        recordStatusChange(
+                order,
+                previousStatus,
+                OrderStatus.DELIVERED,
+                deliveryPartner,
+                "Order delivered successfully"
         );
 
         return orderRepository.save(order);
+    }
+
+    private User getShopkeeper(String email) {
+
+        if (email == null) {
+            throw new BadRequestException(
+                    "User is not authenticated"
+            );
+        }
+
+        User shopkeeper = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        if (shopkeeper.getRole() != Role.SHOPKEEPER) {
+            throw new BadRequestException(
+                    "Only a shopkeeper can perform this action"
+            );
+        }
+
+        if (!shopkeeper.isActive()) {
+            throw new BadRequestException(
+                    "Shopkeeper account is inactive"
+            );
+        }
+
+        return shopkeeper;
     }
 
     private User getDeliveryPartner(
@@ -577,61 +660,213 @@ public class OrderService {
     }
 
     // =========================================================
-    // CANCEL ORDER
+    // CUSTOMER AND SHOPKEEPER CANCELLATION
     // =========================================================
 
     @Transactional
-    public Optional<Order> cancelOrder(Long id) {
+    public Optional<Order> cancelOrderByCustomer(
+            Long orderId,
+            String email,
+            String reason) {
 
-        Optional<Order> existingOrder =
-                orderRepository.findById(id);
+        User customer = getCustomer(email);
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElse(null);
 
-        if (existingOrder.isEmpty()) {
+        if (order == null) {
             return Optional.empty();
         }
 
-        Order order = existingOrder.get();
+        if (order.getCustomer() == null
+                || !order.getCustomer().getId().equals(customer.getId())) {
+            throw new BadRequestException(
+                    "You are not authorized to cancel this order"
+            );
+        }
 
-        if (order.getStatus() ==
-                OrderStatus.DELIVERED
-                || order.getStatus() ==
-                OrderStatus.CANCELLED) {
-
+        if (order.getStatus() != OrderStatus.PLACED) {
             return Optional.empty();
         }
 
-        for (OrderItem item :
-                order.getItems()) {
+        return cancelAndRestock(
+                order,
+                customer,
+                normalizeCancellationReason(reason, "Cancelled by customer")
+        );
+    }
 
-            Optional<ShopInventory> inventoryOptional =
-                    shopInventoryRepository
-                            .findByShopIdAndProductId(
-                                    order.getShop().getId(),
-                                    item.getProduct().getId()
-                            );
+    @Transactional
+    public Optional<Order> cancelOrderByShopkeeper(
+            Long orderId,
+            String email,
+            String reason) {
 
-            if (inventoryOptional.isPresent()) {
+        User shopkeeper = getShopkeeper(email);
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElse(null);
 
-                ShopInventory inventory =
-                        inventoryOptional.get();
+        if (order == null) {
+            return Optional.empty();
+        }
 
-                inventory.setStockQuantity(
-                        inventory.getStockQuantity()
-                                + item.getQuantity()
-                );
+        if (order.getShop() == null
+                || order.getShop().getOwner() == null
+                || !order.getShop().getOwner().getId().equals(shopkeeper.getId())) {
+            throw new BadRequestException(
+                    "You are not authorized to cancel this order"
+            );
+        }
 
-                inventory.setAvailable(true);
+        OrderStatus status = order.getStatus();
+        boolean cancellable = status == OrderStatus.PLACED
+                || status == OrderStatus.ACCEPTED
+                || status == OrderStatus.PREPARING
+                || status == OrderStatus.READY;
 
-                shopInventoryRepository.save(inventory);
+        if (!cancellable) {
+            return Optional.empty();
+        }
+
+        return cancelAndRestock(
+                order,
+                shopkeeper,
+                normalizeCancellationReason(reason, "Cancelled by shopkeeper")
+        );
+    }
+
+    private Optional<Order> cancelAndRestock(
+            Order order,
+            User actor,
+            String reason) {
+
+        if (order.getStatus() == OrderStatus.DELIVERED
+                || order.getStatus() == OrderStatus.CANCELLED
+                || order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+            return Optional.empty();
+        }
+
+        for (OrderItem item : order.getItems()) {
+            ShopInventory inventory = shopInventoryRepository
+                    .findByShopIdAndProductIdForUpdate(
+                            order.getShop().getId(),
+                            item.getProduct().getId()
+                    )
+                    .orElseThrow(() ->
+                            new BadRequestException(
+                                    "Inventory record is missing for product "
+                                            + item.getProduct().getName()
+                            )
+                    );
+
+            int previousQuantity = inventory.getStockQuantity();
+            inventory.setStockQuantity(previousQuantity + item.getQuantity());
+            inventory.setAvailable(inventory.getStockQuantity() > 0);
+            shopInventoryRepository.save(inventory);
+            recordInventoryMovement(
+                    inventory,
+                    InventoryMovementType.CANCELLATION_RESTOCK,
+                    previousQuantity,
+                    inventory.getStockQuantity(),
+                    actor,
+                    "Stock restored after cancellation of order " + order.getId()
+            );
+        }
+
+        OrderStatus previousStatus = order.getStatus();
+        order.setDeliveryPartner(null);
+        order.setStatus(OrderStatus.CANCELLED);
+
+        recordStatusChange(
+                order,
+                previousStatus,
+                OrderStatus.CANCELLED,
+                actor,
+                reason
+        );
+
+        // A cancelled order cannot remain payable. If it was already paid,
+        // mark it for refund reconciliation instead of silently losing the payment.
+        paymentRepository.findByOrderId(order.getId()).ifPresent(payment -> {
+            if (payment.getStatus() == PaymentStatus.PENDING) {
+                payment.setStatus(PaymentStatus.CANCELLED);
+                paymentRepository.save(payment);
+            } else if (payment.getStatus() == PaymentStatus.PAID) {
+                payment.setStatus(PaymentStatus.REFUND_PENDING);
+                paymentRepository.save(payment);
             }
+        });
+
+        return Optional.of(orderRepository.save(order));
+    }
+
+    private String normalizeCancellationReason(String reason, String fallback) {
+        if (reason == null || reason.isBlank()) {
+            return fallback;
+        }
+        return reason.trim();
+    }
+
+
+    private void recordInventoryMovement(
+            ShopInventory inventory,
+            InventoryMovementType movementType,
+            int previousQuantity,
+            int newQuantity,
+            User actor,
+            String note) {
+
+        InventoryMovement movement = new InventoryMovement();
+        movement.setInventory(inventory);
+        movement.setShopId(inventory.getShop().getId());
+        movement.setProductId(inventory.getProduct().getId());
+        movement.setProductName(inventory.getProduct().getName());
+        movement.setMovementType(movementType);
+        movement.setPreviousQuantity(previousQuantity);
+        movement.setNewQuantity(newQuantity);
+        movement.setQuantityChange(newQuantity - previousQuantity);
+        if (actor != null) {
+            movement.setPerformedByUserId(actor.getId());
+            movement.setPerformedByName(actor.getName());
+            movement.setPerformedByRole(actor.getRole().name());
+        }
+        movement.setNote(note);
+        inventoryMovementRepository.save(movement);
+    }
+
+    // =========================================================
+    // ORDER STATUS HISTORY
+    // =========================================================
+
+    private void recordStatusChange(
+            Order order,
+            OrderStatus previousStatus,
+            OrderStatus newStatus,
+            User actor,
+            String note) {
+
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(order);
+        history.setPreviousStatus(previousStatus);
+        history.setNewStatus(newStatus);
+        history.setChangedAt(LocalDateTime.now());
+        history.setNote(note);
+
+        if (actor != null) {
+            history.setChangedByUserId(actor.getId());
+            history.setChangedByName(actor.getName());
+            history.setChangedByEmail(actor.getEmail());
+            history.setChangedByRole(actor.getRole().name());
         }
 
-        order.setStatus(
-                OrderStatus.CANCELLED
-        );
+        orderStatusHistoryRepository.save(history);
+    }
 
-        return Optional.of(
-                orderRepository.save(order)
-        );
+    @Transactional(readOnly = true)
+    public List<OrderStatusHistoryResponse> getOrderStatusHistory(Long orderId) {
+        return orderStatusHistoryRepository
+                .findByOrder_IdOrderByChangedAtAscIdAsc(orderId)
+                .stream()
+                .map(OrderStatusHistoryResponse::from)
+                .toList();
     }
 }

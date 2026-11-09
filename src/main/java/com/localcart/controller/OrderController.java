@@ -1,5 +1,7 @@
 package com.localcart.controller;
 
+import com.localcart.dto.CancelOrderRequest;
+import com.localcart.dto.OrderStatusHistoryResponse;
 import com.localcart.entity.Order;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
@@ -8,6 +10,7 @@ import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.OrderService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +43,7 @@ public class OrderController {
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<Order> createOrder(
-            @RequestBody com.localcart.dto.CreateOrderRequest request) {
+            @Valid @RequestBody com.localcart.dto.CreateOrderRequest request) {
 
         Optional<Order> order = orderService.createOrder(request);
 
@@ -145,6 +148,71 @@ public class OrderController {
                 .map(ResponseEntity::ok)
                 .orElseGet(() ->
                         ResponseEntity.notFound().build());
+    }
+
+    // A customer can cancel their own order only while it is still PLACED.
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<Order> cancelMyOrder(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) CancelOrderRequest request) {
+
+        User currentUser = getCurrentUser();
+
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        if (currentUser.getRole() != Role.CUSTOMER) {
+            return ResponseEntity.status(403).build();
+        }
+
+        Optional<Order> orderOptional = orderRepository.findById(id);
+        if (orderOptional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Order order = orderOptional.get();
+        if (order.getCustomer() == null
+                || !order.getCustomer().getId().equals(currentUser.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        String reason = request == null ? null : request.getReason();
+        Optional<Order> cancelled = orderService.cancelOrderByCustomer(
+                id,
+                currentUser.getEmail(),
+                reason
+        );
+
+        return cancelled
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.badRequest().build());
+    }
+
+    // Customers, the owning shopkeeper, assigned delivery partner, and admins
+    // can inspect the status timeline for an order they are allowed to view.
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<OrderStatusHistoryResponse>> getOrderHistory(
+            @PathVariable Long id) {
+
+        User currentUser = getCurrentUser();
+
+        if (currentUser == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Optional<Order> orderOptional = orderRepository.findById(id);
+        if (orderOptional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Order order = orderOptional.get();
+        if (!canViewOrder(order, currentUser)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(orderService.getOrderStatusHistory(id));
     }
 
     private User getCurrentUser() {

@@ -29,6 +29,10 @@ public class ShopInventory {
 
     private boolean available;
 
+    // Nullable for legacy rows; the service treats null as the default threshold of 5.
+    @Column(name = "low_stock_threshold")
+    private Integer lowStockThreshold = 5;
+
     public ShopInventory() {
     }
 
@@ -74,5 +78,13 @@ public class ShopInventory {
 
     public void setAvailable(boolean available) {
         this.available = available;
+    }
+
+    public Integer getLowStockThreshold() {
+        return lowStockThreshold;
+    }
+
+    public void setLowStockThreshold(Integer lowStockThreshold) {
+        this.lowStockThreshold = lowStockThreshold;
     }
 }

@@ -101,7 +101,8 @@ public class ShopkeeperOrderController {
         Optional<Order> updatedOrder =
                 orderService.updateShopkeeperOrderStatus(
                         orderId,
-                        status
+                        status,
+                        shopkeeper.getEmail()
                 );
 
         return updatedOrder
@@ -135,7 +136,11 @@ public class ShopkeeperOrderController {
         }
 
         Optional<Order> cancelledOrder =
-                orderService.cancelOrder(orderId);
+                orderService.cancelOrderByShopkeeper(
+                        orderId,
+                        shopkeeper.getEmail(),
+                        "Cancelled by shopkeeper"
+                );
 
         return cancelledOrder
                 .map(ResponseEntity::ok)

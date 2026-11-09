@@ -5,6 +5,7 @@ import com.localcart.dto.LoginRequest;
 import com.localcart.dto.RegisterRequest;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
+import com.localcart.exception.BadRequestException;
 import com.localcart.repository.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,42 +25,35 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtService jwtService) {
-
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
     }
 
+    /** Public registration is intentionally limited to CUSTOMER accounts. */
     public AuthResponse register(RegisterRequest request) {
-
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new BadRequestException("Email already registered");
         }
 
-        if (request.getRole() == Role.ADMIN) {
-            throw new RuntimeException(
-                    "Admin registration is not allowed"
+        if (request.getRole() != Role.CUSTOMER) {
+            throw new BadRequestException(
+                    "Public registration is only allowed for CUSTOMER accounts"
             );
         }
 
         User user = new User();
-
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-
-        user.setPassword(
-                passwordEncoder.encode(request.getPassword())
-        );
-
-        user.setRole(request.getRole());
+        user.setName(request.getName().trim());
+        user.setEmail(request.getEmail().trim());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        // Never trust a client-supplied role as an authority source.
+        user.setRole(Role.CUSTOMER);
         user.setActive(true);
 
         User savedUser = userRepository.save(user);
-
         String token = jwtService.generateToken(
-                savedUser.getEmail(),
-                savedUser.getRole().name()
+                savedUser.getEmail(), savedUser.getRole().name()
         );
 
         return new AuthResponse(
@@ -72,22 +66,17 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
+                        request.getEmail(), request.getPassword()
                 )
         );
 
-        User user = userRepository
-                .findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("Invalid email or password"));
 
         String token = jwtService.generateToken(
-                user.getEmail(),
-                user.getRole().name()
+                user.getEmail(), user.getRole().name()
         );
 
         return new AuthResponse(
