@@ -141,6 +141,12 @@ public class CartService {
 
         cartItemRepository.save(cartItem);
 
+        // Keep the inverse side of the relationship in sync so the immediate
+        // POST response includes the item just saved.
+        if (!cart.getItems().contains(cartItem)) {
+            cart.getItems().add(cartItem);
+        }
+
         return toResponse(cart);
     }
 
