@@ -1,0 +1,176 @@
+name: LocalCart DAST - OWASP ZAP Baseline
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "src/main/**"
+      - "src/main/resources/**"
+      - ".github/workflows/dast-zap-baseline.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "src/main/**"
+      - "src/main/resources/**"
+      - ".github/workflows/dast-zap-baseline.yml"
+  schedule:
+    - cron: "45 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dast-zap-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap-baseline:
+    name: Passive DAST against disposable LocalCart instance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: localcart_dast_root_password
+          MYSQL_DATABASE: localcart_dast
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent -h 127.0.0.1 -uroot -plocalcart_dast_root_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      DB_PASSWORD: localcart_dast_root_password
+      SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart_dast?allowPublicKeyRetrieval=true&useSSL=false
+      SERVER_PORT: "8080"
+      SPRING_JPA_SHOW_SQL: "false"
+
+    steps:
+      - name: Check out LocalCart
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Generate and mask an ephemeral JWT secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+          echo "::add-mask::$JWT_SECRET"
+          printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >> "$GITHUB_ENV"
+          unset JWT_SECRET
+
+      - name: Ensure Maven wrapper is executable
+        run: chmod +x ./mvnw
+
+      - name: Start LocalCart against the disposable DAST database
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup ./mvnw -B -ntp spring-boot:run > /tmp/localcart-dast-app.log 2>&1 &
+          echo "$!" > /tmp/localcart-dast-app.pid
+
+      - name: Wait for the application readiness endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_pid="$(cat /tmp/localcart-dast-app.pid)"
+          for attempt in $(seq 1 90); do
+            status="$(curl --silent --show-error --output /tmp/localcart-dast-health.txt \
+              --write-out '%{http_code}' http://127.0.0.1:8080/api/test || true)"
+            if [[ "$status" == "200" ]]; then
+              echo "LocalCart is ready on the disposable DAST instance."
+              cat /tmp/localcart-dast-health.txt
+              exit 0
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              echo "LocalCart stopped before becoming ready. Startup log follows:" >&2
+              cat /tmp/localcart-dast-app.log >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "LocalCart did not become ready within 180 seconds. Startup log follows:" >&2
+          cat /tmp/localcart-dast-app.log >&2
+          exit 1
+
+      - name: Run OWASP ZAP passive baseline scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p zap-reports
+          chmod 777 zap-reports
+          docker run --rm --network host \
+            --volume "$GITHUB_WORKSPACE/zap-reports:/zap/wrk/:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+              -t http://127.0.0.1:8080/swagger-ui/index.html \
+              -m 2 \
+              -r localcart-zap-baseline.html \
+              -J localcart-zap-baseline.json \
+              -w localcart-zap-baseline.md \
+              -I \
+              --autooff
+
+          # ZAP's Automation Framework resolves report filenames relative to
+          # /zap/wrk. Absolute /zap/wrk/... values were prefixed a second time
+          # by the report job and caused NoSuchFileException.
+          for report in \
+            localcart-zap-baseline.html \
+            localcart-zap-baseline.json \
+            localcart-zap-baseline.md; do
+            if [[ ! -s "zap-reports/$report" ]]; then
+              echo "Expected ZAP report was not generated: $report" >&2
+              find zap-reports -maxdepth 2 -type f -print >&2
+              exit 1
+            fi
+          done
+
+      - name: Add ZAP findings to the workflow summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "## OWASP ZAP passive baseline scan"
+            echo "Target: disposable LocalCart instance on localhost:8080 (Swagger UI entry point)."
+            echo "Scan mode: spider + passive rules only; no active attack scan."
+            if [[ -f zap-reports/localcart-zap-baseline.md ]]; then
+              cat zap-reports/localcart-zap-baseline.md
+            else
+              echo "No Markdown report was generated. Inspect the ZAP step logs."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ZAP reports
+        if: ${{ always() && hashFiles('zap-reports/**') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: localcart-zap-baseline-${{ github.run_number }}
+          path: zap-reports/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Stop the LocalCart test process
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ -f /tmp/localcart-dast-app.pid ]]; then
+            app_pid="$(cat /tmp/localcart-dast-app.pid)"
+            pkill -TERM -P "$app_pid" 2>/dev/null || true
+            kill "$app_pid" 2>/dev/null || true
+          fi
+          pkill -f '[c]om.localcart.LocalcartBackendApplication' 2>/dev/null || true
