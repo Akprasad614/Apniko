@@ -19,13 +19,13 @@ This roadmap is maintained with the repository. Automation is introduced in smal
 
 ## Phase 2 — Static application security and supply-chain visibility (completed)
 
-- Semgrep runs the `p/security-audit` ruleset and uploads SARIF findings to GitHub code scanning. Findings are reviewed and triaged; the workflow does not automatically fix source code.
-- Gitleaks scans the full Git history on pushes, pull requests, weekly schedule, and manual dispatch. A confirmed secret must be revoked/rotated; removing it from the latest file alone is not sufficient.
-- OSV-Scanner checks Maven dependencies for known vulnerabilities and license metadata. Pull-request scans compare against `main` and fail on newly introduced vulnerabilities. The weekly/manual full scan is report-only initially so the existing dependency baseline can be reviewed before setting a blocking policy.
-- CycloneDX generates JSON and XML SBOM files from the Maven dependency graph. The files are retained as a GitHub Actions artifact for 30 days.
+- Semgrep runs the `p/security-audit` ruleset and uploads SARIF findings to GitHub code scanning.
+- Gitleaks scans the full Git history on pushes, pull requests, weekly schedule, and manual dispatch.
+- OSV-Scanner checks Maven dependencies for known vulnerabilities and license metadata. Pull-request scans compare against `main` and fail on newly introduced vulnerabilities. The weekly/manual full scan is report-only initially.
+- CycloneDX generates JSON and XML SBOM files from the Maven dependency graph.
 - No scanner automatically changes application code or dependencies.
 
-## Phase 3 — Backend authorization and business-logic regression tests (this change)
+## Phase 3 — Backend authorization and business-logic regression tests (completed)
 
 - Add customer order IDOR tests for order listing, cancellation, and status-history access.
 - Add shopkeeper isolation tests for shop order listings and inventory update/restock/movement-history access.
@@ -33,26 +33,21 @@ This roadmap is maintained with the repository. Automation is introduced in smal
 - Add payment isolation tests to ensure a customer cannot verify another customer's payment and inactive users cannot read payment details.
 - Run these tests in the existing Maven CI workflow. The tests use mocks and do not call live payment gateways or production data.
 
-Safety gates:
+## Phase 4 — Dynamic security baseline (this change)
 
-- Security regression tests must not target production accounts, payment gateways, or databases.
-- Any discovered defect must be fixed separately and reviewed; tests must not silently weaken authorization to pass.
-- Passing these tests is not a claim that every endpoint or business flow has been exhaustively tested.
-
-## Phase 4 — Dynamic security testing on isolated staging
-
-Planned automations:
-
-- OWASP ZAP baseline scan on the dedicated staging URL.
-- Nuclei checks using an approved template set and severity allowlist.
-- Authenticated scans only with dedicated test accounts and narrowly scoped routes.
-- Shannon or another AI pentest agent only through explicit manual approval against an isolated staging target.
+- Start LocalCart in GitHub Actions against a disposable MySQL 8.4 database named `localcart_dast`.
+- Generate an ephemeral JWT secret and do not configure production, Razorpay, or real user credentials.
+- Run the OWASP ZAP Baseline spider and passive rules against the local Swagger UI entry point.
+- Upload HTML, JSON, and Markdown reports as a short-lived Actions artifact.
+- Run on backend pull requests, matching pushes to `main`, weekly schedule, and manual dispatch.
 
 Safety gates:
 
-- No scans against production, third-party sites, or arbitrary user-supplied targets.
-- No destructive templates, stress tests, denial-of-service tests, or data-deletion payloads.
-- Active scans do not run automatically on ordinary pull requests.
+- This first DAST stage is passive only. It does not run ZAP active scans, Nuclei templates, destructive payloads, stress tests, or AI pentest agents.
+- The target is hardcoded to the local app started in that workflow. No arbitrary external target input is accepted.
+- The DAST job uses only the disposable `localcart_dast` MySQL service; it never connects to local developer or production databases.
+- Initial ZAP warning findings are report-only so the baseline can be reviewed before any rule is promoted to a merge gate. Scanner execution errors still fail.
+- Authenticated scans and AI-assisted testing require a later, separately reviewed plan with dedicated disposable identities and explicit manual approval.
 
 ## Phase 5 — Frontend foundation and design system
 
@@ -90,7 +85,7 @@ Planned automations:
 
 - Deploy pull-request previews or a dedicated staging environment.
 - Run API and browser end-to-end flows with seeded test data.
-- Run ZAP/Nuclei staging checks and collect reports.
+- Add carefully scoped authenticated DAST and approved Nuclei templates after the passive baseline has been reviewed.
 - Verify that test jobs never connect to the main development or production database.
 
 ## Phase 9 — Production readiness and release controls
