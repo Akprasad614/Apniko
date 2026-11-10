@@ -17,32 +17,27 @@ This roadmap is maintained with the repository. Automation is introduced in smal
 - Dependabot checks Maven and GitHub Actions dependencies weekly and opens update pull requests.
 - CI has read-only repository permission; CodeQL has only the additional permissions required to upload code-scanning results.
 
-## Phase 2 — Static application security and supply-chain visibility (this change)
+## Phase 2 — Static application security and supply-chain visibility (completed)
 
-- Semgrep runs the `p/security-audit` ruleset and uploads SARIF findings to GitHub code scanning. Initial findings are for review and triage; this workflow does not automatically fix source code.
+- Semgrep runs the `p/security-audit` ruleset and uploads SARIF findings to GitHub code scanning. Findings are reviewed and triaged; the workflow does not automatically fix source code.
 - Gitleaks scans the full Git history on pushes, pull requests, weekly schedule, and manual dispatch. A confirmed secret must be revoked/rotated; removing it from the latest file alone is not sufficient.
 - OSV-Scanner checks Maven dependencies for known vulnerabilities and license metadata. Pull-request scans compare against `main` and fail on newly introduced vulnerabilities. The weekly/manual full scan is report-only initially so the existing dependency baseline can be reviewed before setting a blocking policy.
 - CycloneDX generates JSON and XML SBOM files from the Maven dependency graph. The files are retained as a GitHub Actions artifact for 30 days.
-- Reports are uploaded to GitHub code scanning or workflow artifacts; no scanner is allowed to change application code or dependencies automatically.
+- No scanner automatically changes application code or dependencies.
+
+## Phase 3 — Backend authorization and business-logic regression tests (this change)
+
+- Add customer order IDOR tests for order listing, cancellation, and status-history access.
+- Add shopkeeper isolation tests for shop order listings and inventory update/restock/movement-history access.
+- Add delivery-partner isolation tests for order assignment, pickup/delivery ownership, and inactive accounts.
+- Add payment isolation tests to ensure a customer cannot verify another customer's payment and inactive users cannot read payment details.
+- Run these tests in the existing Maven CI workflow. The tests use mocks and do not call live payment gateways or production data.
 
 Safety gates:
 
-- Workflows use read-only repository access except for narrowly scoped security-results upload permission.
-- No production credentials or local database secrets are required.
-- No active penetration tests, destructive payloads, or external target scans run in this phase.
-
-## Phase 3 — Backend authorization and business-logic regression tests
-
-Planned automated tests:
-
-- Customer-to-customer order and cart isolation (IDOR/BOLA).
-- Shopkeeper isolation across shops, products, inventory, and orders.
-- Delivery-partner access limited to assigned deliveries.
-- Admin-only operation protection.
-- Server-side price, quantity, discount, and order-total integrity.
-- Inventory race conditions and overselling.
-- Payment signature validation, webhook replay/idempotency, and status transitions.
-- JWT expiry, invalid signature, missing token, and role-claim handling.
+- Security regression tests must not target production accounts, payment gateways, or databases.
+- Any discovered defect must be fixed separately and reviewed; tests must not silently weaken authorization to pass.
+- Passing these tests is not a claim that every endpoint or business flow has been exhaustively tested.
 
 ## Phase 4 — Dynamic security testing on isolated staging
 
