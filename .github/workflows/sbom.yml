@@ -1,0 +1,56 @@
+name: LocalCart CycloneDX SBOM
+
+on:
+  push:
+    branches:
+      - main
+      - "automation/**"
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-sbom:
+    name: Generate Maven dependency inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Ensure Maven wrapper is executable
+        run: chmod +x ./mvnw
+
+      - name: Generate CycloneDX JSON and XML SBOMs
+        run: >-
+          ./mvnw -B -ntp
+          org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+          -DoutputFormat=all
+          -DincludeTestScope=false
+
+      - name: Upload SBOM reports
+        uses: actions/upload-artifact@v7
+        with:
+          name: localcart-cyclonedx-sbom
+          path: |
+            target/bom.json
+            target/bom.xml
+          if-no-files-found: error
+          retention-days: 30

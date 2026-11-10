@@ -1,0 +1,23 @@
+name: LocalCart OSV Full Dependency Scan
+
+on:
+  schedule:
+    - cron: "30 12 * * 1"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  scan-scheduled:
+    name: Report current dependency vulnerabilities and licenses
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.7.0
+    with:
+      scan-args: |-
+        --licenses
+        --recursive
+        ./
+      # Initial baseline is report-only. Review findings before enabling a blocking policy.
+      fail-on-vuln: false

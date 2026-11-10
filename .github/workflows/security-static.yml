@@ -1,0 +1,83 @@
+name: LocalCart Static Security Scans
+
+on:
+  push:
+    branches:
+      - main
+      - "automation/**"
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: Semgrep security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Create isolated Python environment
+        run: python3 -m venv .semgrep-venv
+
+      - name: Install Semgrep
+        run: .semgrep-venv/bin/python -m pip install --disable-pip-version-check semgrep
+
+      - name: Scan Java and repository security patterns
+        run: |
+          .semgrep-venv/bin/semgrep scan \
+            --config p/security-audit \
+            --sarif \
+            --output semgrep.sarif \
+            --metrics=off \
+            .
+
+      - name: Upload Semgrep findings to GitHub code scanning
+        if: ${{ always() && hashFiles('semgrep.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Keep the raw Semgrep report
+        if: ${{ always() && hashFiles('semgrep.sarif') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: localcart-semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: warn
+          retention-days: 14
+
+  gitleaks:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out full Git history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository history for secrets
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
