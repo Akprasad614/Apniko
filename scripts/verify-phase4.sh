@@ -20,6 +20,7 @@ grep -Fq 'echo "::add-mask::$JWT_SECRET"' "$WORKFLOW"
 grep -Fq 'zap-baseline.py' "$WORKFLOW"
 grep -Fq 'http://127.0.0.1:8080/swagger-ui/index.html' "$WORKFLOW"
 grep -Fq ' -I' "$WORKFLOW"
+grep -Fq -- '--autooff' "$WORKFLOW"
 grep -Fq -- '--network host' "$WORKFLOW"
 grep -Fq ' -r localcart-zap-baseline.html' "$WORKFLOW"
 grep -Fq ' -J localcart-zap-baseline.json' "$WORKFLOW"
@@ -37,4 +38,4 @@ if grep -Eq 'https?://[^ ]*(prod|production)' "$WORKFLOW"; then
   exit 1
 fi
 
-echo "Phase 4 verification passed: isolated DB, localhost target, passive ZAP mode, masked JWT, relative report paths, and mandatory report outputs."
+echo "Phase 4 verification passed: isolated DB, localhost target, passive ZAP mode, masked JWT, relative report paths, --autooff compatibility mode, and mandatory report outputs."
