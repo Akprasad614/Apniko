@@ -9,31 +9,27 @@ This roadmap is maintained with the repository. Automation is introduced in smal
 - Confirm `main` is the default branch and keep feature work on dedicated branches.
 - Never commit local credentials, private Postman environments, payment keys, or production secrets.
 
-## Phase 1 — CI and dependency-maintenance foundation (this change)
+## Phase 1 — CI and dependency-maintenance foundation (completed)
 
-Automations:
-
-- On pushes to `main` and `automation/**`, and on pull requests into `main`, provision a fresh MySQL 8.4 service and run the Phase 10 static verifier plus `./mvnw verify`.
-- Generate a one-run JWT secret inside the CI job. The test database and root password are disposable CI-only values.
-- Run CodeQL Java analysis on pushes, pull requests, weekly schedule, and manual dispatch.
+- GitHub Actions CI provisions a fresh MySQL 8.4 service and runs the Phase 10 static verifier plus `./mvnw verify` on pushes and pull requests.
+- CI generates a one-run JWT secret. The test database and root password are disposable CI-only values.
+- CodeQL Java analysis runs on pushes, pull requests, weekly schedule, and manual dispatch.
 - Dependabot checks Maven and GitHub Actions dependencies weekly and opens update pull requests.
+- CI has read-only repository permission; CodeQL has only the additional permissions required to upload code-scanning results.
+
+## Phase 2 — Static application security and supply-chain visibility (this change)
+
+- Semgrep runs the `p/security-audit` ruleset and uploads SARIF findings to GitHub code scanning. Initial findings are for review and triage; this workflow does not automatically fix source code.
+- Gitleaks scans the full Git history on pushes, pull requests, weekly schedule, and manual dispatch. A confirmed secret must be revoked/rotated; removing it from the latest file alone is not sufficient.
+- OSV-Scanner checks Maven dependencies for known vulnerabilities and license metadata. Pull-request scans compare against `main` and fail on newly introduced vulnerabilities. The weekly/manual full scan is report-only initially so the existing dependency baseline can be reviewed before setting a blocking policy.
+- CycloneDX generates JSON and XML SBOM files from the Maven dependency graph. The files are retained as a GitHub Actions artifact for 30 days.
+- Reports are uploaded to GitHub code scanning or workflow artifacts; no scanner is allowed to change application code or dependencies automatically.
 
 Safety gates:
 
-- CI has read-only repository permission.
-- CodeQL has only the additional permissions required to upload code-scanning results.
-- No active penetration tests or production endpoints are called by these workflows.
-- Dependency updates create pull requests; they are not auto-merged.
-
-## Phase 2 — Static application security and secret detection
-
-Planned automations:
-
-- Add Semgrep rules for Java/Spring security patterns.
-- Add Gitleaks secret detection for commits and pull requests.
-- Add dependency vulnerability and license reporting for Maven.
-- Generate a software bill of materials (SBOM) and retain the report as a workflow artifact.
-- Review findings; do not automatically change production dependencies or source code.
+- Workflows use read-only repository access except for narrowly scoped security-results upload permission.
+- No production credentials or local database secrets are required.
+- No active penetration tests, destructive payloads, or external target scans run in this phase.
 
 ## Phase 3 — Backend authorization and business-logic regression tests
 
