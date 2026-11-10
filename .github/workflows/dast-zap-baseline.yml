@@ -65,9 +65,14 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Generate an ephemeral JWT secret for this run
+      - name: Generate and mask an ephemeral JWT secret
         shell: bash
-        run: echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
+        run: |
+          set -euo pipefail
+          JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+          echo "::add-mask::$JWT_SECRET"
+          printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >> "$GITHUB_ENV"
+          unset JWT_SECRET
 
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
@@ -115,10 +120,24 @@ jobs:
             zap-baseline.py \
               -t http://127.0.0.1:8080/swagger-ui/index.html \
               -m 2 \
-              -r /zap/wrk/localcart-zap-baseline.html \
-              -J /zap/wrk/localcart-zap-baseline.json \
-              -w /zap/wrk/localcart-zap-baseline.md \
+              -r localcart-zap-baseline.html \
+              -J localcart-zap-baseline.json \
+              -w localcart-zap-baseline.md \
               -I
+
+          # ZAP's Automation Framework resolves report filenames relative to
+          # /zap/wrk. Absolute /zap/wrk/... values were prefixed a second time
+          # by the report job and caused NoSuchFileException.
+          for report in \
+            localcart-zap-baseline.html \
+            localcart-zap-baseline.json \
+            localcart-zap-baseline.md; do
+            if [[ ! -s "zap-reports/$report" ]]; then
+              echo "Expected ZAP report was not generated: $report" >&2
+              find zap-reports -maxdepth 2 -type f -print >&2
+              exit 1
+            fi
+          done
 
       - name: Add ZAP findings to the workflow summary
         if: ${{ always() }}
@@ -141,7 +160,7 @@ jobs:
         with:
           name: localcart-zap-baseline-${{ github.run_number }}
           path: zap-reports/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
 
       - name: Stop the LocalCart test process
