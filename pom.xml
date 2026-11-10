@@ -97,6 +97,13 @@
 			<version>3.2.0</version>
 		</dependency>
 
+		<!-- Override springdoc's transitive Swagger UI WebJar with the patched 5.34.1 bundle. -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>swagger-ui</artifactId>
+			<version>5.34.1</version>
+		</dependency>
+
 		<!-- MySQL -->
 		<dependency>
 			<groupId>com.mysql</groupId>
