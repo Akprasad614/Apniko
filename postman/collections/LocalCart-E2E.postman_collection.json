@@ -1,0 +1,1509 @@
+{
+  "info": {
+    "_postman_id": "2574318c-04ef-4173-a665-0913fd6c4844",
+    "name": "LocalCart E2E — Customer to Delivery (Isolated DB)",
+    "description": "Repeatable local end-to-end workflow for a cloned localcart_test database on localhost:8081. The collection verifies the immediate POST cart response against the cart quantity before the add, checks the GET cart response, confirms checkout clears the cart, and walks the order through shopkeeper, delivery-partner and COD payment steps. It does not call live Razorpay APIs. Set credentials only in the private Postman environment file excluded from Git. Checkout deducts stock in localcart_test. The clone script refuses to overwrite a non-empty test database.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "shopId",
+      "value": "1"
+    },
+    {
+      "key": "productId",
+      "value": "1"
+    },
+    {
+      "key": "quantity",
+      "value": "1"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+          "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+          "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Login — Customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}",
+              "if (!pm.environment.get(\"customerEmail\") || !pm.environment.get(\"customerPassword\")) throw new Error(\"Set customerEmail and customerPassword in the private local environment first.\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Customer login returns 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test(\"Customer token is present\", () => pm.expect(data.token).to.be.a(\"string\").and.not.empty);",
+              "pm.test(\"Customer role is CUSTOMER\", () => pm.expect(data.role).to.eql(\"CUSTOMER\"));",
+              "pm.environment.set(\"customerToken\", data.token);",
+              "pm.environment.set(\"customerUserId\", data.userId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — list active shops",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/marketplace/shops",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "marketplace",
+            "shops"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Marketplace shops returns 200\", () => pm.response.to.have.status(200));",
+              "const shops = pm.response.json();",
+              "pm.test(\"Marketplace response is an array\", () => pm.expect(shops).to.be.an(\"array\"));",
+              "const shopId = Number(pm.environment.get(\"shopId\"));",
+              "pm.test(\"Configured shop exists and is active\", () => {",
+              "  const shop = shops.find(s => Number(s.id) === shopId);",
+              "  pm.expect(shop, \"Configured shopId\").to.exist;",
+              "  pm.expect(shop.active).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — list shop products",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/marketplace/shops/{{shopId}}/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "marketplace",
+            "shops",
+            "{{shopId}}",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shop products returns 200\", () => pm.response.to.have.status(200));",
+              "const products = pm.response.json();",
+              "const productId = Number(pm.environment.get(\"productId\"));",
+              "const product = products.find(p => Number(p.productId) === productId);",
+              "pm.test(\"Configured product is available in this shop\", () => {",
+              "  pm.expect(product, \"Configured productId\").to.exist;",
+              "  pm.expect(product.available).to.eql(true);",
+              "  pm.expect(product.stockQuantity).to.be.at.least(Number(pm.environment.get(\"quantity\") || 1));",
+              "});",
+              "pm.environment.set(\"productPrice\", product.price);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — capture cart quantity before add",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Cart baseline returns 200\", () => pm.response.to.have.status(200));",
+              "const cart = pm.response.json();",
+              "pm.test(\"Cart baseline contains an items array\", () => pm.expect(cart.items).to.be.an(\"array\"));",
+              "const productId = Number(pm.environment.get(\"productId\"));",
+              "const existing = cart.items.find(item => Number(item.productId) === productId);",
+              "const before = existing ? Number(existing.quantity) : 0;",
+              "pm.environment.set(\"cartQuantityBeforeAdd\", String(before));",
+              "pm.test(\"Existing quantity is a non-negative number\", () => pm.expect(before).to.be.at.least(0));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/cart/{{shopId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "cart",
+            "{{shopId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Customer — add item to cart",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/cart/{{shopId}}/items",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "cart",
+            "{{shopId}}",
+            "items"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": {{quantity}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Add to cart returns 200\", () => pm.response.to.have.status(200));",
+              "const cart = pm.response.json();",
+              "pm.test(\"Immediate POST response contains an items array\", () => pm.expect(cart.items).to.be.an(\"array\"));",
+              "const productId = Number(pm.environment.get(\"productId\"));",
+              "const item = cart.items.find(entry => Number(entry.productId) === productId);",
+              "pm.test(\"Immediate POST response contains the configured product\", () => pm.expect(item, \"added cart item\").to.exist);",
+              "const before = Number(pm.environment.get(\"cartQuantityBeforeAdd\") || 0);",
+              "const added = Number(pm.environment.get(\"quantity\") || 1);",
+              "const expected = before + added;",
+              "pm.environment.set(\"cartExpectedQuantity\", String(expected));",
+              "pm.test(\"Immediate POST response has the expected accumulated quantity\", () => pm.expect(Number(item.quantity)).to.eql(expected));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — verify cart",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/cart/{{shopId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "cart",
+            "{{shopId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Get cart returns 200\", () => pm.response.to.have.status(200));",
+              "const cart = pm.response.json();",
+              "pm.test(\"Cart total is positive\", () => pm.expect(Number(cart.totalAmount)).to.be.greaterThan(0));",
+              "pm.test(\"Cart contains an items array\", () => pm.expect(cart.items).to.be.an(\"array\"));",
+              "const productId = Number(pm.environment.get(\"productId\"));",
+              "const item = cart.items.find(entry => Number(entry.productId) === productId);",
+              "pm.test(\"GET cart contains the configured product\", () => pm.expect(item, \"cart item\").to.exist);",
+              "pm.test(\"GET quantity matches the immediate POST response\", () => pm.expect(Number(item.quantity)).to.eql(Number(pm.environment.get(\"cartExpectedQuantity\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — checkout using platform delivery",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/cart/{{shopId}}/checkout",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "cart",
+            "{{shopId}}",
+            "checkout"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryMode\": \"PLATFORM_DELIVERY\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Checkout returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Order ID is returned\", () => pm.expect(order.id).to.exist);",
+              "pm.test(\"New order starts as PLACED\", () => pm.expect(order.status).to.eql(\"PLACED\"));",
+              "pm.test(\"Order uses PLATFORM_DELIVERY\", () => pm.expect(order.deliveryMode).to.eql(\"PLATFORM_DELIVERY\"));",
+              "const productId = Number(pm.environment.get(\"productId\"));",
+              "const orderItem = (order.items || []).find(entry => Number(entry.product && entry.product.id) === productId);",
+              "pm.test(\"Order contains the cart product\", () => pm.expect(orderItem, \"order item\").to.exist);",
+              "pm.test(\"Order item quantity matches the cart quantity\", () => pm.expect(Number(orderItem.quantity)).to.eql(Number(pm.environment.get(\"cartExpectedQuantity\"))));",
+              "pm.environment.set(\"orderId\", order.id);",
+              "pm.environment.set(\"orderTotal\", order.totalAmount);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — verify cart is empty after checkout",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Post-checkout cart returns 200\", () => pm.response.to.have.status(200));",
+              "const cart = pm.response.json();",
+              "pm.test(\"Cart response contains an items array\", () => pm.expect(cart.items).to.be.an(\"array\"));",
+              "pm.test(\"Successful checkout clears all cart items\", () => pm.expect(cart.items).to.have.length(0));",
+              "pm.test(\"Empty cart total is zero\", () => pm.expect(Number(cart.totalAmount)).to.eql(0));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/cart/{{shopId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "cart",
+            "{{shopId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Customer — initiate COD payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/payments/orders/{{orderId}}/initiate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "orders",
+            "{{orderId}}",
+            "initiate"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"method\": \"COD\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"COD payment initiation returns 200\", () => pm.response.to.have.status(200));",
+              "const payment = pm.response.json();",
+              "pm.test(\"Payment record is returned\", () => pm.expect(payment.id).to.exist);",
+              "pm.test(\"Payment method is COD and status is PENDING\", () => {",
+              "  pm.expect(payment.method).to.eql(\"COD\");",
+              "  pm.expect(payment.status).to.eql(\"PENDING\");",
+              "});",
+              "pm.environment.set(\"paymentId\", payment.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login — Shopkeeper",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{shopkeeperEmail}}\",\n  \"password\": \"{{shopkeeperPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}",
+              "if (!pm.environment.get(\"shopkeeperEmail\") || !pm.environment.get(\"shopkeeperPassword\")) throw new Error(\"Set shopkeeperEmail and shopkeeperPassword in the private local environment first.\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shopkeeper login returns 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test(\"Shopkeeper token is present\", () => pm.expect(data.token).to.be.a(\"string\").and.not.empty);",
+              "pm.test(\"Shopkeeper role is SHOPKEEPER\", () => pm.expect(data.role).to.eql(\"SHOPKEEPER\"));",
+              "pm.environment.set(\"shopkeeperToken\", data.token);",
+              "pm.environment.set(\"shopkeeperUserId\", data.userId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shopkeeper — list my orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/shopkeeper/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shopkeeper",
+            "orders"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{shopkeeperToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shopkeeper order list returns 200\", () => pm.response.to.have.status(200));",
+              "const orders = pm.response.json();",
+              "const target = orders.find(o => Number(o.id) === Number(pm.environment.get(\"orderId\")));",
+              "pm.test(\"New customer order is visible to its shopkeeper\", () => pm.expect(target).to.exist);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shopkeeper — move order to ACCEPTED",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/shopkeeper/orders/{{orderId}}/status?status=ACCEPTED",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shopkeeper",
+            "orders",
+            "{{orderId}}",
+            "status"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "ACCEPTED"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{shopkeeperToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shopkeeper transition to ACCEPTED returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Order status is ACCEPTED\", () => pm.expect(order.status).to.eql(\"ACCEPTED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shopkeeper — move order to PREPARING",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/shopkeeper/orders/{{orderId}}/status?status=PREPARING",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shopkeeper",
+            "orders",
+            "{{orderId}}",
+            "status"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "PREPARING"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{shopkeeperToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shopkeeper transition to PREPARING returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Order status is PREPARING\", () => pm.expect(order.status).to.eql(\"PREPARING\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shopkeeper — move order to READY",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/shopkeeper/orders/{{orderId}}/status?status=READY",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shopkeeper",
+            "orders",
+            "{{orderId}}",
+            "status"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "READY"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{shopkeeperToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shopkeeper transition to READY returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Order status is READY\", () => pm.expect(order.status).to.eql(\"READY\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login — Delivery Partner",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{deliveryEmail}}\",\n  \"password\": \"{{deliveryPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}",
+              "if (!pm.environment.get(\"deliveryEmail\") || !pm.environment.get(\"deliveryPassword\")) throw new Error(\"Set deliveryEmail and deliveryPassword in the private local environment first.\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Delivery Partner login returns 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test(\"Delivery Partner token is present\", () => pm.expect(data.token).to.be.a(\"string\").and.not.empty);",
+              "pm.test(\"Delivery Partner role is DELIVERY_PARTNER\", () => pm.expect(data.role).to.eql(\"DELIVERY_PARTNER\"));",
+              "pm.environment.set(\"deliveryToken\", data.token);",
+              "pm.environment.set(\"deliverypartnerUserId\", data.userId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery — list available orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/delivery/orders/available",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "delivery",
+            "orders",
+            "available"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{deliveryToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Available delivery orders returns 200\", () => pm.response.to.have.status(200));",
+              "const orders = pm.response.json();",
+              "const target = orders.find(o => Number(o.id) === Number(pm.environment.get(\"orderId\")));",
+              "pm.test(\"Ready platform-delivery order is available\", () => pm.expect(target).to.exist);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery — accept order",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/delivery/orders/{{orderId}}/accept",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "delivery",
+            "orders",
+            "{{orderId}}",
+            "accept"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{deliveryToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Delivery accept returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Order reaches READY\", () => pm.expect(order.status).to.eql(\"READY\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery — pickup order",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/delivery/orders/{{orderId}}/pickup",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "delivery",
+            "orders",
+            "{{orderId}}",
+            "pickup"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{deliveryToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Delivery pickup returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Order reaches OUT_FOR_DELIVERY\", () => pm.expect(order.status).to.eql(\"OUT_FOR_DELIVERY\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery — deliver order",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/delivery/orders/{{orderId}}/deliver",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "delivery",
+            "orders",
+            "{{orderId}}",
+            "deliver"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{deliveryToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Delivery deliver returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Order reaches DELIVERED\", () => pm.expect(order.status).to.eql(\"DELIVERED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery Partner — collect COD payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/payments/{{paymentId}}/collect-cod",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "{{paymentId}}",
+            "collect-cod"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{deliveryToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"COD collection returns 200\", () => pm.response.to.have.status(200));",
+              "const payment = pm.response.json();",
+              "pm.test(\"COD payment is marked PAID\", () => pm.expect(payment.status).to.eql(\"PAID\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — verify delivered order",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders",
+            "{{orderId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Customer can retrieve own order\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"Final order status is DELIVERED\", () => pm.expect(order.status).to.eql(\"DELIVERED\"));",
+              "pm.test(\"Delivery mode remains PLATFORM_DELIVERY\", () => pm.expect(order.deliveryMode).to.eql(\"PLATFORM_DELIVERY\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — verify order history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}/history",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders",
+            "{{orderId}}",
+            "history"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Order history returns 200\", () => pm.response.to.have.status(200));",
+              "const history = pm.response.json();",
+              "pm.test(\"Status history includes delivery milestones\", () => {",
+              "  const statuses = history.map(h => h.newStatus);",
+              "  [\"PLACED\",\"ACCEPTED\",\"PREPARING\",\"READY\",\"OUT_FOR_DELIVERY\",\"DELIVERED\"].forEach(s => pm.expect(statuses).to.include(s));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer — verify COD payment",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/payments/orders/{{orderId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "payments",
+            "orders",
+            "{{orderId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Customer can retrieve own payment\", () => pm.response.to.have.status(200));",
+              "const payment = pm.response.json();",
+              "pm.test(\"Payment is COD and PAID\", () => {",
+              "  pm.expect(payment.method).to.eql(\"COD\");",
+              "  pm.expect(payment.status).to.eql(\"PAID\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -32,3 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 .DS_Store
+postman/environments/localcart.local.postman_environment.json
+postman/reports/
+postman/environments/localcart-api.local.postman_environment.json

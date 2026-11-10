@@ -1,0 +1,25 @@
+LocalCart Phase 10 package manifest
+
+Files to add/replace in the existing localcart-backend project:
+
+.gitignore
+pom.xml
+PHASE10-README.md
+src/main/java/com/localcart/config/OpenApiConfig.java
+src/main/java/com/localcart/security/SecurityConfig.java
+postman/collections/LocalCart-E2E.postman_collection.json
+postman/collections/localcart-api.postman_collection.json
+postman/environments/localcart-api.local.postman_environment.example.json
+postman/environments/localcart.local.postman_environment.example.json
+postman/localcart-openapi.json
+scripts/clone-localcart-test-db.sh
+scripts/run-localcart-test-instance.sh
+scripts/verify-phase10.sh
+
+Not included intentionally:
+- .git/ and target/ build output
+- IntelliJ/macOS metadata
+- local private Postman environment files
+- Postman reports
+- pom-phase10-backup.xml and SecurityConfig-phase10-backup.java (keep these local as comparison backups)
+- application secrets, passwords, JWT values, and payment credentials
