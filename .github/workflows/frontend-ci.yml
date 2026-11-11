@@ -1,0 +1,83 @@
+name: LocalCart Frontend CI
+
+on:
+  push:
+    branches:
+      - main
+      - "automation/**"
+    paths:
+      - "frontend/**"
+      - "PRODUCT.md"
+      - "DESIGN.md"
+      - "FRONTEND_RULES.md"
+      - "SECURITY-AUTOMATION-PLAN.md"
+      - ".github/dependabot.yml"
+      - "scripts/verify-phase5.sh"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - "PRODUCT.md"
+      - "DESIGN.md"
+      - "FRONTEND_RULES.md"
+      - "SECURITY-AUTOMATION-PLAN.md"
+      - ".github/dependabot.yml"
+      - "scripts/verify-phase5.sh"
+      - ".github/workflows/frontend-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-frontend:
+    name: Lint, typecheck, test and build frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out LocalCart
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Verify frontend foundation configuration
+        run: bash scripts/verify-phase5.sh
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run TypeScript checks
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Run frontend unit tests
+        working-directory: frontend
+        run: npm run test:ci
+
+      - name: Build production frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload production build
+        uses: actions/upload-artifact@v7
+        with:
+          name: localcart-frontend-dist-${{ github.run_number }}
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 7

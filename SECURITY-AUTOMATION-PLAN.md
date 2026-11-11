@@ -33,69 +33,63 @@ This roadmap is maintained with the repository. Automation is introduced in smal
 - Add payment isolation tests to ensure a customer cannot verify another customer's payment and inactive users cannot read payment details.
 - Run these tests in the existing Maven CI workflow. The tests use mocks and do not call live payment gateways or production data.
 
-## Phase 4 — Dynamic security baseline (this change)
+## Phase 4 — Dynamic security baseline (completed)
 
 - Start LocalCart in GitHub Actions against a disposable MySQL 8.4 database named `localcart_dast`.
-- Generate an ephemeral JWT secret and do not configure production, Razorpay, or real user credentials.
+- Generate and mask an ephemeral JWT secret; do not configure production, Razorpay, or real user credentials.
 - Run the OWASP ZAP Baseline spider and passive rules against the local Swagger UI entry point.
-- Upload HTML, JSON, and Markdown reports as a short-lived Actions artifact.
+- Require HTML, JSON, and Markdown reports and upload them as a short-lived Actions artifact.
 - Run on backend pull requests, matching pushes to `main`, weekly schedule, and manual dispatch.
+- Initial ZAP findings are reviewed from the generated report; a completed scan is not treated as proof of zero vulnerabilities.
 
 Safety gates:
 
-- This first DAST stage is passive only. It does not run ZAP active scans, Nuclei templates, destructive payloads, stress tests, or AI pentest agents.
+- This DAST stage is passive only. It does not run ZAP active scans, Nuclei templates, destructive payloads, stress tests, or AI pentest agents.
 - The target is hardcoded to the local app started in that workflow. No arbitrary external target input is accepted.
 - The DAST job uses only the disposable `localcart_dast` MySQL service; it never connects to local developer or production databases.
-- Initial ZAP warning findings are report-only so the baseline can be reviewed before any rule is promoted to a merge gate. Scanner execution errors still fail.
-- Authenticated scans and AI-assisted testing require a later, separately reviewed plan with dedicated disposable identities and explicit manual approval.
+- ZAP warning findings remain visible in reports and can be promoted to a blocking policy after review.
 
-## Phase 5 — Frontend foundation and design system
+## Phase 5 — Frontend foundation and design system (this change)
 
-Planned work:
+- Add React, TypeScript and Vite under `frontend/`, separate from the Spring Boot backend.
+- Add a deliberate LocalCart visual direction, central design tokens, reusable controls, responsive public landing page and role-aware route shells.
+- Wire customer registration and sign-in to the verified backend contract. Public registration remains CUSTOMER-only; privileged account types are provisioned by LocalCart administration.
+- Add a typed API request helper, local `/api` development proxy, ESLint, TypeScript checks and Vitest unit tests.
+- Add GitHub Actions frontend CI for lint, typecheck, tests and production build.
+- Add Dependabot coverage for npm dependencies under `/frontend`.
 
-- Add React, TypeScript, and Vite under a dedicated `frontend/` directory.
-- Add `PRODUCT.md`, `DESIGN.md`, and `FRONTEND_RULES.md`.
-- Apply the agreed design references (Anthropic Frontend Design, Taste, UI/UX Pro Max, Vercel Web Interface Guidelines, and Impeccable) as project instructions and review criteria.
-- Establish reusable design tokens, components, routes, API client, and role-aware layouts.
+Authentication note:
 
-## Phase 6 — Frontend quality automation
+- The existing backend returns a bearer token in the JSON authentication response. The first frontend foundation keeps it in `sessionStorage` rather than `localStorage` to limit persistence. This is not an XSS defence because JavaScript can still read it. A production auth design should prefer secure HttpOnly SameSite cookies or another reviewed approach.
+- Frontend route guards are navigation aids only. All roles, ownership, inventory, pricing, order and payment decisions must continue to be enforced by the backend.
 
-Planned automations:
-
-- TypeScript type-check and production build.
-- ESLint and unit/component tests.
-- Playwright browser tests for core customer journeys.
-- Accessibility checks using axe-core.
-- Screenshot artifacts and visual-regression review for key pages.
-
-## Phase 7 — Role-based application delivery
+## Phase 6 — Role-based application delivery
 
 Build and test incrementally:
 
-- Customer storefront, search, cart, checkout, payment, and order tracking.
+- Customer storefront, search, basket, checkout, payment and order tracking.
 - Shopkeeper product/inventory/order management and analytics.
 - Delivery-partner task list and delivery lifecycle.
 - Admin operations where required.
 
-Every feature must pass relevant backend tests, frontend checks, and authorization tests before merge.
+Every feature must be based on the current backend DTOs and endpoint behaviour. Do not create fake stock counts, prices, delivery ETAs or analytics.
 
-## Phase 8 — Full end-to-end staging verification
+## Phase 7 — Full end-to-end staging verification
 
-Planned automations:
-
+- Add Playwright browser journeys for customer, shopkeeper and delivery workflows.
+- Add accessibility checks using axe-core and review responsive screenshots for key pages.
 - Deploy pull-request previews or a dedicated staging environment.
 - Run API and browser end-to-end flows with seeded test data.
-- Add carefully scoped authenticated DAST and approved Nuclei templates after the passive baseline has been reviewed.
+- Add carefully scoped authenticated DAST and approved Nuclei templates only after a separately reviewed plan with dedicated disposable identities and explicit approval.
 - Verify that test jobs never connect to the main development or production database.
 
-## Phase 9 — Production readiness and release controls
-
-Planned work:
+## Phase 8 — Production readiness and release controls
 
 - Configure protected `main` branch rules and required checks after the workflows have passed at least once.
 - Require review for security-sensitive changes.
 - Configure production secrets in the hosting provider, not in the repository.
-- Add HTTPS, security headers, restricted database access, monitoring, backups, and rollback procedures.
+- Add HTTPS, content security policy, other security headers, restricted database access, monitoring, backups and rollback procedures.
+- Replace the temporary browser token storage design with the reviewed production authentication approach.
 - Keep a release checklist and a security findings register.
 
 ## Completion policy
