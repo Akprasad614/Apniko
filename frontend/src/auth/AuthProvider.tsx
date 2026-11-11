@@ -53,7 +53,7 @@ function readStoredSession(): AuthSession | null {
 
 function saveSession(response: AuthResponse): AuthSession {
   if (!isAppRole(response.role)) {
-    throw new Error('LocalCart returned an unknown account role. Contact support.')
+    throw new Error('Apniko returned an unknown account role. Contact support.')
   }
   const session: AuthSession = {
     token: response.token,

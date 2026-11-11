@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "ebfb1b80-0dd5-42ec-a7b3-c790bb856463",
-    "name": "LocalCart Backend API",
-    "description": "REST API for LocalCart grocery marketplace, shop operations, orders, inventory, payments, notifications, analytics and demand insights.\n\nContact Support:\n Name: LocalCart API Support",
+    "name": "Apniko Backend API",
+    "description": "REST API for Apniko grocery marketplace, shop operations, orders, inventory, payments, notifications, analytics and demand insights.\n\nContact Support:\n Name: Apniko API Support",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "58473700",
     "_collection_link": "https://go.postman.co/collection/58473700-ebfb1b80-0dd5-42ec-a7b3-c790bb856463?source=collection_link"

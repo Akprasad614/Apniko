@@ -63,7 +63,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         }
 
         User admin = new User();
-        admin.setName("LocalCart Administrator");
+        admin.setName("Apniko Administrator");
         admin.setEmail(normalizedEmail);
         admin.setPassword(passwordEncoder.encode(adminPassword));
         admin.setRole(Role.ADMIN);

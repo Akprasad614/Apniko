@@ -25,7 +25,7 @@ export function HomePage() {
             </p>
             <div className="hero__actions">
               <Link className="button button--lime" to="/register">Create a customer account <span aria-hidden="true">↗</span></Link>
-              <Link className="text-link" to="/login">Already with LocalCart? Sign in</Link>
+              <Link className="text-link" to="/login">Already with Apniko? Sign in</Link>
             </div>
             <div className="hero__note">
               <span className="hero__note-mark" aria-hidden="true">✳</span>
@@ -45,7 +45,7 @@ export function HomePage() {
             <div className="grocery-bag">
               <div className="grocery-bag__handle" />
               <div className="grocery-bag__front">
-                <span className="grocery-bag__stamp">LC</span>
+                <span className="grocery-bag__stamp">AP</span>
                 <span className="grocery-bag__word">LOCAL<br />FINDS</span>
               </div>
             </div>
@@ -84,9 +84,9 @@ export function HomePage() {
               <h2>Your shop has a place<br />in the <em>neighbourhood.</em></h2>
             </div>
             <div className="local-stores__aside">
-              <p>LocalCart is being built to help independent stores manage orders and reach the customers already around them.</p>
+              <p>Apniko is being built to help independent stores manage orders and reach the customers already around them.</p>
               <Link className="button button--outline" to="/login">Shopkeeper sign in <span aria-hidden="true">↗</span></Link>
-              <span className="local-stores__fine">Shopkeeper accounts are created by a LocalCart administrator.</span>
+              <span className="local-stores__fine">Shopkeeper accounts are created by a Apniko administrator.</span>
             </div>
             <span className="local-stores__asterisk" aria-hidden="true">✳</span>
           </div>
@@ -96,7 +96,7 @@ export function HomePage() {
       <footer className="site-footer wrap">
         <BrandMark />
         <span>Good things happen close to home.</span>
-        <span className="site-footer__copy">© {new Date().getFullYear()} LocalCart</span>
+        <span className="site-footer__copy">© {new Date().getFullYear()} Apniko</span>
       </footer>
     </div>
   )

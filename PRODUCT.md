@@ -1,10 +1,10 @@
-# LocalCart product brief
+# Apniko product brief
 
 ## Product idea
 
-LocalCart helps independent neighbourhood grocery shops compete in a digital-first market without requiring each shop to build its own online ordering system. Customers discover nearby stores and order everyday essentials. Shopkeepers manage their own catalogue, inventory and incoming orders. Delivery partners handle assigned LocalCart deliveries where the shop's own delivery team is not used.
+Apniko helps independent neighbourhood grocery shops compete in a digital-first market without requiring each shop to build its own online ordering system. Customers discover nearby stores and order everyday essentials. Shopkeepers manage their own catalogue, inventory and incoming orders. Delivery partners handle assigned Apniko deliveries where the shop's own delivery team is not used.
 
-LocalCart is a shared local-commerce layer, not a restaurant marketplace and not a copy of a quick-commerce interface.
+Apniko is a shared local-commerce layer, not a restaurant marketplace and not a copy of a quick-commerce interface.
 
 ## Primary users
 
@@ -24,7 +24,7 @@ LocalCart is a shared local-commerce layer, not a restaurant marketplace and not
 ## Current backend contract
 
 - Public authentication endpoints are `POST /api/auth/register` and `POST /api/auth/login`.
-- Public registration is CUSTOMER-only. Shopkeeper, delivery-partner and administrator accounts are provisioned by LocalCart administration.
+- Public registration is CUSTOMER-only. Shopkeeper, delivery-partner and administrator accounts are provisioned by Apniko administration.
 - Authentication responses contain `token`, `userId`, `name`, `email` and `role`.
 - Role values are `CUSTOMER`, `SHOPKEEPER`, `DELIVERY_PARTNER` and `ADMIN`.
 - Customer marketplace endpoints begin under `/api/customer/marketplace`.

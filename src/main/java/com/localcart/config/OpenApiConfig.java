@@ -21,17 +21,17 @@ public class OpenApiConfig {
     public OpenAPI localCartOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("LocalCart Backend API")
+                        .title("Apniko Backend API")
                         .version("v1")
-                        .description("REST API for LocalCart grocery marketplace, shop operations, orders, inventory, payments, notifications, analytics and demand insights.")
+                        .description("REST API for Apniko grocery marketplace, shop operations, orders, inventory, payments, notifications, analytics and demand insights.")
                         .contact(new Contact()
-                                .name("LocalCart API Support")))
+                                .name("Apniko API Support")))
                 .components(new Components()
                         .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("Enter the JWT access token returned by the LocalCart login endpoint. Do not include the word Bearer; Swagger adds it automatically.")));
+                                .description("Enter the JWT access token returned by the Apniko login endpoint. Do not include the word Bearer; Swagger adds it automatically.")));
     }
 
     @Bean

@@ -1,4 +1,4 @@
-LocalCart Phase 10 package manifest
+Apniko Phase 10 package manifest
 
 Files to add/replace in the existing localcart-backend project:
 
@@ -7,7 +7,7 @@ pom.xml
 PHASE10-README.md
 src/main/java/com/localcart/config/OpenApiConfig.java
 src/main/java/com/localcart/security/SecurityConfig.java
-postman/collections/LocalCart-E2E.postman_collection.json
+postman/collections/Apniko-E2E.postman_collection.json
 postman/collections/localcart-api.postman_collection.json
 postman/environments/localcart-api.local.postman_environment.example.json
 postman/environments/localcart.local.postman_environment.example.json

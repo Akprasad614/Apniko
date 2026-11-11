@@ -1,10 +1,10 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "LocalCart Backend API",
-    "description": "REST API for LocalCart grocery marketplace, shop operations, orders, inventory, payments, notifications, analytics and demand insights.",
+    "title": "Apniko Backend API",
+    "description": "REST API for Apniko grocery marketplace, shop operations, orders, inventory, payments, notifications, analytics and demand insights.",
     "contact": {
-      "name": "LocalCart API Support"
+      "name": "Apniko API Support"
     },
     "version": "v1"
   },
@@ -4715,7 +4715,7 @@
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "description": "Enter the JWT access token returned by the LocalCart login endpoint. Do not include the word Bearer; Swagger adds it automatically.",
+        "description": "Enter the JWT access token returned by the Apniko login endpoint. Do not include the word Bearer; Swagger adds it automatically.",
         "scheme": "bearer",
         "bearerFormat": "JWT"
       }

@@ -1,4 +1,4 @@
-# LocalCart frontend engineering rules
+# Apniko frontend engineering rules
 
 ## Structure
 

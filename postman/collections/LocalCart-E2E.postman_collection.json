@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "2574318c-04ef-4173-a665-0913fd6c4844",
-    "name": "LocalCart E2E — Customer to Delivery (Isolated DB)",
+    "name": "Apniko E2E — Customer to Delivery (Isolated DB)",
     "description": "Repeatable local end-to-end workflow for a cloned localcart_test database on localhost:8081. The collection verifies the immediate POST cart response against the cart quantity before the add, checks the GET cart response, confirms checkout clears the cart, and walks the order through shopkeeper, delivery-partner and COD payment steps. It does not call live Razorpay APIs. Set credentials only in the private Postman environment file excluded from Git. Checkout deducts stock in localcart_test. The clone script refuses to overwrite a non-empty test database.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

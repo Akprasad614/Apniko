@@ -1,6 +1,6 @@
-# LocalCart Phase 3 — Authorization and business-logic regression tests
+# Apniko Phase 3 — Authorization and business-logic regression tests
 
-This phase adds focused JUnit/Mockito regression tests around existing LocalCart authorization boundaries. It does not change application behavior, database schema, endpoint contracts, or production configuration.
+This phase adds focused JUnit/Mockito regression tests around existing Apniko authorization boundaries. It does not change application behavior, database schema, endpoint contracts, or production configuration.
 
 ## Coverage added
 

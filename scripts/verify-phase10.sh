@@ -51,7 +51,7 @@ for path, operations in spec.get('paths', {}).items():
             if not isinstance(security, list) or not any('bearerAuth' in item for item in security):
                 raise SystemExit(f'{method.upper()} {path} is missing bearerAuth in the OpenAPI snapshot.')
 
-collection = json.loads((root / 'postman/collections/LocalCart-E2E.postman_collection.json').read_text(encoding='utf-8'))
+collection = json.loads((root / 'postman/collections/Apniko-E2E.postman_collection.json').read_text(encoding='utf-8'))
 if collection.get('auth', {}).get('type') != 'noauth':
     raise SystemExit('E2E collection must not set a shared bearer token; it switches identities during the workflow.')
 if not any('localhost|127\\.0\\.0\\.1' in line and ':8081' in line for event in collection.get('event', []) for line in event.get('script', {}).get('exec', [])):

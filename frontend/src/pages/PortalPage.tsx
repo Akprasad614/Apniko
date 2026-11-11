@@ -24,7 +24,7 @@ const PORTAL_COPY: Record<AppRole, { kicker: string; title: string; description:
     phase: 'Delivery workflow is next.',
   },
   ADMIN: {
-    kicker: 'LOCALCART CONTROL',
+    kicker: 'APNIKO CONTROL',
     title: 'Keep the local\nloop moving.',
     description: 'Your administrator account is recognised. Platform operations and oversight screens will be added in the next build.',
     phase: 'Administration is next.',
@@ -62,7 +62,7 @@ export function PortalPage() {
             <p>This is the frontend foundation. Your backend services remain separate and continue to enforce account permissions.</p>
           </div>
         </div>
-        <Link className="text-link" to="/">Return to LocalCart home ↗</Link>
+        <Link className="text-link" to="/">Return to Apniko home ↗</Link>
         <span className="portal-main__route">{location.pathname}</span>
       </section>
     </main>

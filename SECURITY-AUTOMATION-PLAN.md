@@ -1,6 +1,6 @@
-# LocalCart Development and Security Automation Roadmap
+# Apniko Development and Security Automation Roadmap
 
-This roadmap is maintained with the repository. Automation is introduced in small, verifiable stages. Security scanners must be scoped to LocalCart code or explicitly authorized LocalCart test/staging environments.
+This roadmap is maintained with the repository. Automation is introduced in small, verifiable stages. Security scanners must be scoped to Apniko code or explicitly authorized Apniko test/staging environments.
 
 ## Phase 0 — Baseline and safety (completed)
 
@@ -35,7 +35,7 @@ This roadmap is maintained with the repository. Automation is introduced in smal
 
 ## Phase 4 — Dynamic security baseline (completed)
 
-- Start LocalCart in GitHub Actions against a disposable MySQL 8.4 database named `localcart_dast`.
+- Start Apniko in GitHub Actions against a disposable MySQL 8.4 database named `localcart_dast`.
 - Generate and mask an ephemeral JWT secret; do not configure production, Razorpay, or real user credentials.
 - Run the OWASP ZAP Baseline spider and passive rules against the local Swagger UI entry point.
 - Require HTML, JSON, and Markdown reports and upload them as a short-lived Actions artifact.
@@ -52,8 +52,8 @@ Safety gates:
 ## Phase 5 — Frontend foundation and design system (this change)
 
 - Add React, TypeScript and Vite under `frontend/`, separate from the Spring Boot backend.
-- Add a deliberate LocalCart visual direction, central design tokens, reusable controls, responsive public landing page and role-aware route shells.
-- Wire customer registration and sign-in to the verified backend contract. Public registration remains CUSTOMER-only; privileged account types are provisioned by LocalCart administration.
+- Add a deliberate Apniko visual direction, central design tokens, reusable controls, responsive public landing page and role-aware route shells.
+- Wire customer registration and sign-in to the verified backend contract. Public registration remains CUSTOMER-only; privileged account types are provisioned by Apniko administration.
 - Add a typed API request helper, local `/api` development proxy, ESLint, TypeScript checks and Vitest unit tests.
 - Add GitHub Actions frontend CI for lint, typecheck, tests and production build.
 - Add Dependabot coverage for npm dependencies under `/frontend`.

@@ -1,4 +1,4 @@
-name: LocalCart OSV Full Dependency Scan
+name: Apniko OSV Full Dependency Scan
 
 on:
   schedule:

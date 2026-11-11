@@ -1,4 +1,4 @@
-# LocalCart design system
+# Apniko design system
 
 ## Art direction
 

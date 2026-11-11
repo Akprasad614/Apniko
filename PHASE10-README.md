@@ -1,4 +1,4 @@
-# LocalCart Phase 10 — API documentation and isolated E2E testing
+# Apniko Phase 10 — API documentation and isolated E2E testing
 
 Phase 10 adds API documentation, accurate JWT documentation, a repeatable Postman workflow, and a separate local test database. It does not alter the main `localcart` database or any customer-facing business logic.
 
@@ -68,15 +68,15 @@ For the regular API collection on port `8080`:
 
 1. Import `postman/collections/localcart-api.postman_collection.json`.
 2. Import `postman/environments/localcart-api.local.postman_environment.example.json`.
-3. Duplicate the example environment and name the private copy `LocalCart API — PRIVATE`.
+3. Duplicate the example environment and name the private copy `Apniko API — PRIVATE`.
 4. Enter the customer password in that private environment. The login request saves the returned JWT into the private `bearerToken` variable, which is used by the remaining protected requests.
 5. Keep `baseUrl` as `http://localhost:8080`.
 
 For the isolated E2E collection on port `8081`:
 
-1. Import `postman/collections/LocalCart-E2E.postman_collection.json`.
+1. Import `postman/collections/Apniko-E2E.postman_collection.json`.
 2. Import `postman/environments/localcart.local.postman_environment.example.json`.
-3. Duplicate the example environment and name the private copy `LocalCart Local E2E — PRIVATE`.
+3. Duplicate the example environment and name the private copy `Apniko Local E2E — PRIVATE`.
 4. Enter the passwords for the preconfigured customer, shopkeeper, and delivery partner test accounts in the private environment only. The example file intentionally contains blank password and token values.
 5. Keep `baseUrl` as `http://localhost:8081`.
 6. Select the private environment and run the E2E collection in order.

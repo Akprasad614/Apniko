@@ -1,4 +1,4 @@
-# LocalCart — Customer Storefront milestone
+# Apniko — Customer Storefront milestone
 
 ## Scope
 
@@ -6,7 +6,7 @@ This change replaces the customer-only placeholder portal with a working custome
 
 ## Live backend contracts used
 
-- `GET /api/customer/marketplace/shops` — active LocalCart shops.
+- `GET /api/customer/marketplace/shops` — active Apniko shops.
 - `GET /api/customer/marketplace/categories` — available marketplace categories.
 - `GET /api/customer/marketplace/products/search` — paged inventory search using the backend's `q`, `category`, `shopId`, `page`, `size`, `sortBy`, and `direction` parameters.
 - `GET /api/customer/cart/{shopId}` — basket for the selected shop.
@@ -18,7 +18,7 @@ All requests use the existing typed API helper and the signed-in customer's bear
 
 ## Experience
 
-- Distinct editorial marketplace layout using the existing LocalCart tokens and typography.
+- Distinct editorial marketplace layout using the existing Apniko tokens and typography.
 - Shop selection, product search, category filtering, and name/price sorting.
 - Live stock and rupee price display.
 - Per-shop basket with quantity controls, remove action, and backend-calculated totals.

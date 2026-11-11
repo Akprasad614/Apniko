@@ -1,4 +1,4 @@
-name: LocalCart CycloneDX SBOM
+name: Apniko CycloneDX SBOM
 
 on:
   push:

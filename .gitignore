@@ -36,7 +36,7 @@ postman/environments/localcart.local.postman_environment.json
 postman/reports/
 postman/environments/localcart-api.local.postman_environment.json
 
-### LocalCart frontend ###
+### Apniko frontend ###
 frontend/node_modules/
 frontend/dist/
 frontend/coverage/

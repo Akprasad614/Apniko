@@ -1,4 +1,4 @@
-name: LocalCart OSV Dependency Scan (Pull Requests)
+name: Apniko OSV Dependency Scan (Pull Requests)
 
 on:
   pull_request:

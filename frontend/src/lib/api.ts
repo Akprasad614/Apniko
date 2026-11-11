@@ -41,7 +41,7 @@ export async function apiRequest<T>(
       headers,
     })
   } catch {
-    throw new ApiError('Could not reach LocalCart. Check that the backend is running.', 0)
+    throw new ApiError('Could not reach Apniko. Check that the backend is running.', 0)
   }
 
   const rawBody = await response.text()
@@ -56,7 +56,7 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     throw new ApiError(
-      getMessage(payload, `LocalCart request failed (${response.status}).`),
+      getMessage(payload, `Apniko request failed (${response.status}).`),
       response.status,
     )
   }
