@@ -1,4 +1,4 @@
-name: LocalCart Backend CI
+name: Apniko Backend CI
 
 on:
   push:

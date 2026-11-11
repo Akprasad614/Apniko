@@ -38,7 +38,7 @@ export function LoginPage() {
         <div className="auth-panel__message">
           <p className="eyebrow eyebrow--light">Welcome back</p>
           <h1>Your local<br /><em>is waiting.</em></h1>
-          <p>Sign in to continue to your LocalCart workspace.</p>
+          <p>Sign in to continue to your Apniko workspace.</p>
         </div>
         <span className="auth-panel__foot">Good groceries. Closer to home.</span>
       </section>
@@ -48,7 +48,7 @@ export function LoginPage() {
         <div className="auth-form-wrap">
           <p className="eyebrow">Your account</p>
           <h2>Sign in</h2>
-          <p className="auth-form-wrap__intro">Use the email address linked to your LocalCart account.</p>
+          <p className="auth-form-wrap__intro">Use the email address linked to your Apniko account.</p>
           <form className="auth-form" onSubmit={handleSubmit}>
             <Field
               label="Email address"
@@ -73,8 +73,8 @@ export function LoginPage() {
               {busy ? 'Signing in…' : 'Sign in'} <span aria-hidden="true">→</span>
             </Button>
           </form>
-          <p className="auth-switch">New to LocalCart? <Link to="/register">Create a customer account</Link></p>
-          <p className="auth-help">Shopkeeper, delivery and admin accounts are provisioned by LocalCart. Sign in with the account details provided to you.</p>
+          <p className="auth-switch">New to Apniko? <Link to="/register">Create a customer account</Link></p>
+          <p className="auth-help">Shopkeeper, delivery and admin accounts are provisioned by Apniko. Sign in with the account details provided to you.</p>
         </div>
       </section>
     </main>

@@ -1,12 +1,12 @@
-# LocalCart frontend
+# Apniko frontend
 
-React + TypeScript + Vite application for LocalCart.
+React + TypeScript + Vite application for Apniko.
 
 ## Requirements
 
 - Node.js 22.13 or newer in the 22.x line, or Node.js 24+ (Node 22 LTS recommended)
 - npm 10.8 or newer
-- LocalCart Spring Boot API running on `http://127.0.0.1:8080` for authentication calls
+- Apniko Spring Boot API running on `http://127.0.0.1:8080` for authentication calls
 
 ## Start locally
 

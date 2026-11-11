@@ -83,7 +83,7 @@ export function RegisterPage() {
             </Button>
           </form>
           <p className="auth-switch">Already have an account? <Link to="/login">Sign in</Link></p>
-          <p className="auth-help">Public registration is customer-only. Shopkeeper, delivery and admin accounts are created through LocalCart administration.</p>
+          <p className="auth-help">Public registration is customer-only. Shopkeeper, delivery and admin accounts are created through Apniko administration.</p>
         </div>
       </section>
     </main>

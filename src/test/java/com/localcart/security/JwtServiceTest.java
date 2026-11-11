@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class JwtServiceTest {
 
     private static final String SECRET =
-            "LocalCart-Phase9-JWT-Test-Secret-Key-At-Least-32-Bytes";
+            "Apniko-Phase9-JWT-Test-Secret-Key-At-Least-32-Bytes";
 
     private final JwtService jwtService = new JwtService(SECRET);
 

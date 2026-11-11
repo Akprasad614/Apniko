@@ -1,4 +1,4 @@
-name: LocalCart Static Security Scans
+name: Apniko Static Security Scans
 
 on:
   push:

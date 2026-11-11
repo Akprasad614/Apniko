@@ -1,4 +1,4 @@
-name: LocalCart CodeQL
+name: Apniko CodeQL
 
 on:
   push:

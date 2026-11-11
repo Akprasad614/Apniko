@@ -5,7 +5,7 @@ export function NotFoundPage() {
     <main className="not-found wrap">
       <p className="eyebrow">404 / Wrong turn</p>
       <h1>This page isn't<br /><em>on the map.</em></h1>
-      <Link className="button button--lime" to="/">Back to LocalCart <span aria-hidden="true">↗</span></Link>
+      <Link className="button button--lime" to="/">Back to Apniko <span aria-hidden="true">↗</span></Link>
     </main>
   )
 }

@@ -13,7 +13,7 @@ if [[ -z "${DB_PASSWORD:-}" ]]; then
 fi
 
 if [[ -z "${JWT_SECRET:-}" ]]; then
-  read -r -s -p "Enter your existing LocalCart JWT secret: " JWT_SECRET
+  read -r -s -p "Enter your existing Apniko JWT secret: " JWT_SECRET
   printf '\n'
 fi
 if [[ -z "${JWT_SECRET:-}" ]]; then
@@ -34,5 +34,5 @@ export JWT_SECRET
 export SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/localcart_test?allowPublicKeyRetrieval=true&useSSL=false"
 export SERVER_PORT=8081
 
-echo "Starting LocalCart against localcart_test on port 8081..."
+echo "Starting Apniko against localcart_test on port 8081..."
 ./mvnw spring-boot:run

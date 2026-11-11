@@ -1,4 +1,4 @@
-name: LocalCart DAST - OWASP ZAP Baseline
+name: Apniko DAST - OWASP ZAP Baseline
 
 on:
   pull_request:
@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   zap-baseline:
-    name: Passive DAST against disposable LocalCart instance
+    name: Passive DAST against disposable Apniko instance
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -55,7 +55,7 @@ jobs:
       SPRING_JPA_SHOW_SQL: "false"
 
     steps:
-      - name: Check out LocalCart
+      - name: Check out Apniko
         uses: actions/checkout@v7
 
       - name: Set up Java 21
@@ -77,7 +77,7 @@ jobs:
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
 
-      - name: Start LocalCart against the disposable DAST database
+      - name: Start Apniko against the disposable DAST database
         shell: bash
         run: |
           set -euo pipefail
@@ -93,18 +93,18 @@ jobs:
             status="$(curl --silent --show-error --output /tmp/localcart-dast-health.txt \
               --write-out '%{http_code}' http://127.0.0.1:8080/api/test || true)"
             if [[ "$status" == "200" ]]; then
-              echo "LocalCart is ready on the disposable DAST instance."
+              echo "Apniko is ready on the disposable DAST instance."
               cat /tmp/localcart-dast-health.txt
               exit 0
             fi
             if ! kill -0 "$app_pid" 2>/dev/null; then
-              echo "LocalCart stopped before becoming ready. Startup log follows:" >&2
+              echo "Apniko stopped before becoming ready. Startup log follows:" >&2
               cat /tmp/localcart-dast-app.log >&2
               exit 1
             fi
             sleep 2
           done
-          echo "LocalCart did not become ready within 180 seconds. Startup log follows:" >&2
+          echo "Apniko did not become ready within 180 seconds. Startup log follows:" >&2
           cat /tmp/localcart-dast-app.log >&2
           exit 1
 
@@ -146,7 +146,7 @@ jobs:
         run: |
           {
             echo "## OWASP ZAP passive baseline scan"
-            echo "Target: disposable LocalCart instance on localhost:8080 (Swagger UI entry point)."
+            echo "Target: disposable Apniko instance on localhost:8080 (Swagger UI entry point)."
             echo "Scan mode: spider + passive rules only; no active attack scan."
             if [[ -f zap-reports/localcart-zap-baseline.md ]]; then
               cat zap-reports/localcart-zap-baseline.md
@@ -164,7 +164,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Stop the LocalCart test process
+      - name: Stop the Apniko test process
         if: ${{ always() }}
         shell: bash
         run: |

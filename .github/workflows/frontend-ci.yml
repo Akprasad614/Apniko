@@ -1,4 +1,4 @@
-name: LocalCart Frontend CI
+name: Apniko Frontend CI
 
 on:
   push:
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Check out LocalCart
+      - name: Check out Apniko
         uses: actions/checkout@v7
 
       - name: Set up Node.js 22

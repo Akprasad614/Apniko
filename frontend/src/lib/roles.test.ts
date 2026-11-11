@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isAppRole, publicRegistrationRole, roleHomePath } from './roles'
 
-describe('LocalCart role routing', () => {
+describe('Apniko role routing', () => {
   it('maps each backend role to its own portal', () => {
     expect(roleHomePath('CUSTOMER')).toBe('/customer')
     expect(roleHomePath('SHOPKEEPER')).toBe('/shopkeeper')

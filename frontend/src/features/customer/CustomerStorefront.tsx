@@ -253,7 +253,7 @@ export function CustomerStorefront() {
             <p className="customer-eyebrow"><span /> THE LOCAL SHELF</p>
             <h1 id="customer-title">Good things are<br /><em>closer than you think.</em></h1>
             <p className="customer-intro__copy">
-              Browse the shops on LocalCart, see what they have in stock, and put together a basket from the store you choose.
+              Browse the shops on Apniko, see what they have in stock, and put together a basket from the store you choose.
             </p>
           </div>
           <div className="customer-intro__aside">
@@ -275,13 +275,13 @@ export function CustomerStorefront() {
           </div>
 
           {loadingShops ? (
-            <div className="customer-state customer-state--inline" role="status">Finding the shops on LocalCart…</div>
+            <div className="customer-state customer-state--inline" role="status">Finding the shops on Apniko…</div>
           ) : pageError ? (
             <div className="customer-state customer-state--error" role="alert">{pageError}</div>
           ) : shops.length === 0 ? (
             <div className="customer-state">
               <strong>Your local shelf is getting ready.</strong>
-              <p>There aren't any active shops listed on LocalCart yet. Check back when a local shop joins.</p>
+              <p>There aren't any active shops listed on Apniko yet. Check back when a local shop joins.</p>
             </div>
           ) : (
             <div className="shop-ribbon" aria-label="Choose a shop">
@@ -466,7 +466,7 @@ export function CustomerStorefront() {
                   <strong>{formatRupees(basket?.totalAmount ?? 0)}</strong>
                 </div>
                 <p className="basket-panel__note">Your basket belongs to this shop. Choose another shop to see its separate basket.</p>
-                <Link className="basket-panel__back" to="/">Back to LocalCart home ↗</Link>
+                <Link className="basket-panel__back" to="/">Back to Apniko home ↗</Link>
               </aside>
             </div>
           </section>
@@ -477,7 +477,7 @@ export function CustomerStorefront() {
         <div className="customer-wrap customer-footer__inner">
           <BrandMark />
           <span>Good groceries. Closer to home.</span>
-          <span>LOCALCART / CUSTOMER</span>
+          <span>APNIKO / CUSTOMER</span>
         </div>
       </footer>
     </div>
