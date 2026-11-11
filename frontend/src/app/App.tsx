@@ -6,6 +6,7 @@ import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { PortalPage } from '../pages/PortalPage'
 import { RegisterPage } from '../pages/RegisterPage'
+import { CustomerStorefront } from '../features/customer/CustomerStorefront'
 import { roleHomePath } from '../lib/roles'
 
 function AccountRedirect() {
@@ -22,7 +23,7 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/account" element={<AccountRedirect />} />
-          <Route path="/customer/*" element={<RequireRole allowed={['CUSTOMER']}><PortalPage /></RequireRole>} />
+          <Route path="/customer/*" element={<RequireRole allowed={['CUSTOMER']}><CustomerStorefront /></RequireRole>} />
           <Route path="/shopkeeper/*" element={<RequireRole allowed={['SHOPKEEPER']}><PortalPage /></RequireRole>} />
           <Route path="/delivery/*" element={<RequireRole allowed={['DELIVERY_PARTNER']}><PortalPage /></RequireRole>} />
           <Route path="/admin/*" element={<RequireRole allowed={['ADMIN']}><PortalPage /></RequireRole>} />
