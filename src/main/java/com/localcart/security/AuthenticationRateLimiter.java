@@ -1,6 +1,7 @@
 package com.localcart.security;
 
 import com.localcart.exception.TooManyRequestsException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ public class AuthenticationRateLimiter {
     private final Clock clock;
     private final ConcurrentMap<String, Window> windows = new ConcurrentHashMap<>();
 
+    @Autowired
     public AuthenticationRateLimiter(
             @Value("${security.auth.rate-limit.login.max-attempts:5}") int loginMaximumAttempts,
             @Value("${security.auth.rate-limit.registration.max-attempts:3}") int registrationMaximumAttempts,
