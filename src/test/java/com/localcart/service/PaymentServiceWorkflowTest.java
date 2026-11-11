@@ -406,6 +406,23 @@ class PaymentServiceWorkflowTest {
     }
 
     @Test
+    void duplicateCapturedWebhookDoesNotCreateAnotherStateTransition() {
+        Payment payment = payment(241L,
+                order(241L, user(10L, Role.CUSTOMER, true), OrderStatus.PLACED, 150.0),
+                PaymentMethod.RAZORPAY, PaymentStatus.PENDING, "gw_order_241", "");
+        when(paymentRepository.findByGatewayOrderId("gw_order_241")).thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        String body = paymentWebhook("payment.captured", "gw_order_241", "gw_payment_241", 15000, "INR", null);
+
+        service.handleRazorpayWebhook(body, webhookSignature(body));
+        service.handleRazorpayWebhook(body, webhookSignature(body));
+
+        assertEquals(PaymentStatus.PAID, payment.getStatus());
+        assertEquals("gw_payment_241", payment.getGatewayPaymentId());
+        verify(paymentRepository, times(1)).save(payment);
+    }
+
+    @Test
     void paymentWebhookRejectsAmountOrCurrencyMismatch() {
         Payment payment = payment(250L,
                 order(25L, user(10L, Role.CUSTOMER, true), OrderStatus.PLACED, 150.0),

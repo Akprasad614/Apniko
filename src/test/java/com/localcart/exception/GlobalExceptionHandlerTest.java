@@ -2,6 +2,7 @@ package com.localcart.exception;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.access.AccessDeniedException;
 
@@ -39,6 +40,17 @@ class GlobalExceptionHandlerTest {
         assertEquals(401, response.getStatusCode().value());
         assertEquals("Invalid email or password", response.getBody().get("error"));
         assertFalse(response.getBody().get("error").contains("secret detail"));
+    }
+
+    @Test
+    void rateLimitFailureReturns429WithRetryAfterHeader() {
+        ResponseEntity<Map<String, String>> response = handler.handleTooManyRequests(
+                new TooManyRequestsException(42)
+        );
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+        assertEquals("42", response.getHeaders().getFirst("Retry-After"));
+        assertEquals("Too many requests. Please try again later.", response.getBody().get("error"));
     }
 
     @Test

@@ -146,4 +146,22 @@ class AuthServiceTest {
         assertThrows(BadRequestException.class, () -> authService.login(request));
         verify(jwtService, never()).generateToken(any(String.class), any(String.class));
     }
+
+    @Test
+    void loginDoesNotIssueTokenForAnInactiveAccount() {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("inactive@example.com");
+        request.setPassword("StrongPass123!");
+        User user = new User();
+        user.setEmail("inactive@example.com");
+        user.setActive(false);
+
+        when(authenticationManager.authenticate(any(Authentication.class)))
+                .thenReturn(mock(Authentication.class));
+        when(userRepository.findByEmail("inactive@example.com")).thenReturn(Optional.of(user));
+
+        BadRequestException exception = assertThrows(BadRequestException.class, () -> authService.login(request));
+        assertEquals("Invalid email or password", exception.getMessage());
+        verify(jwtService, never()).generateToken(any(String.class), any(String.class));
+    }
 }
