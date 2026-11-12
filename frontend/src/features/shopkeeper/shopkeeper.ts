@@ -62,3 +62,8 @@ export function formatRupees(value: number): string {
 export function statusLabel(status: OrderStatus): string {
   return status.replaceAll('_', ' ').toLowerCase().replace(/^./, (letter) => letter.toUpperCase())
 }
+
+export function filterOrdersForShop(orders: ShopkeeperOrder[], shopId: number | null): ShopkeeperOrder[] {
+  if (shopId === null) return []
+  return orders.filter((order) => order.shop.id === shopId)
+}
