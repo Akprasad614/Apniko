@@ -1009,3 +1009,37 @@
     width: 100%;
   }
 }
+
+
+.customer-header__orders {
+  min-height: 36px;
+  border: 1px solid var(--lc-line);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  color: var(--lc-forest);
+  background: transparent;
+  font-size: 0.68rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.customer-header__orders:hover {
+  border-color: var(--lc-forest);
+  color: var(--lc-white);
+  background: var(--lc-forest);
+}
+
+.customer-header__orders:focus-visible {
+  outline: 2px solid var(--lc-moss);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .customer-header__orders {
+    min-height: 32px;
+    padding-inline: 0.55rem;
+    font-size: 0.6rem;
+  }
+}
