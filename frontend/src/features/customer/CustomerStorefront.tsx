@@ -12,7 +12,10 @@ import {
   buildMarketplaceSearchPath,
   filterMarketplaceProductsByArea,
   filterMarketplaceShops,
+  filterProductsWithinRadius,
+  filterShopsWithinRadius,
   formatRupees,
+  getDistanceKm,
   getProductCategoryIcon,
 } from './marketplace'
 import type {
@@ -20,6 +23,7 @@ import type {
   MarketplaceInventoryItem,
   MarketplacePage,
   MarketplaceShop,
+  GeoPoint,
 } from './marketplace'
 import './customer-storefront.css'
 
@@ -53,6 +57,9 @@ export function CustomerStorefront() {
   const [appliedArea, setAppliedArea] = useState('')
   const [activeCategory, setActiveCategory] = useState('')
   const [sortBy, setSortBy] = useState<ProductSort>('name')
+  const [userLocation, setUserLocation] = useState<GeoPoint | null>(null)
+  const [radiusKm, setRadiusKm] = useState(10)
+  const [locationStatus, setLocationStatus] = useState('')
 
   const [productPage, setProductPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
@@ -76,19 +83,23 @@ export function CustomerStorefront() {
     [shops, selectedShopId],
   )
 
-  const matchingShops = useMemo(
-    () => filterMarketplaceShops(
+  const matchingShops = useMemo(() => {
+    const textMatches = filterMarketplaceShops(
       shops,
       searchMode === 'shops' ? appliedSearch : '',
       appliedArea,
-    ),
-    [shops, searchMode, appliedSearch, appliedArea],
-  )
+    )
+    return userLocation
+      ? filterShopsWithinRadius(textMatches, userLocation, radiusKm)
+      : textMatches
+  }, [shops, searchMode, appliedSearch, appliedArea, userLocation, radiusKm])
 
-  const visibleProducts = useMemo(
-    () => filterMarketplaceProductsByArea(products, appliedArea),
-    [products, appliedArea],
-  )
+  const visibleProducts = useMemo(() => {
+    const areaMatches = filterMarketplaceProductsByArea(products, appliedArea)
+    return userLocation
+      ? filterProductsWithinRadius(areaMatches, userLocation, radiusKm)
+      : areaMatches
+  }, [products, appliedArea, userLocation, radiusKm])
 
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
 
@@ -191,6 +202,39 @@ export function CustomerStorefront() {
   function handleAreaSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAppliedArea(areaInput.trim())
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus('Location is not available in this browser. You can still enter an area or PIN code.')
+      return
+    }
+
+    setLocationStatus('Getting your location…')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+        setAppliedArea('')
+        setAreaInput('')
+        setLocationStatus('Nearby discovery is enabled for shops with a saved location.')
+      },
+      () => setLocationStatus('Location permission was not granted. Enter an area or PIN code instead.'),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    )
+  }
+
+  function clearCurrentLocation() {
+    setUserLocation(null)
+    setLocationStatus('')
+  }
+
+  function shopDistanceLabel(latitude: number | null, longitude: number | null): string | null {
+    if (!userLocation || latitude === null || longitude === null) return null
+    const distance = getDistanceKm(userLocation, { latitude, longitude })
+    return distance === null ? null : `${distance.toFixed(1)} km away`
   }
 
   function chooseSearchMode(mode: SearchMode) {
