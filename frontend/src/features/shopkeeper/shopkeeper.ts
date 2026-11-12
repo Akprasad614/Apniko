@@ -31,6 +31,7 @@ export type OrderStatus = 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'OUT_F
 
 export interface ShopkeeperOrder {
   id: number
+  shop: { id: number; name: string }
   totalAmount: number
   status: OrderStatus
   deliveryMode: 'SHOP_DELIVERY' | 'PLATFORM_DELIVERY' | string
