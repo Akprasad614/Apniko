@@ -211,6 +211,7 @@ public class CustomerMarketplaceService {
         response.setId(inventory.getId());
         response.setShopId(inventory.getShop().getId());
         response.setShopName(inventory.getShop().getName());
+        response.setShopAddress(inventory.getShop().getAddress());
         response.setProductId(inventory.getProduct().getId());
         response.setProductName(inventory.getProduct().getName());
         response.setCategory(inventory.getProduct().getCategory());
