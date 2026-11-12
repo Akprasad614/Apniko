@@ -2,21 +2,17 @@
 
 ## Art direction
 
-**Neighbourhood commerce, designed with clarity.** Apniko should feel like a dependable local marketplace: welcoming for customers, practical for shopkeepers and clear for delivery and administration teams. The visual identity combines a confident navy structure, a fresh green commerce accent and a small amount of warm orange.
+**Neighbourhood commerce, designed with clarity.** Apniko should feel like a dependable local marketplace: welcoming for customers, practical for shopkeepers and clear for delivery and administration teams. The visual identity uses a confident navy structure, a fresh green commerce accent and a small amount of warm orange.
 
 Avoid the default generic-SaaS look: no purple/blue gradients, glassmorphism, excessive rounded cards, random metric tiles or decorative charts without a job to do. Do not copy another product's screen layouts or visual assets.
 
 The customer experience should be discovery-led and product-focused. Shopkeeper and delivery interfaces should feel calm, legible and operationally efficient. Admin screens should prioritize safe actions and traceability.
 
-## Brand identity
+## Brand identity and logo status
 
 **Apniko — Your neighbourhood, closer.**
 
-The Apniko symbol combines an A-shaped frame, a location pin, a neighbourhood storefront and a green connecting sweep. It is intended to communicate local discovery and small-business commerce.
-
-The React brand component lives in `frontend/src/components/BrandMark.tsx`. The horizontal logo, light logo, standalone mark, app-icon artwork and favicon live under `frontend/public/brand/` and `frontend/public/favicon.svg`.
-
-The artwork is a project-specific original concept. It is not a statement of trademark registration or guaranteed global uniqueness. Complete trademark and brand-clearance checks before public commercial launch.
+The final logo is pending. The project owner will supply approved artwork. Until then, the application uses a plain text wordmark only; do not add a generated or substitute symbol. The shared component is `frontend/src/components/BrandMark.tsx`.
 
 ## Core palette
 
@@ -26,7 +22,7 @@ The artwork is a project-specific original concept. It is not a statement of tra
 | Deep Navy | `#0D2034` | High-contrast dark surfaces |
 | Apniko Green | `#168653` | Positive actions and local-commerce emphasis |
 | Deep Green | `#0F6A40` | Green hover states and stronger emphasis |
-| Apniko Orange | `#F28A2B` | Location pin, highlights and secondary accent |
+| Apniko Orange | `#F28A2B` | Secondary accent |
 | Green Soft | `#E8F5ED` | Quiet positive surfaces |
 | Orange Soft | `#FFF1E3` | Quiet warning/highlight surfaces |
 | Canvas | `#F6F8F7` | Main application background |
@@ -76,8 +72,4 @@ All canonical values are centralized in `frontend/src/styles/tokens.css`. New co
 
 ## Reusable UI foundation
 
-The shared primitives in `frontend/src/styles/brand-system.css` include brand styles, page containers, surfaces, status pills, icon buttons, controls, dividers and numeric display utilities. Use these when introducing new feature screens so the portals retain one consistent language.
-
-## Design review references
-
-Use design references as critique and quality checks, not as templates to copy. The project owns its own visual identity and should maintain a consistent balance of local character, clarity, accessibility and restraint.
+The shared primitives in `frontend/src/styles/brand-system.css` include page containers, surfaces, status pills, icon buttons, controls, dividers and numeric display utilities. Use these when introducing new feature screens so the portals retain one consistent language.
