@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
