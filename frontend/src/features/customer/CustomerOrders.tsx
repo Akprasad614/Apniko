@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
 import { formatRupees } from './marketplace'
@@ -116,7 +117,7 @@ export function CustomerOrders({ token, customerId, onClose }: CustomerOrdersPro
     }
   }
 
-  async function cancelSelectedOrder(event: React.FormEvent<HTMLFormElement>) {
+  async function cancelSelectedOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selectedOrder || busy || selectedOrder.status !== 'PLACED') return
 
