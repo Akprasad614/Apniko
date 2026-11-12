@@ -98,7 +98,22 @@ export function formatOrderDate(value: string | number[] | null | undefined): st
 
   let date: Date
   if (Array.isArray(value)) {
-    const [year, month, day, hour = 0, minute = 0, second = 0, nanosecond = 0] = value
+    if (value.length < 3) return 'Time not available'
+
+    const [
+      year = 0,
+      month = 0,
+      day = 0,
+      hour = 0,
+      minute = 0,
+      second = 0,
+      nanosecond = 0,
+    ] = value
+
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) {
+      return 'Time not available'
+    }
+
     date = new Date(year, month - 1, day, hour, minute, second, Math.floor(nanosecond / 1_000_000))
   } else {
     date = new Date(value)
