@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "automation/**"
+      - "feature/**"
   pull_request:
     branches:
       - main
