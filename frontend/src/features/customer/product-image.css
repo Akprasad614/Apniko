@@ -1,0 +1,48 @@
+.product-image {
+  position: relative;
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #f5f9f5 0%, #e8f3eb 100%);
+}
+
+.product-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+.product-image--fallback {
+  background:
+    radial-gradient(circle at 72% 22%, rgb(255 255 255 / 82%), transparent 32%),
+    linear-gradient(145deg, #f2f7ed 0%, #e2f1e8 100%);
+}
+
+.product-image--fallback > span {
+  display: grid;
+  width: 68%;
+  height: 68%;
+  place-items: center;
+  border-radius: 1.25rem;
+  background: rgb(255 255 255 / 64%);
+  font-size: clamp(2.4rem, 8vw, 4.25rem);
+  filter: drop-shadow(0 8px 10px rgb(26 73 46 / 10%));
+}
+
+.product-image--compact {
+  width: 54px;
+  flex: 0 0 54px;
+  border-radius: 0.75rem;
+}
+
+.product-image--compact.product-image--fallback > span {
+  width: 78%;
+  height: 78%;
+  border-radius: 0.65rem;
+  font-size: 1.8rem;
+}
