@@ -1,11 +1,13 @@
 package com.localcart.controller;
 
 import com.localcart.entity.Product;
+import com.localcart.dto.ProductImageRequest;
 import com.localcart.service.ProductService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
@@ -53,5 +55,16 @@ public class ProductController {
         }
 
         return ResponseEntity.notFound().build();
+    }
+
+    @PutMapping("/{id}/image")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Product> updateProductImage(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductImageRequest request) {
+
+        return ResponseEntity.ok(
+                productService.updateProductImage(id, request.getImageUrl())
+        );
     }
 }
