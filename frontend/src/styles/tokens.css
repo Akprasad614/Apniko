@@ -1,23 +1,83 @@
 :root {
   color-scheme: light;
-  --lc-ink: #202a25;
-  --lc-forest: #173f35;
-  --lc-forest-deep: #102f28;
-  --lc-moss: #426955;
-  --lc-lime: #d8ed79;
-  --lc-paper: #f5f2e8;
-  --lc-paper-deep: #ebe6d8;
-  --lc-white: #fffdf7;
-  --lc-terracotta: #d67851;
-  --lc-gold: #e8b95d;
-  --lc-muted: #68736c;
-  --lc-line: #d9d7ca;
-  --lc-danger: #a3332b;
-  --lc-radius-sm: 0.35rem;
-  --lc-radius-md: 0.8rem;
-  --lc-radius-lg: 1.5rem;
-  --lc-shadow-soft: 0 18px 60px rgb(30 48 39 / 9%);
-  --lc-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --lc-font-display: Georgia, "Times New Roman", serif;
-  --lc-page-width: 1240px;
+
+  /* Apniko brand palette */
+  --apniko-navy: #132b45;
+  --apniko-navy-deep: #0d2034;
+  --apniko-navy-soft: #eaf0f6;
+  --apniko-green: #168653;
+  --apniko-green-deep: #0f6a40;
+  --apniko-green-soft: #e8f5ed;
+  --apniko-orange: #f28a2b;
+  --apniko-orange-soft: #fff1e3;
+
+  /* Neutrals and semantic states */
+  --apniko-ink: #202b36;
+  --apniko-muted: #657384;
+  --apniko-muted-strong: #485666;
+  --apniko-canvas: #f6f8f7;
+  --apniko-surface: #ffffff;
+  --apniko-surface-raised: #ffffff;
+  --apniko-border: #e1e8e4;
+  --apniko-border-strong: #cbd6d0;
+  --apniko-success: #15834f;
+  --apniko-warning: #a85b08;
+  --apniko-danger: #b42318;
+  --apniko-info: #2463a7;
+
+  /* Typography */
+  --apniko-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --apniko-font-display: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --apniko-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  /* Layout and spacing */
+  --apniko-page-width: 1240px;
+  --apniko-page-gutter: clamp(1rem, 4vw, 2rem);
+  --apniko-header-height: 4.5rem;
+  --apniko-touch-target: 44px;
+
+  /* Shape and elevation */
+  --apniko-radius-xs: 0.375rem;
+  --apniko-radius-sm: 0.625rem;
+  --apniko-radius-md: 0.875rem;
+  --apniko-radius-lg: 1.25rem;
+  --apniko-radius-xl: 1.75rem;
+  --apniko-radius-pill: 999px;
+  --apniko-shadow-sm: 0 2px 8px rgb(19 43 69 / 6%);
+  --apniko-shadow-md: 0 10px 30px rgb(19 43 69 / 9%);
+  --apniko-shadow-lg: 0 20px 55px rgb(19 43 69 / 13%);
+
+  /* Motion */
+  --apniko-motion-fast: 140ms;
+  --apniko-motion-base: 190ms;
+  --apniko-motion-slow: 280ms;
+  --apniko-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /*
+   * Compatibility aliases.
+   * Existing feature screens use the original --lc-* names. Keeping these
+   * aliases lets the brand refresh update shared screens without changing
+   * their business logic or coupling Phase 0 to later redesign work.
+   */
+  --lc-ink: var(--apniko-ink);
+  --lc-forest: var(--apniko-navy);
+  --lc-forest-deep: var(--apniko-navy-deep);
+  --lc-moss: var(--apniko-green);
+  --lc-lime: #d8ef9b;
+  --lc-paper: var(--apniko-canvas);
+  --lc-paper-deep: #edf2ef;
+  --lc-white: var(--apniko-surface);
+  --lc-terracotta: var(--apniko-orange);
+  --lc-gold: #f5c56a;
+  --lc-muted: var(--apniko-muted);
+  --lc-line: var(--apniko-border);
+  --lc-danger: var(--apniko-danger);
+
+  --lc-radius-sm: var(--apniko-radius-xs);
+  --lc-radius-md: var(--apniko-radius-md);
+  --lc-radius-lg: var(--apniko-radius-xl);
+  --lc-shadow-soft: var(--apniko-shadow-md);
+  --lc-font-body: var(--apniko-font-body);
+  --lc-font-display: var(--apniko-font-display);
+  --lc-page-width: var(--apniko-page-width);
 }
