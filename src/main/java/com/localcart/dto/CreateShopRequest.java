@@ -13,30 +13,21 @@ public class CreateShopRequest {
     @NotBlank
     private String address;
 
+    private Double latitude;
+    private Double longitude;
+
     public CreateShopRequest() {
     }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public String getPhone() { return phone; }
+    public String getAddress() { return address; }
+    public Double getLatitude() { return latitude; }
+    public Double getLongitude() { return longitude; }
 
-    public String getPhone() {
-        return phone;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
+    public void setName(String name) { this.name = name; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public void setAddress(String address) { this.address = address; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 }
