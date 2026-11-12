@@ -41,7 +41,6 @@ public class CustomerMarketplaceService {
     }
 
     public List<ShopResponse> getActiveShops() {
-
         return shopRepository.findAll()
                 .stream()
                 .filter(Shop::isActive)
@@ -50,7 +49,6 @@ public class CustomerMarketplaceService {
     }
 
     public ShopResponse getActiveShop(Long shopId) {
-
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Shop not found"));
@@ -63,7 +61,6 @@ public class CustomerMarketplaceService {
     }
 
     public List<InventoryResponse> getShopProducts(Long shopId) {
-
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Shop not found"));
@@ -124,7 +121,6 @@ public class CustomerMarketplaceService {
     }
 
     public List<PriceComparisonResponse> compareProductPrices(Long productId) {
-
         if (!productRepository.existsById(productId)) {
             throw new ResourceNotFoundException("Product not found");
         }
@@ -169,7 +165,6 @@ public class CustomerMarketplaceService {
     }
 
     private Sort buildSort(String sortBy, String direction) {
-
         String property = switch (sortBy == null
                 ? "name"
                 : sortBy.trim().toLowerCase(Locale.ROOT)) {
@@ -201,7 +196,6 @@ public class CustomerMarketplaceService {
     }
 
     private ShopResponse toShopResponse(Shop shop) {
-
         ShopResponse response = new ShopResponse();
         response.setId(shop.getId());
         response.setName(shop.getName());
@@ -213,7 +207,6 @@ public class CustomerMarketplaceService {
     }
 
     private InventoryResponse toInventoryResponse(ShopInventory inventory) {
-
         InventoryResponse response = new InventoryResponse();
         response.setId(inventory.getId());
         response.setShopId(inventory.getShop().getId());
@@ -221,6 +214,7 @@ public class CustomerMarketplaceService {
         response.setProductId(inventory.getProduct().getId());
         response.setProductName(inventory.getProduct().getName());
         response.setCategory(inventory.getProduct().getCategory());
+        response.setImageUrl(inventory.getProduct().getImageUrl());
         response.setPrice(inventory.getPrice());
         response.setStockQuantity(inventory.getStockQuantity());
         response.setAvailable(inventory.isAvailable());
