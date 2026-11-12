@@ -8,6 +8,7 @@ public class InventoryResponse {
     private Long productId;
     private String productName;
     private String category;
+    private String imageUrl;
     private double price;
     private int stockQuantity;
     private boolean available;
@@ -34,6 +35,9 @@ public class InventoryResponse {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
