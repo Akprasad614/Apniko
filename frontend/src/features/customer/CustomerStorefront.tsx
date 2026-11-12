@@ -6,6 +6,7 @@ import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
 import { CustomerAddressBook } from './CustomerAddressBook'
 import { CustomerCheckout } from './CustomerCheckout'
+import { CustomerOrders } from './CustomerOrders'
 import { ApiError, apiRequest } from '../../lib/api'
 import {
   buildMarketplaceSearchPath,
@@ -56,6 +57,7 @@ export function CustomerStorefront() {
   const [notice, setNotice] = useState('')
   const [showAddressBook, setShowAddressBook] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
+  const [showOrders, setShowOrders] = useState(false)
 
   const selectedShop = useMemo(
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
@@ -243,6 +245,7 @@ export function CustomerStorefront() {
           <BrandMark />
           <div className="customer-header__right">
             <span className="customer-header__welcome">A good day to shop local, {greetingName}.</span>
+            <button className="customer-header__orders" type="button" onClick={() => { setShowAddressBook(false); setShowOrders(true) }}>My orders</button>
             <button className="customer-header__addresses" type="button" aria-label="Open delivery address book" aria-haspopup="dialog" onClick={() => setShowAddressBook(true)}>
               <span className="customer-header__addresses-label">Addresses</span>
               <span className="customer-header__addresses-icon" aria-hidden="true">⌖</span>
@@ -512,6 +515,7 @@ export function CustomerStorefront() {
         />
       )}
       {showAddressBook && <CustomerAddressBook token={token} onClose={() => setShowAddressBook(false)} />}
+      {showOrders && session && <CustomerOrders token={token} customerId={session.userId} onClose={() => setShowOrders(false)} />}
     </div>
   )
 }
