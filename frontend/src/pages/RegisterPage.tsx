@@ -71,11 +71,11 @@ export function RegisterPage() {
               name="password"
               type="password"
               autoComplete="new-password"
-              minLength={6}
+              minLength={12}
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              hint="Use at least 6 characters."
+              hint="Use 12–72 characters with upper- and lower-case letters, a number and a symbol."
             />
             {error && <p className="form-error" role="alert">{error}</p>}
             <Button type="submit" disabled={busy} className="auth-submit">
