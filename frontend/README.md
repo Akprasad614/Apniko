@@ -34,28 +34,34 @@ Copy `.env.example` to `.env.local` only if the frontend must call a different A
 
 ## Brand and design system
 
-- See [Brand Guidelines](./BRAND-GUIDELINES.md) for logo usage, palette, typography and accessibility rules.
+- See [Brand Guidelines](./BRAND-GUIDELINES.md) for the logo-pending status, palette, typography and accessibility rules.
 - See [Project Design System](../DESIGN.md) for shared art direction and page-specific design direction.
 - Canonical CSS variables live in `src/styles/tokens.css`.
 - Shared UI primitives live in `src/styles/brand-system.css`.
-- Use `BrandMark` from `src/components/BrandMark.tsx` for the Apniko mark and wordmark. Do not recreate the logo ad hoc in individual pages.
-- Logo artwork is under `public/brand/`; the vector favicon is `public/favicon.svg`.
+- Use `BrandMark` from `src/components/BrandMark.tsx` for the plain Apniko text wordmark. The final logo will be added when the project owner supplies it.
+- New UI should use the `--apniko-*` design tokens. The old `--lc-*` names are compatibility aliases for existing screens.
 
-New UI should use the `--apniko-*` design tokens. The old `--lc-*` names are kept as compatibility aliases for already-built screens.
+## Current customer shopping experience
 
-## Current scope
+The customer storefront is product-first and uses the authenticated marketplace APIs:
 
-The landing page, customer authentication and customer storefront are wired to the current backend contract. The customer storefront uses live marketplace, basket and shop data.
+- Browse available products across active shops before choosing a shop.
+- Search in Products or Shops mode.
+- Open a shop and search only that shop's inventory.
+- Filter by categories and sort by name, price or shop.
+- Filter listed shops/products by locality or PIN text matched against the shop address.
+- Add items to the selected shop's separate basket and continue through the existing checkout, address book and order history flows.
 
-Shopkeeper Workspace V1 is available at `/shopkeeper` for authenticated shopkeeper accounts. It uses the existing backend APIs to:
+The current Shop entity stores a free-text address, not geocoordinates. The locality filter is therefore address-text matching; it does not calculate actual distance or guarantee the nearest store. A future location phase should add validated shop coordinates and an explicit customer location/permission flow before showing distance-based rankings.
 
-- Select or create the shopkeeper's own shop.
-- View inventory and low-stock items.
-- Add existing products to a shop, update price, stock and availability, restock, and set stock alerts.
-- View shop orders and perform only the backend-supported status changes: placed → accepted → preparing → ready.
-- Cancel eligible orders with confirmation.
+## Product images
 
-No dashboard metrics, revenue figures, product catalogue entries or order data are invented by the frontend. The backend remains the source of truth.
+See [Product Image Pipeline](./PRODUCT-IMAGE-PIPELINE.md) for the storage decision and provider setup.
+
+- MySQL stores the optional product `image_url` metadata, not the image binary.
+- The customer marketplace returns the exact catalogue image URL when one is assigned.
+- The frontend prefers that exact image, then uses curated category photos for common grocery groups, then a local symbol fallback.
+- An object-storage/CDN upload provider still needs project credentials and a backend upload-signing flow before shopkeepers can upload photographs directly from the UI.
 
 ## Mobile-first design
 
