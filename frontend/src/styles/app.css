@@ -1,37 +1,25 @@
-/* Brand */
+/* Text-only Apniko wordmark placeholder until the owner supplies final artwork */
 .brand {
   display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
   width: fit-content;
-  color: var(--lc-forest);
+  min-height: 44px;
+  align-items: center;
+  color: var(--apniko-navy);
   text-decoration: none;
-}
-
-.brand__symbol {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-}
-
-.brand__symbol svg {
-  width: 100%;
-  height: 100%;
+  white-space: nowrap;
 }
 
 .brand__word {
+  color: inherit;
+  font-family: var(--apniko-font-display);
   font-size: 1.28rem;
   font-weight: 850;
-  letter-spacing: -0.075em;
-}
-
-.brand__period {
-  color: var(--lc-terracotta);
+  letter-spacing: -0.055em;
+  line-height: 1;
 }
 
 .brand--light {
-  color: var(--lc-white);
+  color: var(--apniko-surface);
 }
 
 /* Public landing page */
