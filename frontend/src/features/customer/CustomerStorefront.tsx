@@ -91,7 +91,6 @@ export function CustomerStorefront() {
   )
 
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
-  const greetingName = session?.name.trim().split(/\s+/)[0] || 'there'
 
   useEffect(() => {
     let active = true
