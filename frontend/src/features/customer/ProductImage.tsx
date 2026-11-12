@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { getProductCategoryIcon } from './marketplace'
+import {
+  getProductCategoryIcon,
+  getProductCategoryPhoto,
+} from './marketplace'
 import './product-image.css'
 
 interface ProductImageProps {
@@ -20,19 +23,23 @@ function isSafeImageUrl(value: string | null | undefined): value is string {
 }
 
 export function ProductImage({ name, category, imageUrl, compact = false }: ProductImageProps) {
-  const [failedUrl, setFailedUrl] = useState<string | null>(null)
-  const source = isSafeImageUrl(imageUrl) && failedUrl !== imageUrl ? imageUrl : null
+  const [failedUrls, setFailedUrls] = useState<string[]>([])
+  const productPhoto = isSafeImageUrl(imageUrl) ? imageUrl : null
+  const categoryPhoto = getProductCategoryPhoto(category)
+  const source = [productPhoto, categoryPhoto].find(
+    (candidate) => candidate && !failedUrls.includes(candidate),
+  ) ?? null
 
   if (source) {
     return (
       <div className={`product-image${compact ? ' product-image--compact' : ''}`}>
         <img
           src={source}
-          alt={name}
+          alt={productPhoto === source ? name : `${category || 'Grocery'} category photo for ${name}`}
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={() => setFailedUrl(source)}
+          onError={() => setFailedUrls((current) => [...current, source])}
         />
       </div>
     )
