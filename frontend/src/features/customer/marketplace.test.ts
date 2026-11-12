@@ -5,6 +5,7 @@ import {
   filterMarketplaceShops,
   formatRupees,
   getProductCategoryIcon,
+  getProductCategoryPhoto,
 } from './marketplace'
 import type { MarketplaceInventoryItem, MarketplaceShop } from './marketplace'
 
@@ -67,6 +68,12 @@ describe('customer marketplace helpers', () => {
   it('filters products by the shop address text supplied by the backend', () => {
     expect(filterMarketplaceProductsByArea(products, 'hsr')).toEqual([products[0]])
     expect(filterMarketplaceProductsByArea(products, '')).toHaveLength(2)
+  })
+
+  it('provides photo fallbacks for common grocery categories', () => {
+    expect(getProductCategoryPhoto('Vegetables')).toContain('images.unsplash.com')
+    expect(getProductCategoryPhoto('Fruits')).toContain('images.unsplash.com')
+    expect(getProductCategoryPhoto('Dairy')).toBeNull()
   })
 
   it('returns consistent visual fallbacks for common product categories', () => {
