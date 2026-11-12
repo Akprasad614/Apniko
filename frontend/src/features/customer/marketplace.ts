@@ -1,3 +1,8 @@
+export interface GeoPoint {
+  latitude: number
+  longitude: number
+}
+
 export interface MarketplaceShop {
   id: number
   name: string
@@ -5,6 +10,8 @@ export interface MarketplaceShop {
   phone: string
   address: string
   active: boolean
+  latitude: number | null
+  longitude: number | null
 }
 
 export interface MarketplaceInventoryItem {
@@ -12,6 +19,8 @@ export interface MarketplaceInventoryItem {
   shopId: number
   shopName: string
   shopAddress: string
+  shopLatitude: number | null
+  shopLongitude: number | null
   productId: number
   productName: string
   category: string | null
@@ -103,6 +112,70 @@ export function filterMarketplaceProductsByArea(
   return products.filter((product) =>
     (product.shopAddress ?? '').toLocaleLowerCase().includes(normalizedArea),
   )
+}
+
+export function getDistanceKm(origin: GeoPoint, destination: GeoPoint): number | null {
+  const values = [
+    origin.latitude,
+    origin.longitude,
+    destination.latitude,
+    destination.longitude,
+  ]
+  if (!values.every(Number.isFinite)
+      || Math.abs(origin.latitude) > 90
+      || Math.abs(destination.latitude) > 90
+      || Math.abs(origin.longitude) > 180
+      || Math.abs(destination.longitude) > 180) {
+    return null
+  }
+
+  const radians = (degrees: number) => (degrees * Math.PI) / 180
+  const latitudeDelta = radians(destination.latitude - origin.latitude)
+  const longitudeDelta = radians(destination.longitude - origin.longitude)
+  const originLatitude = radians(origin.latitude)
+  const destinationLatitude = radians(destination.latitude)
+  const haversine = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(originLatitude) * Math.cos(destinationLatitude)
+    * Math.sin(longitudeDelta / 2) ** 2
+
+  return 6371 * 2 * Math.atan2(
+    Math.sqrt(haversine),
+    Math.sqrt(Math.max(0, 1 - haversine)),
+  )
+}
+
+export function filterShopsWithinRadius(
+  shops: MarketplaceShop[],
+  origin: GeoPoint,
+  radiusKm: number,
+): MarketplaceShop[] {
+  return shops
+    .map((shop) => ({
+      shop,
+      distance: shop.latitude == null || shop.longitude == null
+        ? null
+        : getDistanceKm(origin, { latitude: shop.latitude, longitude: shop.longitude }),
+    }))
+    .filter((entry) => entry.distance !== null && entry.distance <= radiusKm)
+    .sort((left, right) => (left.distance ?? Infinity) - (right.distance ?? Infinity))
+    .map((entry) => entry.shop)
+}
+
+export function filterProductsWithinRadius(
+  products: MarketplaceInventoryItem[],
+  origin: GeoPoint,
+  radiusKm: number,
+): MarketplaceInventoryItem[] {
+  return products
+    .map((product) => ({
+      product,
+      distance: product.shopLatitude == null || product.shopLongitude == null
+        ? null
+        : getDistanceKm(origin, { latitude: product.shopLatitude, longitude: product.shopLongitude }),
+    }))
+    .filter((entry) => entry.distance !== null && entry.distance <= radiusKm)
+    .sort((left, right) => (left.distance ?? Infinity) - (right.distance ?? Infinity))
+    .map((entry) => entry.product)
 }
 
 export function getProductCategoryPhoto(category: string | null | undefined): string | null {
