@@ -3,6 +3,7 @@ package com.localcart.service;
 import com.localcart.dto.CreateOrderRequest;
 import com.localcart.dto.OrderItemRequest;
 import com.localcart.entity.Cart;
+import com.localcart.entity.CustomerAddress;
 import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderItem;
@@ -14,6 +15,7 @@ import com.localcart.entity.Shop;
 import com.localcart.entity.User;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.CartRepository;
+import com.localcart.repository.CustomerAddressRepository;
 import com.localcart.repository.InventoryMovementRepository;
 import com.localcart.repository.OrderItemRepository;
 import com.localcart.repository.OrderRepository;
@@ -46,6 +48,7 @@ class OrderServiceCoverageTest {
     private ShopInventoryRepository inventoryRepository;
     private UserRepository userRepository;
     private CartRepository cartRepository;
+    private CustomerAddressRepository customerAddressRepository;
     private OrderService service;
     private MockedStatic<SecurityUtils> securityUtils;
 
@@ -60,9 +63,12 @@ class OrderServiceCoverageTest {
         inventoryRepository = mock(ShopInventoryRepository.class);
         userRepository = mock(UserRepository.class);
         cartRepository = mock(CartRepository.class);
+        customerAddressRepository = mock(CustomerAddressRepository.class);
         service = new OrderService(orderRepository, historyRepository, paymentRepository,
                 movementRepository, orderItemRepository, shopRepository,
-                inventoryRepository, userRepository, cartRepository);
+                inventoryRepository, userRepository, cartRepository, customerAddressRepository);
+        when(customerAddressRepository.findByIdAndCustomerId(25L, 10L))
+                .thenReturn(Optional.of(savedAddress(25L)));
         securityUtils = mockStatic(SecurityUtils.class);
     }
 
@@ -151,6 +157,7 @@ class OrderServiceCoverageTest {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setShopId(1L);
         request.setDeliveryMode(DeliveryMode.SHOP_DELIVERY);
+        request.setAddressId(25L);
         OrderItemRequest item = new OrderItemRequest();
         item.setProductId(101L);
         item.setQuantity(2);
@@ -191,6 +198,7 @@ class OrderServiceCoverageTest {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setShopId(1L);
         request.setDeliveryMode(DeliveryMode.SHOP_DELIVERY);
+        request.setAddressId(25L);
         OrderItemRequest item = new OrderItemRequest();
         item.setProductId(101L);
         item.setQuantity(2);
@@ -216,6 +224,7 @@ class OrderServiceCoverageTest {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setShopId(1L);
         request.setDeliveryMode(DeliveryMode.SHOP_DELIVERY);
+        request.setAddressId(25L);
         OrderItemRequest item = new OrderItemRequest();
         item.setProductId(101L);
         item.setQuantity(1);
@@ -232,7 +241,7 @@ class OrderServiceCoverageTest {
         when(shopRepository.findById(1L)).thenReturn(Optional.of(shop(1L, false)));
 
         assertThrows(BadRequestException.class,
-                () -> service.checkoutCart("customer@example.com", 1L, DeliveryMode.SHOP_DELIVERY));
+                () -> service.checkoutCart("customer@example.com", 1L, DeliveryMode.SHOP_DELIVERY, null));
         verifyNoInteractions(cartRepository);
     }
 
@@ -245,7 +254,7 @@ class OrderServiceCoverageTest {
                 .thenReturn(Optional.of(new Cart()));
 
         assertThrows(BadRequestException.class,
-                () -> service.checkoutCart("customer@example.com", 1L, DeliveryMode.SHOP_DELIVERY));
+                () -> service.checkoutCart("customer@example.com", 1L, DeliveryMode.CUSTOMER_PICKUP, null));
         verify(cartRepository, never()).save(any(Cart.class));
     }
 
@@ -331,10 +340,26 @@ class OrderServiceCoverageTest {
         verify(historyRepository).findByOrder_IdOrderByChangedAtAscIdAsc(501L);
     }
 
+    private static CustomerAddress savedAddress(Long id) {
+        CustomerAddress address = new CustomerAddress();
+        setEntityId(address, id);
+        address.setLabel("Home");
+        address.setRecipientName("Asha Sharma");
+        address.setPhone("+919876543210");
+        address.setAddressLine1("12, Market Road");
+        address.setLocality("Indiranagar");
+        address.setCity("Bengaluru");
+        address.setState("Karnataka");
+        address.setPostalCode("560038");
+        address.setDefaultAddress(true);
+        return address;
+    }
+
     private static CreateOrderRequest createRequest(Long shopId) {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setShopId(shopId);
         request.setDeliveryMode(DeliveryMode.SHOP_DELIVERY);
+        request.setAddressId(25L);
         request.setItems(List.of());
         return request;
     }

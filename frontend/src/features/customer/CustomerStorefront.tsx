@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
 import { CustomerAddressBook } from './CustomerAddressBook'
+import { CustomerCheckout } from './CustomerCheckout'
 import { ApiError, apiRequest } from '../../lib/api'
 import {
   buildMarketplaceSearchPath,
@@ -54,6 +55,7 @@ export function CustomerStorefront() {
   const [basketError, setBasketError] = useState('')
   const [notice, setNotice] = useState('')
   const [showAddressBook, setShowAddressBook] = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
 
   const selectedShop = useMemo(
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
@@ -471,6 +473,12 @@ export function CustomerStorefront() {
                   <span>Basket total</span>
                   <strong>{formatRupees(basket?.totalAmount ?? 0)}</strong>
                 </div>
+                <button
+                  className="basket-checkout"
+                  type="button"
+                  disabled={loadingBasket || !basket?.items.length}
+                  onClick={() => setShowCheckout(true)}
+                >Continue to checkout →</button>
                 <p className="basket-panel__note">Your basket belongs to this shop. Choose another shop to see its separate basket.</p>
                 <Link className="basket-panel__back" to="/">Back to Apniko home ↗</Link>
               </aside>
@@ -486,6 +494,23 @@ export function CustomerStorefront() {
           <span>APNIKO / CUSTOMER</span>
         </div>
       </footer>
+      {showCheckout && selectedShopId !== null && basket && (
+        <CustomerCheckout
+          token={token}
+          shopId={selectedShopId}
+          basket={basket}
+          onClose={() => setShowCheckout(false)}
+          onManageAddresses={() => {
+            setShowCheckout(false)
+            setShowAddressBook(true)
+          }}
+          onOrderPlaced={(order) => {
+            setBasket((current) => current ? { ...current, items: [], totalAmount: 0 } : current)
+            setBasketError('')
+            setNotice(`Order #${order.id} placed successfully.`)
+          }}
+        />
+      )}
       {showAddressBook && <CustomerAddressBook token={token} onClose={() => setShowAddressBook(false)} />}
     </div>
   )

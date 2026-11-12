@@ -4,6 +4,8 @@ import com.localcart.dto.CreateOrderRequest;
 import com.localcart.dto.OrderItemRequest;
 import com.localcart.dto.OrderStatusHistoryResponse;
 import com.localcart.entity.Cart;
+import com.localcart.entity.CustomerAddress;
+import com.localcart.entity.DeliveryAddressSnapshot;
 import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderItem;
@@ -19,6 +21,7 @@ import com.localcart.entity.User;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.CartRepository;
+import com.localcart.repository.CustomerAddressRepository;
 import com.localcart.repository.OrderItemRepository;
 import com.localcart.repository.OrderRepository;
 import com.localcart.repository.OrderStatusHistoryRepository;
@@ -47,6 +50,7 @@ public class OrderService {
     private final ShopInventoryRepository shopInventoryRepository;
     private final UserRepository userRepository;
     private final CartRepository cartRepository;
+    private final CustomerAddressRepository customerAddressRepository;
 
     public OrderService(
             OrderRepository orderRepository,
@@ -57,7 +61,8 @@ public class OrderService {
             ShopRepository shopRepository,
             ShopInventoryRepository shopInventoryRepository,
             UserRepository userRepository,
-            CartRepository cartRepository) {
+            CartRepository cartRepository,
+            CustomerAddressRepository customerAddressRepository) {
 
         this.orderRepository = orderRepository;
         this.orderStatusHistoryRepository = orderStatusHistoryRepository;
@@ -68,6 +73,7 @@ public class OrderService {
         this.shopInventoryRepository = shopInventoryRepository;
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
+        this.customerAddressRepository = customerAddressRepository;
     }
 
     // =========================================================
@@ -112,11 +118,15 @@ public class OrderService {
             return Optional.empty();
         }
 
+        DeliveryAddressSnapshot deliveryAddress = snapshotFor(
+                customer, request.getDeliveryMode(), request.getAddressId()
+        );
         return buildOrder(
                 customer,
                 shop,
                 request.getItems(),
-                request.getDeliveryMode()
+                request.getDeliveryMode(),
+                deliveryAddress
         );
     }
 
@@ -124,7 +134,8 @@ public class OrderService {
     public Order checkoutCart(
             String email,
             Long shopId,
-            DeliveryMode deliveryMode) {
+            DeliveryMode deliveryMode,
+            Long addressId) {
 
         User customer = getCustomer(email);
 
@@ -139,6 +150,10 @@ public class OrderService {
                     "Shop is not active"
             );
         }
+
+        DeliveryAddressSnapshot deliveryAddress = snapshotFor(
+                customer, deliveryMode, addressId
+        );
 
         Cart cart = cartRepository
                 .findByCustomerIdAndShopId(
@@ -180,7 +195,8 @@ public class OrderService {
                 customer,
                 shop,
                 items,
-                deliveryMode
+                deliveryMode,
+                deliveryAddress
         ).orElseThrow(() ->
                 new BadRequestException(
                         "Unable to create order"
@@ -197,7 +213,8 @@ public class OrderService {
             User customer,
             Shop shop,
             List<OrderItemRequest> items,
-            DeliveryMode deliveryMode) {
+            DeliveryMode deliveryMode,
+            DeliveryAddressSnapshot deliveryAddress) {
 
         if (items == null || items.isEmpty()) {
             return Optional.empty();
@@ -209,6 +226,7 @@ public class OrderService {
         order.setCustomer(customer);
         order.setStatus(OrderStatus.PLACED);
         order.setDeliveryMode(deliveryMode);
+        order.setDeliveryAddressSnapshot(deliveryAddress);
 
         order = orderRepository.save(order);
         recordStatusChange(
@@ -291,6 +309,26 @@ public class OrderService {
         return Optional.of(
                 orderRepository.save(order)
         );
+    }
+
+    private DeliveryAddressSnapshot snapshotFor(
+            User customer,
+            DeliveryMode deliveryMode,
+            Long addressId) {
+        if (deliveryMode == DeliveryMode.CUSTOMER_PICKUP) {
+            return null;
+        }
+        if (deliveryMode == null) {
+            throw new BadRequestException("Select a delivery option");
+        }
+        if (addressId == null) {
+            throw new BadRequestException("Choose a saved delivery address before placing this order");
+        }
+
+        CustomerAddress address = customerAddressRepository
+                .findByIdAndCustomerId(addressId, customer.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Saved delivery address not found"));
+        return DeliveryAddressSnapshot.from(address);
     }
 
     private User getCustomer(String email) {
