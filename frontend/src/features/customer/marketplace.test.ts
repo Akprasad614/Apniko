@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildMarketplaceSearchPath,
+  filterMarketplaceProductsByArea,
   filterMarketplaceShops,
   formatRupees,
   getProductCategoryIcon,
 } from './marketplace'
-import type { MarketplaceShop } from './marketplace'
+import type { MarketplaceInventoryItem, MarketplaceShop } from './marketplace'
 
 const shops: MarketplaceShop[] = [
   { id: 1, name: 'Fresh Basket', ownerName: 'Anita', phone: '111', address: 'HSR Layout, Bengaluru', active: true },
   { id: 2, name: 'Daily Needs', ownerName: 'Ravi', phone: '222', address: 'BTM Layout, Bengaluru', active: true },
   { id: 3, name: 'Green Corner', ownerName: 'Meera', phone: '333', address: 'HSR Sector 2, Bengaluru', active: true },
+]
+
+const products: MarketplaceInventoryItem[] = [
+  { id: 1, shopId: 1, shopName: 'Fresh Basket', shopAddress: 'HSR Layout, Bengaluru', productId: 101, productName: 'Tomato', category: 'Vegetables', imageUrl: null, price: 32, stockQuantity: 10, available: true },
+  { id: 2, shopId: 2, shopName: 'Daily Needs', shopAddress: 'BTM Layout, Bengaluru', productId: 102, productName: 'Milk', category: 'Dairy', imageUrl: null, price: 28, stockQuantity: 8, available: true },
 ]
 
 describe('customer marketplace helpers', () => {
@@ -56,6 +62,11 @@ describe('customer marketplace helpers', () => {
     expect(filterMarketplaceShops(shops, 'ravi', '')[0]?.id).toBe(2)
     expect(filterMarketplaceShops(shops, '', 'HSR')).toHaveLength(2)
     expect(filterMarketplaceShops(shops, 'corner', 'HSR')[0]?.id).toBe(3)
+  })
+
+  it('filters products by the shop address text supplied by the backend', () => {
+    expect(filterMarketplaceProductsByArea(products, 'hsr')).toEqual([products[0]])
+    expect(filterMarketplaceProductsByArea(products, '')).toHaveLength(2)
   })
 
   it('returns consistent visual fallbacks for common product categories', () => {
