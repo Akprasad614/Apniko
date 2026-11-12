@@ -11,6 +11,7 @@ export interface MarketplaceInventoryItem {
   id: number
   shopId: number
   shopName: string
+  shopAddress: string
   productId: number
   productName: string
   category: string | null
@@ -91,6 +92,17 @@ export function filterMarketplaceShops(
     const matchesArea = !normalizedArea || shop.address.toLocaleLowerCase().includes(normalizedArea)
     return matchesQuery && matchesArea
   })
+}
+
+export function filterMarketplaceProductsByArea(
+  products: MarketplaceInventoryItem[],
+  area: string,
+): MarketplaceInventoryItem[] {
+  const normalizedArea = area.trim().toLocaleLowerCase()
+  if (!normalizedArea) return products
+  return products.filter((product) =>
+    (product.shopAddress ?? '').toLocaleLowerCase().includes(normalizedArea),
+  )
 }
 
 export function getProductCategoryIcon(category: string | null | undefined): string {
