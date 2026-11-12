@@ -139,6 +139,44 @@ class CustomerMarketplaceServiceTest {
         verify(inventoryRepository).findAvailablePricesForProduct(101L);
     }
 
+    @Test
+    void marketplaceSearchIncludesProductImageAndShopAddress() {
+        com.localcart.entity.Product product = mock(com.localcart.entity.Product.class);
+        when(product.getId()).thenReturn(101L);
+        when(product.getName()).thenReturn("Fresh Apples");
+        when(product.getCategory()).thenReturn("Fruits");
+        when(product.getImageUrl()).thenReturn("https://cdn.example.com/apples.webp");
+
+        Shop shop = mock(Shop.class);
+        when(shop.getId()).thenReturn(8L);
+        when(shop.getName()).thenReturn("Fresh Basket");
+        when(shop.getAddress()).thenReturn("HSR Layout, Bengaluru");
+
+        com.localcart.entity.ShopInventory inventory =
+                mock(com.localcart.entity.ShopInventory.class);
+        when(inventory.getId()).thenReturn(55L);
+        when(inventory.getProduct()).thenReturn(product);
+        when(inventory.getShop()).thenReturn(shop);
+        when(inventory.getPrice()).thenReturn(120.0);
+        when(inventory.getStockQuantity()).thenReturn(9);
+        when(inventory.isAvailable()).thenReturn(true);
+
+        when(inventoryRepository.searchMarketplace(
+                isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(inventory)));
+
+        Page<com.localcart.dto.InventoryResponse> result = service.searchProducts(
+                null, null, null, null, null, 0, 24, "name", "asc"
+        );
+
+        assertEquals(1, result.getContent().size());
+        assertEquals("https://cdn.example.com/apples.webp",
+                result.getContent().get(0).getImageUrl());
+        assertEquals("HSR Layout, Bengaluru",
+                result.getContent().get(0).getShopAddress());
+        assertEquals("Fresh Apples", result.getContent().get(0).getProductName());
+    }
+
     private Shop shop(Long id, String name, boolean active) {
         Shop shop = mock(Shop.class);
         when(shop.getId()).thenReturn(id);
