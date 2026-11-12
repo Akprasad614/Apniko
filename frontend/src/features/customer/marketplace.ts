@@ -105,6 +105,24 @@ export function filterMarketplaceProductsByArea(
   )
 }
 
+export function getProductCategoryPhoto(category: string | null | undefined): string | null {
+  const normalized = (category ?? '').toLocaleLowerCase()
+
+  if (/vegetable|produce|greens/.test(normalized)) {
+    return 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=640&q=80'
+  }
+  if (/fruit/.test(normalized)) {
+    return 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?auto=format&fit=crop&w=640&q=80'
+  }
+  if (/snack|chip|namkeen|biscuit/.test(normalized)) {
+    return 'https://images.unsplash.com/photo-1566040081794-16550083ad4e?auto=format&fit=crop&w=640&q=80'
+  }
+  if (/bread|bakery/.test(normalized)) {
+    return 'https://images.unsplash.com/photo-1585735633320-d24595a213a1?auto=format&fit=crop&w=640&q=80'
+  }
+  return null
+}
+
 export function getProductCategoryIcon(category: string | null | undefined): string {
   const normalized = (category ?? '').toLocaleLowerCase()
 
