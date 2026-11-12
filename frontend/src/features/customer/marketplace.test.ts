@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { buildMarketplaceSearchPath, formatRupees } from './marketplace'
+import {
+  buildMarketplaceSearchPath,
+  filterMarketplaceShops,
+  formatRupees,
+  getProductCategoryIcon,
+} from './marketplace'
+import type { MarketplaceShop } from './marketplace'
+
+const shops: MarketplaceShop[] = [
+  { id: 1, name: 'Fresh Basket', ownerName: 'Anita', phone: '111', address: 'HSR Layout, Bengaluru', active: true },
+  { id: 2, name: 'Daily Needs', ownerName: 'Ravi', phone: '222', address: 'BTM Layout, Bengaluru', active: true },
+  { id: 3, name: 'Green Corner', ownerName: 'Meera', phone: '333', address: 'HSR Sector 2, Bengaluru', active: true },
+]
 
 describe('customer marketplace helpers', () => {
-  it('builds a search URL from the selected shop and filters', () => {
+  it('builds a product search URL scoped to a shop and filters', () => {
     const path = buildMarketplaceSearchPath({
       query: '  basmati rice  ',
       category: 'Staples',
@@ -23,6 +35,12 @@ describe('customer marketplace helpers', () => {
     expect(url.searchParams.get('page')).toBe('2')
   })
 
+  it('supports global product search without a shop filter', () => {
+    const url = new URL(buildMarketplaceSearchPath({ query: 'milk' }), 'http://localhost')
+    expect(url.searchParams.get('q')).toBe('milk')
+    expect(url.searchParams.has('shopId')).toBe(false)
+  })
+
   it('omits empty filters and applies safe default paging', () => {
     const url = new URL(buildMarketplaceSearchPath({ query: '  ', category: '' }), 'http://localhost')
     expect(url.searchParams.has('q')).toBe(false)
@@ -31,6 +49,20 @@ describe('customer marketplace helpers', () => {
     expect(url.searchParams.get('size')).toBe('24')
     expect(url.searchParams.get('sortBy')).toBe('name')
     expect(url.searchParams.get('direction')).toBe('asc')
+  })
+
+  it('filters shop search by name, owner and address', () => {
+    expect(filterMarketplaceShops(shops, 'fresh', '')).toHaveLength(1)
+    expect(filterMarketplaceShops(shops, 'ravi', '')[0]?.id).toBe(2)
+    expect(filterMarketplaceShops(shops, '', 'HSR')).toHaveLength(2)
+    expect(filterMarketplaceShops(shops, 'corner', 'HSR')[0]?.id).toBe(3)
+  })
+
+  it('returns consistent visual fallbacks for common product categories', () => {
+    expect(getProductCategoryIcon('Vegetables')).toBe('🥬')
+    expect(getProductCategoryIcon('Dairy & Eggs')).toBe('🥛')
+    expect(getProductCategoryIcon('Household')).toBe('🧴')
+    expect(getProductCategoryIcon('Unmapped')).toBe('🛒')
   })
 
   it('formats prices in Indian rupees', () => {
