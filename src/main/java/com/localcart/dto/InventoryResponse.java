@@ -5,6 +5,7 @@ public class InventoryResponse {
     private Long id;
     private Long shopId;
     private String shopName;
+    private String shopAddress;
     private Long productId;
     private String productName;
     private String category;
@@ -26,6 +27,9 @@ public class InventoryResponse {
 
     public String getShopName() { return shopName; }
     public void setShopName(String shopName) { this.shopName = shopName; }
+
+    public String getShopAddress() { return shopAddress; }
+    public void setShopAddress(String shopAddress) { this.shopAddress = shopAddress; }
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
