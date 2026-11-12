@@ -5,7 +5,7 @@ import { Button } from '../../components/Button'
 import { Field } from '../../components/Field'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
-import { formatRupees, nextShopkeeperStatus, statusActionLabel, statusLabel } from './shopkeeper'
+import { filterOrdersForShop, formatRupees, nextShopkeeperStatus, statusActionLabel, statusLabel } from './shopkeeper'
 import type { InventoryItem, Product, Shop, ShopkeeperOrder } from './shopkeeper'
 import './shopkeeper-workspace.css'
 
@@ -54,7 +54,7 @@ export function ShopkeeperWorkspace() {
     [shops, selectedShopId],
   )
   const selectedShopOrders = useMemo(
-    () => orders.filter((order) => order.shop.id === selectedShopId),
+    () => filterOrdersForShop(orders, selectedShopId),
     [orders, selectedShopId],
   )
 
