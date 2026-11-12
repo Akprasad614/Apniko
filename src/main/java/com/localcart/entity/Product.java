@@ -14,6 +14,9 @@ public class Product {
 
     private String category;
 
+    @Column(name = "image_url", length = 2048)
+    private String imageUrl;
+
     public Product() {
     }
 
@@ -35,5 +38,13 @@ public class Product {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }
