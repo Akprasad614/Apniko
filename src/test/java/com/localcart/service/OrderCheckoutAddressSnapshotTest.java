@@ -70,7 +70,8 @@ class OrderCheckoutAddressSnapshotTest {
     void deliveryCheckoutRequiresAnAddressOwnedByTheCurrentCustomer() {
         User customer = customer();
         when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(customer));
-        when(shopRepository.findById(1L)).thenReturn(Optional.of(shop()));
+        Shop shop = shop();
+        when(shopRepository.findById(1L)).thenReturn(Optional.of(shop));
         when(addressRepository.findByIdAndCustomerId(91L, 7L)).thenReturn(Optional.empty());
 
         assertThrows(com.localcart.exception.ResourceNotFoundException.class,
