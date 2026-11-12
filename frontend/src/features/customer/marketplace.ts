@@ -14,6 +14,7 @@ export interface MarketplaceInventoryItem {
   productId: number
   productName: string
   category: string | null
+  imageUrl: string | null
   price: number
   stockQuantity: number
   available: boolean
@@ -74,6 +75,38 @@ export function buildMarketplaceSearchPath(options: MarketplaceSearchOptions = {
   params.set('direction', options.direction ?? 'asc')
 
   return `/api/customer/marketplace/products/search?${params.toString()}`
+}
+
+export function filterMarketplaceShops(
+  shops: MarketplaceShop[],
+  query: string,
+  area: string,
+): MarketplaceShop[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  const normalizedArea = area.trim().toLocaleLowerCase()
+
+  return shops.filter((shop) => {
+    const searchable = `${shop.name} ${shop.ownerName} ${shop.address}`.toLocaleLowerCase()
+    const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery)
+    const matchesArea = !normalizedArea || shop.address.toLocaleLowerCase().includes(normalizedArea)
+    return matchesQuery && matchesArea
+  })
+}
+
+export function getProductCategoryIcon(category: string | null | undefined): string {
+  const normalized = (category ?? '').toLocaleLowerCase()
+
+  if (/vegetable|produce|greens/.test(normalized)) return '🥬'
+  if (/fruit/.test(normalized)) return '🍎'
+  if (/dairy|milk|paneer|cheese|egg/.test(normalized)) return '🥛'
+  if (/bread|bakery|grain|rice|atta|flour|staple/.test(normalized)) return '🍞'
+  if (/meat|chicken|fish|seafood/.test(normalized)) return '🍗'
+  if (/snack|chip|namkeen|biscuit/.test(normalized)) return '🥨'
+  if (/drink|beverage|juice|water/.test(normalized)) return '🧃'
+  if (/frozen|ice cream/.test(normalized)) return '🍦'
+  if (/household|clean|personal|care/.test(normalized)) return '🧴'
+  if (/oil|spice|masala|pulse|dal/.test(normalized)) return '🫙'
+  return '🛒'
 }
 
 export function formatRupees(value: number): string {
