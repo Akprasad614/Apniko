@@ -7,6 +7,11 @@ html {
   background: var(--lc-paper);
 }
 
+#root {
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -38,6 +43,12 @@ a {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {
+  outline: 3px solid var(--lc-terracotta);
+  outline-offset: 3px;
+}
+
+textarea:focus-visible,
+select:focus-visible {
   outline: 3px solid var(--lc-terracotta);
   outline-offset: 3px;
 }

@@ -34,4 +34,18 @@ Copy `.env.example` to `.env.local` only if the frontend must call a different A
 
 ## Current scope
 
-The landing page and authentication are wired to the current backend contract. The role routes are safe starting points for the next feature phase; catalogue, cart, checkout, shop operations and delivery flows are not implemented in this foundation milestone.
+The landing page, customer authentication and customer storefront are wired to the current backend contract. The customer storefront uses live marketplace, basket and shop data.
+
+Shopkeeper Workspace V1 is available at `/shopkeeper` for authenticated shopkeeper accounts. It uses the existing backend APIs to:
+
+- Select or create the shopkeeper's own shop.
+- View inventory and low-stock items.
+- Add existing products to a shop, update price, stock and availability, restock, and set stock alerts.
+- View shop orders and perform only the backend-supported status changes: placed → accepted → preparing → ready.
+- Cancel eligible orders with confirmation.
+
+No dashboard metrics, revenue figures, product catalogue entries or order data are invented by the frontend. The backend remains the source of truth.
+
+## Mobile-first design
+
+Apniko is designed phone-first for 320–430px viewports. Shared layout and control styles provide 44px-or-larger interactive controls, visible focus states, reduced-motion support, safe-area-aware shopkeeper navigation and no desktop tables on small screens. Shopkeeper inventory and order information is rendered as readable cards. Tablet and desktop layouts add a workspace sidebar where space permits.
