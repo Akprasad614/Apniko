@@ -6,6 +6,8 @@ public class InventoryResponse {
     private Long shopId;
     private String shopName;
     private String shopAddress;
+    private Double shopLatitude;
+    private Double shopLongitude;
     private Long productId;
     private String productName;
     private String category;
@@ -30,6 +32,12 @@ public class InventoryResponse {
 
     public String getShopAddress() { return shopAddress; }
     public void setShopAddress(String shopAddress) { this.shopAddress = shopAddress; }
+
+    public Double getShopLatitude() { return shopLatitude; }
+    public void setShopLatitude(Double shopLatitude) { this.shopLatitude = shopLatitude; }
+
+    public Double getShopLongitude() { return shopLongitude; }
+    public void setShopLongitude(Double shopLongitude) { this.shopLongitude = shopLongitude; }
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
