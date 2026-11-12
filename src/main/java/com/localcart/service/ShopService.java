@@ -40,6 +40,9 @@ public class ShopService {
         shop.setOwnerName(owner.getName());
         shop.setPhone(request.getPhone());
         shop.setAddress(request.getAddress());
+        validateCoordinates(request.getLatitude(), request.getLongitude());
+        shop.setLatitude(request.getLatitude());
+        shop.setLongitude(request.getLongitude());
         shop.setActive(true);
         shop.setOwner(owner);
 
@@ -95,6 +98,11 @@ public class ShopService {
         shop.setName(request.getName());
         shop.setPhone(request.getPhone());
         shop.setAddress(request.getAddress());
+        if (request.getLatitude() != null || request.getLongitude() != null) {
+            validateCoordinates(request.getLatitude(), request.getLongitude());
+            shop.setLatitude(request.getLatitude());
+            shop.setLongitude(request.getLongitude());
+        }
 
         return toResponse(
                 shopRepository.save(shop)
@@ -169,15 +177,33 @@ public class ShopService {
         }
     }
 
-    private ShopResponse toResponse(Shop shop) {
 
+    private void validateCoordinates(Double latitude, Double longitude) {
+        if ((latitude == null) != (longitude == null)) {
+            throw new BadRequestException(
+                    "Both latitude and longitude must be provided together");
+        }
+        if (latitude == null) {
+            return;
+        }
+        if (!Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
+            throw new BadRequestException("Latitude must be between -90 and 90");
+        }
+        if (!Double.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            throw new BadRequestException("Longitude must be between -180 and 180");
+        }
+    }
+
+    private ShopResponse toResponse(Shop shop) {
         return new ShopResponse(
                 shop.getId(),
                 shop.getName(),
                 shop.getOwnerName(),
                 shop.getPhone(),
                 shop.getAddress(),
-                shop.isActive()
+                shop.isActive(),
+                shop.getLatitude(),
+                shop.getLongitude()
         );
     }
 }
