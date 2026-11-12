@@ -128,6 +128,7 @@ class CustomerAndGeneralControllersCoverageTest {
         UpdateCartItemRequest update = new UpdateCartItemRequest();
         CheckoutRequest checkout = new CheckoutRequest();
         checkout.setDeliveryMode(DeliveryMode.PLATFORM_DELIVERY);
+        checkout.setAddressId(25L);
 
         assertEquals(200, controller.getCart(1L).getStatusCode().value());
         assertEquals(200, controller.addToCart(1L, add).getStatusCode().value());
@@ -139,7 +140,7 @@ class CustomerAndGeneralControllersCoverageTest {
         verify(cartService).addToCart("customer@example.com", 1L, add);
         verify(cartService).updateCartItem("customer@example.com", 1L, 99L, update);
         verify(cartService).removeFromCart("customer@example.com", 1L, 99L);
-        verify(orderService).checkoutCart("customer@example.com", 1L, DeliveryMode.PLATFORM_DELIVERY);
+        verify(orderService).checkoutCart("customer@example.com", 1L, DeliveryMode.PLATFORM_DELIVERY, 25L);
     }
 
     @Test

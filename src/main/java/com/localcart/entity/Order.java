@@ -37,6 +37,9 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private DeliveryMode deliveryMode;
 
+    @Embedded
+    private DeliveryAddressSnapshot deliveryAddressSnapshot;
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL
@@ -101,6 +104,14 @@ public class Order {
 
     public void setDeliveryMode(DeliveryMode deliveryMode) {
         this.deliveryMode = deliveryMode;
+    }
+
+    public DeliveryAddressSnapshot getDeliveryAddressSnapshot() {
+        return deliveryAddressSnapshot;
+    }
+
+    public void setDeliveryAddressSnapshot(DeliveryAddressSnapshot deliveryAddressSnapshot) {
+        this.deliveryAddressSnapshot = deliveryAddressSnapshot;
     }
 
     public List<OrderItem> getItems() {

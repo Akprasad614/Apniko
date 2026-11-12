@@ -156,7 +156,7 @@ export function CustomerAddressBook({ token, onClose }: CustomerAddressBookProps
       )
       setConfirmRemoveId(null)
       await loadAddresses()
-      setNotice('Address removed. Your remaining default address is unchanged.')
+      setNotice('Address removed. Your saved addresses have been updated.')
     } catch (caught) {
       setError(messageFor(caught))
     } finally {

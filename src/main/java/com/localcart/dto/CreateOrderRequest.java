@@ -15,6 +15,9 @@ public class CreateOrderRequest {
     @NotNull
     private DeliveryMode deliveryMode;
 
+    @jakarta.validation.constraints.Positive
+    private Long addressId;
+
     @NotEmpty
     private List<@Valid OrderItemRequest> items;
 
@@ -35,6 +38,14 @@ public class CreateOrderRequest {
 
     public void setDeliveryMode(DeliveryMode deliveryMode) {
         this.deliveryMode = deliveryMode;
+    }
+
+    public Long getAddressId() {
+        return addressId;
+    }
+
+    public void setAddressId(Long addressId) {
+        this.addressId = addressId;
     }
 
     public List<OrderItemRequest> getItems() {

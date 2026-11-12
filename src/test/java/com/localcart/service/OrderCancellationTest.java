@@ -13,6 +13,7 @@ import com.localcart.entity.ShopInventory;
 import com.localcart.entity.User;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.CartRepository;
+import com.localcart.repository.CustomerAddressRepository;
 import com.localcart.repository.InventoryMovementRepository;
 import com.localcart.repository.OrderItemRepository;
 import com.localcart.repository.OrderRepository;
@@ -54,6 +55,7 @@ class OrderCancellationTest {
         inventoryRepository = mock(ShopInventoryRepository.class);
         userRepository = mock(UserRepository.class);
         cartRepository = mock(CartRepository.class);
+        CustomerAddressRepository customerAddressRepository = mock(CustomerAddressRepository.class);
         orderService = new OrderService(
                 orderRepository,
                 historyRepository,
@@ -63,7 +65,8 @@ class OrderCancellationTest {
                 shopRepository,
                 inventoryRepository,
                 userRepository,
-                cartRepository
+                cartRepository,
+                customerAddressRepository
         );
     }
 

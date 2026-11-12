@@ -7,6 +7,7 @@ import com.localcart.entity.Role;
 import com.localcart.entity.User;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.CartRepository;
+import com.localcart.repository.CustomerAddressRepository;
 import com.localcart.repository.InventoryMovementRepository;
 import com.localcart.repository.OrderItemRepository;
 import com.localcart.repository.OrderRepository;
@@ -43,9 +44,11 @@ class DeliveryOrderAuthorizationRegressionTest {
         ShopInventoryRepository inventoryRepository = mock(ShopInventoryRepository.class);
         userRepository = mock(UserRepository.class);
         CartRepository cartRepository = mock(CartRepository.class);
+        CustomerAddressRepository customerAddressRepository = mock(CustomerAddressRepository.class);
         service = new OrderService(
                 orderRepository, historyRepository, paymentRepository, movementRepository,
-                orderItemRepository, shopRepository, inventoryRepository, userRepository, cartRepository
+                orderItemRepository, shopRepository, inventoryRepository, userRepository, cartRepository,
+                customerAddressRepository
         );
     }
 

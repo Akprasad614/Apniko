@@ -99,7 +99,8 @@ public class CartController {
                 orderService.checkoutCart(
                         email,
                         shopId,
-                        request.getDeliveryMode()
+                        request.getDeliveryMode(),
+                        request.getAddressId()
                 )
         );
     }
