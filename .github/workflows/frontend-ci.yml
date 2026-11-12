@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "automation/**"
+      - "feature/**"
     paths:
       - "frontend/**"
       - "PRODUCT.md"
