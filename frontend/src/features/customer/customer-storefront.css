@@ -1037,9 +1037,27 @@
 }
 
 @media (max-width: 480px) {
+  .customer-header__inner {
+    gap: 0.4rem;
+  }
+
+  .customer-header__right {
+    gap: 0.35rem;
+  }
+
   .customer-header__orders {
-    min-height: 32px;
-    padding-inline: 0.55rem;
-    font-size: 0.6rem;
+    min-height: 30px;
+    padding-inline: 0.42rem;
+    font-size: 0.56rem;
+  }
+
+  .customer-header__basket-count {
+    gap: 0.3rem;
+    font-size: 0.61rem;
+  }
+
+  .customer-header__basket-count strong {
+    min-width: 22px;
+    height: 22px;
   }
 }
