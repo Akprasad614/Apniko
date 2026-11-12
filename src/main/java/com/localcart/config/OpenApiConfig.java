@@ -58,7 +58,8 @@ public class OpenApiConfig {
     }
 
     private boolean isPublicEndpoint(String path) {
-        return path.startsWith("/api/auth/")
+        return "/api/auth/login".equals(path)
+                || "/api/auth/register".equals(path)
                 || "/api/test".equals(path)
                 || "/api/payments/webhook/razorpay".equals(path);
     }

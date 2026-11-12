@@ -220,7 +220,7 @@ class CustomerAndGeneralControllersCoverageTest {
     }
 
     @Test
-    void profileControllerReturnsUnauthorizedNotFoundAndRemovesPasswordFromResponse() {
+    void profileControllerReturnsUnauthorizedNotFoundAndUsesASafeUserResponse() {
         ProfileController controller = new ProfileController(userRepository);
         securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn(null);
         assertEquals(401, controller.getProfile().getStatusCode().value());
@@ -237,7 +237,9 @@ class CustomerAndGeneralControllersCoverageTest {
         when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(user));
         var response = controller.getProfile();
         assertEquals(200, response.getStatusCode().value());
-        assertNull(response.getBody().getPassword());
+        assertEquals("Test User", response.getBody().getName());
+        assertEquals("customer@example.com", response.getBody().getEmail());
+        assertEquals("not-returned", user.getPassword());
     }
 
     private static User user(Long id, Role role, boolean active) {

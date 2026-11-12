@@ -4,12 +4,14 @@ import com.localcart.entity.Order;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.OrderService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/delivery/orders")
+@PreAuthorize("hasRole('DELIVERY_PARTNER')")
 public class DeliveryOrderController {
 
     private final OrderService orderService;

@@ -27,4 +27,19 @@ class JwtServiceTest {
 
         assertFalse(jwtService.isTokenValid(token + "tampered"));
     }
+
+    @Test
+    void expiredTokenIsRejected() {
+        JwtService expiredTokenService = JwtService.forTesting(SECRET, 1);
+        String token = expiredTokenService.generateToken("customer@test.com", "CUSTOMER");
+
+        try {
+            Thread.sleep(1100);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            fail("Interrupted while waiting for the short-lived test token to expire");
+        }
+
+        assertFalse(expiredTokenService.isTokenValid(token));
+    }
 }

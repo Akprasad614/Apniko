@@ -1,6 +1,6 @@
 package com.localcart.controller;
 
-import com.localcart.entity.User;
+import com.localcart.dto.UserResponse;
 import com.localcart.repository.UserRepository;
 import com.localcart.security.SecurityUtils;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ public class ProfileController {
     }
 
     @GetMapping
-    public ResponseEntity<User> getProfile() {
+    public ResponseEntity<UserResponse> getProfile() {
 
         String email = SecurityUtils.getCurrentUserEmail();
 
@@ -26,10 +26,9 @@ public class ProfileController {
         }
 
         return userRepository.findByEmail(email)
-                .map(user -> {
-                    user.setPassword(null);
-                    return ResponseEntity.ok(user);
-                })
+                .map(user -> ResponseEntity.ok(new UserResponse(
+                        user.getId(), user.getName(), user.getEmail(), user.getRole(), user.isActive()
+                )))
                 .orElse(ResponseEntity.notFound().build());
     }
 }
