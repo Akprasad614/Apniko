@@ -22,6 +22,7 @@ import type {
   MarketplaceShop,
 } from './marketplace'
 import './customer-storefront.css'
+import './customer-discovery.css'
 
 const PAGE_SIZE = 24
 
