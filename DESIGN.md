@@ -2,67 +2,82 @@
 
 ## Art direction
 
-**Neighbourhood market, not generic SaaS dashboard.** The visual language takes cues from printed grocery labels, produce-market signage, warm paper, ink, painted shop fronts and simple editorial layouts. Avoid the default AI-generated look: no purple/blue gradients, glassmorphism, excessive rounded cards, random metric tiles or decorative charts without a job to do.
+**Neighbourhood commerce, designed with clarity.** Apniko should feel like a dependable local marketplace: welcoming for customers, practical for shopkeepers and clear for delivery and administration teams. The visual identity combines a confident navy structure, a fresh green commerce accent and a small amount of warm orange.
 
-The customer experience should feel welcoming and tactile. Shopkeeper and delivery interfaces should feel calm, legible and operationally efficient.
+Avoid the default generic-SaaS look: no purple/blue gradients, glassmorphism, excessive rounded cards, random metric tiles or decorative charts without a job to do. Do not copy another product's screen layouts or visual assets.
+
+The customer experience should be discovery-led and product-focused. Shopkeeper and delivery interfaces should feel calm, legible and operationally efficient. Admin screens should prioritize safe actions and traceability.
+
+## Brand identity
+
+**Apniko — Your neighbourhood, closer.**
+
+The Apniko symbol combines an A-shaped frame, a location pin, a neighbourhood storefront and a green connecting sweep. It is intended to communicate local discovery and small-business commerce.
+
+The React brand component lives in `frontend/src/components/BrandMark.tsx`. The horizontal logo, light logo, standalone mark, app-icon artwork and favicon live under `frontend/public/brand/` and `frontend/public/favicon.svg`.
+
+The artwork is a project-specific original concept. It is not a statement of trademark registration or guaranteed global uniqueness. Complete trademark and brand-clearance checks before public commercial launch.
 
 ## Core palette
 
 | Token | Value | Use |
 |---|---|---|
-| Forest | `#173F35` | Brand surfaces, primary actions |
-| Deep forest | `#102F28` | High-contrast brand surface |
-| Moss | `#426955` | Secondary emphasis |
-| Citrus | `#D8ED79` | Primary accent and selected state |
-| Paper | `#F5F2E8` | Main canvas |
-| Paper deep | `#EBE6D8` | Quiet surface |
-| White | `#FFFDF7` | Form and content surface |
-| Terracotta | `#D67851` | Warm highlight, alerts used sparingly |
-| Ink | `#202A25` | Main text |
-| Muted | `#68736C` | Supporting text |
-| Line | `#D9D7CA` | Borders and dividers |
+| Apniko Navy | `#132B45` | Primary identity, headings and navigation |
+| Deep Navy | `#0D2034` | High-contrast dark surfaces |
+| Apniko Green | `#168653` | Positive actions and local-commerce emphasis |
+| Deep Green | `#0F6A40` | Green hover states and stronger emphasis |
+| Apniko Orange | `#F28A2B` | Location pin, highlights and secondary accent |
+| Green Soft | `#E8F5ED` | Quiet positive surfaces |
+| Orange Soft | `#FFF1E3` | Quiet warning/highlight surfaces |
+| Canvas | `#F6F8F7` | Main application background |
+| Surface | `#FFFFFF` | Cards, forms and elevated panels |
+| Ink | `#202B36` | Primary text |
+| Muted | `#657384` | Supporting text |
+| Border | `#E1E8E4` | Borders and dividers |
 
-All values are centralised in `frontend/src/styles/tokens.css`. Components should use tokens rather than introducing one-off colour values.
+Use navy for structure, green for primary commerce actions and positive states, and orange sparingly for emphasis. Do not use colour as the only way to communicate status; pair it with a label or icon.
+
+All canonical values are centralized in `frontend/src/styles/tokens.css`. New components should use `--apniko-*` variables. Existing `--lc-*` variables remain as compatibility aliases while older feature components are incrementally refreshed.
 
 ## Typography
 
-- Display: Georgia / Times New Roman serif stack for distinctive editorial headings.
-- UI and body: system sans-serif stack for fast rendering and predictable legibility.
+- Body and interface: Inter, falling back to the platform sans-serif stack.
+- Display: the same sans-serif family with stronger weight and tighter tracking for a consistent cross-device identity.
 - Use strong hierarchy, short line lengths and restrained uppercase labels.
-- Do not download remote fonts by default. A self-hosted font can be evaluated later if it materially improves the product.
+- Use tabular numerals for prices, order totals, balances, counts and transaction lists.
+- Do not download remote fonts by default. The current system renders using locally available fonts and does not depend on a font CDN.
 
 ## Shape, spacing and composition
 
-- Prefer open layouts, section dividers and asymmetric editorial composition over a grid of identical cards.
-- Use small radii for controls, medium radii for functional panels and larger radii only for major surfaces.
+- Prefer open layouts, clear hierarchy and useful section dividers over a grid of identical cards.
+- Use small radii for controls, medium radii for functional panels and larger radii for major surfaces.
 - Use whitespace to separate content. Keep status, price and next action visually obvious.
+- Use shared radius, spacing, page-width, shadow and motion tokens rather than one-off values.
 - Use motion sparingly; respect `prefers-reduced-motion`.
-- Use CSS illustrations or product photography only when they add real information. Do not fill empty space with random decoration.
+- Use product photography only when it adds information. Avoid random decoration and placeholder imagery presented as real inventory.
 
 ## Interaction and accessibility
 
 - Every interactive element needs a visible keyboard focus state.
 - Form controls must have explicit labels and understandable error text.
 - Colour must not be the only way to communicate status.
-- Keep touch targets comfortable and avoid hover-only interaction.
+- Keep practical touch targets at least 44px wherever possible and avoid hover-only interaction.
 - Responsive layouts must work at 320px, tablet widths and desktop widths.
-- Use semantic landmarks, heading order, skip links and descriptive names.
+- Respect mobile safe-area insets and avoid horizontal page overflow.
+- Use semantic landmarks, heading order, skip links and descriptive accessible names.
+- Honour `prefers-reduced-motion`.
 
 ## Page-specific direction
 
-- **Customer:** discovery-led, warm, editorial and product-focused; useful filters and clear stock/price information.
-- **Shopkeeper:** dense enough for daily work but calm; inventory, incoming orders and low-stock actions should be scan-friendly.
+- **Customer:** product discovery first, helpful categories, visible price/stock/shop information, and a simple path to checkout.
+- **Shopkeeper:** efficient daily-work interface; inventory, incoming orders and low-stock actions should be scan-friendly.
 - **Delivery:** action-first; show assignment, pickup and delivery states clearly with large primary actions.
-- **Admin:** restrained operational interface; prioritise safe actions, audit context and clear confirmation.
+- **Admin:** restrained operational interface; prioritize safe actions, audit context, clear confirmation and permissions.
+
+## Reusable UI foundation
+
+The shared primitives in `frontend/src/styles/brand-system.css` include brand styles, page containers, surfaces, status pills, icon buttons, controls, dividers and numeric display utilities. Use these when introducing new feature screens so the portals retain one consistent language.
 
 ## Design review references
 
-Use these as critique and quality references, not as templates to copy:
-
-- Anthropic Frontend Design: bespoke art direction and deliberate composition.
-- Taste: visual taste and refinement of spacing, contrast and density.
-- UI UX Pro Max: design-system and pattern research.
-- Vercel Web Interface Guidelines: accessibility, responsive behaviour and interaction quality.
-- Impeccable: critique and refinement passes.
-
-The project owns its visual identity. Do not copy another product's screens or a starter template wholesale.
+Use design references as critique and quality checks, not as templates to copy. The project owns its own visual identity and should maintain a consistent balance of local character, clarity, accessibility and restraint.
