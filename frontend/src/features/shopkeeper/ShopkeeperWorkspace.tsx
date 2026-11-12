@@ -43,10 +43,19 @@ export function ShopkeeperWorkspace() {
   const [showAddItem, setShowAddItem] = useState(false)
   const [shopForm, setShopForm] = useState({ name: '', phone: '', address: '' })
   const [itemForm, setItemForm] = useState({ productId: '', price: '', stockQuantity: '' })
+  const [stockAction, setStockAction] = useState<{ kind: 'restock' | 'threshold'; item: InventoryItem } | null>(null)
+  const [stockActionQuantity, setStockActionQuantity] = useState('1')
+  const [stockActionNote, setStockActionNote] = useState('')
+  const [stockActionThreshold, setStockActionThreshold] = useState('5')
+  const [cancelOrder, setCancelOrder] = useState<ShopkeeperOrder | null>(null)
 
   const selectedShop = useMemo(
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
     [shops, selectedShopId],
+  )
+  const selectedShopOrders = useMemo(
+    () => orders.filter((order) => order.shop.id === selectedShopId),
+    [orders, selectedShopId],
   )
 
   const loadShops = useCallback(async () => {
@@ -131,39 +140,76 @@ export function ShopkeeperWorkspace() {
     } catch (caught) { setError(messageFor(caught)) } finally { setBusy(false) }
   }
 
-  async function restockItem(item: InventoryItem) {
-    const quantity = window.prompt(`Add stock for ${item.productName}`, '1')
-    if (!quantity || !/^\d+$/.test(quantity) || Number(quantity) < 1 || selectedShopId === null) return
-    const note = window.prompt('Optional restock note', '') ?? ''
-    setBusy(true); setError(''); setNotice('')
-    try {
-      await apiRequest<InventoryItem>(`/api/shopkeeper/shops/${selectedShopId}/inventory/${item.id}/restock`, { method: 'POST', body: JSON.stringify({ quantity: Number(quantity), note }) }, token)
-      await loadInventory(selectedShopId)
-      setNotice(`${item.productName} restocked.`)
-    } catch (caught) { setError(messageFor(caught)) } finally { setBusy(false) }
+  function openRestock(item: InventoryItem) {
+    setStockAction({ kind: 'restock', item })
+    setStockActionQuantity('1')
+    setStockActionNote('')
   }
 
-  async function setThreshold(item: InventoryItem) {
-    const threshold = window.prompt(`Low-stock level for ${item.productName}`, String(item.lowStockThreshold))
-    if (threshold === null || !/^\d+$/.test(threshold) || selectedShopId === null) return
+  function openThreshold(item: InventoryItem) {
+    setStockAction({ kind: 'threshold', item })
+    setStockActionThreshold(String(item.lowStockThreshold))
+  }
+
+  async function submitStockAction(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!stockAction || selectedShopId === null) return
+    const { kind, item } = stockAction
+    const quantity = Number(stockActionQuantity)
+    const threshold = Number(stockActionThreshold)
+    if (kind === 'restock' && (!Number.isSafeInteger(quantity) || quantity < 1)) {
+      setError('Enter a whole restock quantity of at least 1.')
+      return
+    }
+    if (kind === 'threshold' && (!Number.isSafeInteger(threshold) || threshold < 0)) {
+      setError('Enter a whole stock-alert quantity of 0 or more.')
+      return
+    }
+
     setBusy(true); setError(''); setNotice('')
     try {
-      await apiRequest<InventoryItem>(`/api/shopkeeper/shops/${selectedShopId}/inventory/${item.id}/low-stock-threshold`, { method: 'PUT', body: JSON.stringify({ lowStockThreshold: Number(threshold) }) }, token)
+      if (kind === 'restock') {
+        await apiRequest<InventoryItem>(`/api/shopkeeper/shops/${selectedShopId}/inventory/${item.id}/restock`, {
+          method: 'POST',
+          body: JSON.stringify({ quantity, note: stockActionNote.trim() }),
+        }, token)
+        setNotice(`${item.productName} restocked.`)
+      } else {
+        await apiRequest<InventoryItem>(`/api/shopkeeper/shops/${selectedShopId}/inventory/${item.id}/low-stock-threshold`, {
+          method: 'PUT',
+          body: JSON.stringify({ lowStockThreshold: threshold }),
+        }, token)
+        setNotice('Low-stock level updated.')
+      }
       await loadInventory(selectedShopId)
-      setNotice('Low-stock level updated.')
+      setStockAction(null)
     } catch (caught) { setError(messageFor(caught)) } finally { setBusy(false) }
   }
 
   async function moveOrder(order: ShopkeeperOrder, cancel = false) {
     const nextStatus = nextShopkeeperStatus[order.status]
-    if (!cancel && !nextStatus) return
-    if (cancel && !window.confirm(`Cancel order #${order.id}? Stock will be restored by Apniko.`)) return
+    if (cancel) {
+      setCancelOrder(order)
+      return
+    }
+    if (!nextStatus) return
     setBusy(true); setError(''); setNotice('')
     try {
-      const path = cancel ? `/api/shopkeeper/orders/${order.id}/cancel` : `/api/shopkeeper/orders/${order.id}/status?status=${nextStatus}`
-      await apiRequest<ShopkeeperOrder>(path, { method: 'PUT' }, token)
+      await apiRequest<ShopkeeperOrder>(`/api/shopkeeper/orders/${order.id}/status?status=${nextStatus}`, { method: 'PUT' }, token)
       await loadOrders()
-      setNotice(cancel ? `Order #${order.id} cancelled.` : `Order #${order.id} updated.`)
+      setNotice(`Order #${order.id} updated.`)
+    } catch (caught) { setError(messageFor(caught)) } finally { setBusy(false) }
+  }
+
+  async function confirmCancelOrder() {
+    if (!cancelOrder) return
+    const order = cancelOrder
+    setBusy(true); setError(''); setNotice('')
+    try {
+      await apiRequest<ShopkeeperOrder>(`/api/shopkeeper/orders/${order.id}/cancel`, { method: 'PUT' }, token)
+      await loadOrders()
+      setCancelOrder(null)
+      setNotice(`Order #${order.id} cancelled and stock restoration recorded.`)
     } catch (caught) { setError(messageFor(caught)) } finally { setBusy(false) }
   }
 
@@ -188,13 +234,59 @@ export function ShopkeeperWorkspace() {
           {notice && <p className="workspace-message" role="status">{notice}</p>}
           {loading ? <p className="workspace-state" role="status">Loading your shop workspace…</p> : shops.length === 0 ? (
             <section className="workspace-panel onboarding"><p className="shopkeeper-kicker">START HERE</p><h2>Set up your first shop.</h2><p>Once it is added, you can list the products you already sell and manage incoming orders.</p><form className="workspace-form" onSubmit={createShop}><Field label="Shop name" name="name" required value={shopForm.name} onChange={(event) => setShopForm({ ...shopForm, name: event.target.value })} /><Field label="Phone" name="phone" type="tel" required value={shopForm.phone} onChange={(event) => setShopForm({ ...shopForm, phone: event.target.value })} /><Field label="Address" name="address" required value={shopForm.address} onChange={(event) => setShopForm({ ...shopForm, address: event.target.value })} /><Button type="submit" disabled={busy}>{busy ? 'Creating shop…' : 'Create shop'}</Button></form></section>
-          ) : section === 'overview' ? <Overview shop={selectedShop} lowStock={lowStock} orders={orders} onOpen={(target) => setSection(target)} />
-            : section === 'orders' ? <Orders orders={orders} busy={busy} onMove={moveOrder} />
-              : section === 'inventory' ? <Inventory inventory={inventory} lowStock={lowStock} products={availableProducts} showAdd={showAddItem} busy={busy} itemForm={itemForm} onItemForm={setItemForm} onToggleAdd={() => setShowAddItem((current) => !current)} onAdd={addInventory} onUpdate={updateItem} onRestock={restockItem} onThreshold={setThreshold} />
+          ) : section === 'overview' ? <Overview shop={selectedShop} lowStock={lowStock} orders={selectedShopOrders} onOpen={(target) => setSection(target)} />
+            : section === 'orders' ? <Orders orders={selectedShopOrders} busy={busy} onMove={moveOrder} />
+              : section === 'inventory' ? <Inventory inventory={inventory} lowStock={lowStock} products={availableProducts} showAdd={showAddItem} busy={busy} itemForm={itemForm} onItemForm={setItemForm} onToggleAdd={() => setShowAddItem((current) => !current)} onAdd={addInventory} onUpdate={updateItem} onRestock={openRestock} onThreshold={openThreshold} />
                 : <ShopDetails shop={selectedShop} />}
         </main>
       </div>
       <nav className="shopkeeper-bottom-nav" aria-label="Shopkeeper workspace mobile navigation">{SECTIONS.map((entry) => <button key={entry.id} type="button" className={section === entry.id ? 'is-active' : ''} onClick={() => setSection(entry.id)}><span aria-hidden="true">{entry.icon}</span>{entry.label}</button>)}</nav>
+      {stockAction && (
+        <div className="shopkeeper-sheet-backdrop">
+          <section className="shopkeeper-sheet" role="dialog" aria-modal="true" aria-labelledby="stock-action-title">
+            <div className="shopkeeper-sheet__heading">
+              <div>
+                <p className="shopkeeper-kicker">{stockAction.kind === 'restock' ? 'INVENTORY UPDATE' : 'STOCK ALERT'}</p>
+                <h2 id="stock-action-title">{stockAction.kind === 'restock' ? 'Restock item' : 'Set low-stock alert'}</h2>
+                <p>{stockAction.item.productName}</p>
+              </div>
+              <button type="button" className="shopkeeper-sheet__close" aria-label="Close" onClick={() => setStockAction(null)}>×</button>
+            </div>
+            <form className="shopkeeper-sheet__form" onSubmit={(event) => void submitStockAction(event)}>
+              {stockAction.kind === 'restock' ? (
+                <>
+                  <Field label="Quantity to add" name="restockQuantity" type="number" min="1" step="1" required autoFocus value={stockActionQuantity} onChange={(event) => setStockActionQuantity(event.target.value)} />
+                  <Field label="Note (optional)" name="restockNote" type="text" maxLength={500} value={stockActionNote} onChange={(event) => setStockActionNote(event.target.value)} />
+                </>
+              ) : (
+                <Field label="Alert when stock reaches" name="stockThreshold" type="number" min="0" step="1" required autoFocus value={stockActionThreshold} onChange={(event) => setStockActionThreshold(event.target.value)} hint="Set 0 to disable the low-stock alert." />
+              )}
+              <div className="shopkeeper-sheet__actions">
+                <Button tone="quiet" type="button" disabled={busy} onClick={() => setStockAction(null)}>Go back</Button>
+                <Button type="submit" disabled={busy}>{busy ? 'Saving…' : stockAction.kind === 'restock' ? 'Confirm restock' : 'Save alert'}</Button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+      {cancelOrder && (
+        <div className="shopkeeper-sheet-backdrop">
+          <section className="shopkeeper-sheet" role="dialog" aria-modal="true" aria-labelledby="cancel-order-title">
+            <div className="shopkeeper-sheet__heading">
+              <div>
+                <p className="shopkeeper-kicker">ORDER CANCELLATION</p>
+                <h2 id="cancel-order-title">Cancel order #{cancelOrder.id}?</h2>
+                <p>Apniko will restore the reserved inventory and update the order status.</p>
+              </div>
+              <button type="button" className="shopkeeper-sheet__close" aria-label="Close" onClick={() => setCancelOrder(null)}>×</button>
+            </div>
+            <div className="shopkeeper-sheet__actions">
+              <Button tone="quiet" disabled={busy} onClick={() => setCancelOrder(null)}>Keep order</Button>
+              <Button disabled={busy} onClick={() => void confirmCancelOrder()}>{busy ? 'Cancelling…' : 'Confirm cancellation'}</Button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
