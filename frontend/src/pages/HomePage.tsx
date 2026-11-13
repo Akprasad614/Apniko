@@ -1,12 +1,12 @@
 import { Link } from 'react-router'
-import { BrandMark } from '../components/BrandMark'
+import { Wordmark } from '../components/Wordmark'
 
 export function HomePage() {
   return (
     <div className="site-shell">
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="site-header wrap">
-        <BrandMark />
+        <Wordmark />
         <nav className="site-nav" aria-label="Main navigation">
           <a className="site-nav__link" href="#how-it-works">How it works</a>
           <a className="site-nav__link" href="#local-stores">For local stores</a>
@@ -45,7 +45,6 @@ export function HomePage() {
             <div className="grocery-bag">
               <div className="grocery-bag__handle" />
               <div className="grocery-bag__front">
-                <span className="grocery-bag__stamp">AP</span>
                 <span className="grocery-bag__word">LOCAL<br />FINDS</span>
               </div>
             </div>
@@ -86,7 +85,7 @@ export function HomePage() {
             <div className="local-stores__aside">
               <p>Apniko is being built to help independent stores manage orders and reach the customers already around them.</p>
               <Link className="button button--outline" to="/login">Shopkeeper sign in <span aria-hidden="true">↗</span></Link>
-              <span className="local-stores__fine">Shopkeeper accounts are created by a Apniko administrator.</span>
+              <span className="local-stores__fine">Shopkeeper accounts are created by an Apniko administrator.</span>
             </div>
             <span className="local-stores__asterisk" aria-hidden="true">✳</span>
           </div>
