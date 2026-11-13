@@ -82,7 +82,10 @@ export function DeliveryDashboard() {
     if (results[0].status === 'fulfilled') setAvailable(results[0].value)
     else setError(messageFor(results[0].reason))
     if (results[1].status === 'fulfilled') setAssigned(results[1].value)
-    else setError((current) => [current, messageFor(results[1].reason)].filter(Boolean).join(' '))
+    else {
+      const failureMessage = messageFor(results[1].reason)
+      setError((current) => [current, failureMessage].filter(Boolean).join(' '))
+    }
     if (!quiet) setLoading(false)
   }, [token])
 
