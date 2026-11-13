@@ -39,6 +39,18 @@ public class UpdateShopRequest {
         return longitude;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
     public void setLatitude(Double latitude) {
         this.latitude = latitude;
     }
