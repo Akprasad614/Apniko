@@ -5,6 +5,7 @@ import { Button } from '../../components/Button'
 import { Field } from '../../components/Field'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
+import { getCurrentCoordinates } from '../../lib/geolocation'
 import { filterOrdersForShop, formatRupees, nextShopkeeperStatus, statusActionLabel, statusLabel } from './shopkeeper'
 import type { InventoryItem, Product, Shop, ShopkeeperOrder } from './shopkeeper'
 import './shopkeeper-workspace.css'
@@ -41,7 +42,8 @@ export function ShopkeeperWorkspace() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [showAddItem, setShowAddItem] = useState(false)
-  const [shopForm, setShopForm] = useState({ name: '', phone: '', address: '' })
+  const [shopForm, setShopForm] = useState({ name: '', phone: '', address: '', latitude: '', longitude: '' })
+  const [shopLocationMessage, setShopLocationMessage] = useState('')
   const [itemForm, setItemForm] = useState({ productId: '', price: '', stockQuantity: '' })
   const [stockAction, setStockAction] = useState<{ kind: 'restock' | 'threshold'; item: InventoryItem } | null>(null)
   const [stockActionQuantity, setStockActionQuantity] = useState('1')
@@ -101,14 +103,45 @@ export function ShopkeeperWorkspace() {
     void loadInventory(selectedShopId).catch((caught: unknown) => setError(messageFor(caught)))
   }, [loadInventory, selectedShopId])
 
+  async function captureNewShopLocation() {
+    setShopLocationMessage('Requesting the device location…')
+    try {
+      const coordinates = await getCurrentCoordinates()
+      setShopForm((current) => ({
+        ...current,
+        latitude: coordinates.latitude.toFixed(6),
+        longitude: coordinates.longitude.toFixed(6),
+      }))
+      setShopLocationMessage('Shop coordinates captured. They will help customers find this shop nearby.')
+    } catch (caught) {
+      setShopLocationMessage(messageFor(caught))
+    }
+  }
+
   async function createShop(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const hasLatitude = shopForm.latitude.trim() !== ''
+    const hasLongitude = shopForm.longitude.trim() !== ''
+    if (hasLatitude !== hasLongitude) {
+      setError('Capture both shop coordinates, or leave the location blank.')
+      return
+    }
     setBusy(true); setError(''); setNotice('')
     try {
-      const created = await apiRequest<Shop>('/api/shopkeeper/shops', { method: 'POST', body: JSON.stringify(shopForm) }, token)
+      const created = await apiRequest<Shop>('/api/shopkeeper/shops', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: shopForm.name,
+          phone: shopForm.phone,
+          address: shopForm.address,
+          latitude: hasLatitude ? Number(shopForm.latitude) : null,
+          longitude: hasLongitude ? Number(shopForm.longitude) : null,
+        }),
+      }, token)
       setShops((current) => [...current, created])
       setSelectedShopId(created.id)
-      setShopForm({ name: '', phone: '', address: '' })
+      setShopForm({ name: '', phone: '', address: '', latitude: '', longitude: '' })
+      setShopLocationMessage('')
       setNotice(`${created.name} is ready for your catalogue.`)
     } catch (caught) { setError(messageFor(caught)) } finally { setBusy(false) }
   }
@@ -233,11 +266,29 @@ export function ShopkeeperWorkspace() {
           {error && <p className="workspace-message workspace-message--error" role="alert">{error}</p>}
           {notice && <p className="workspace-message" role="status">{notice}</p>}
           {loading ? <p className="workspace-state" role="status">Loading your shop workspace…</p> : shops.length === 0 ? (
-            <section className="workspace-panel onboarding"><p className="shopkeeper-kicker">START HERE</p><h2>Set up your first shop.</h2><p>Once it is added, you can list the products you already sell and manage incoming orders.</p><form className="workspace-form" onSubmit={createShop}><Field label="Shop name" name="name" required value={shopForm.name} onChange={(event) => setShopForm({ ...shopForm, name: event.target.value })} /><Field label="Phone" name="phone" type="tel" required value={shopForm.phone} onChange={(event) => setShopForm({ ...shopForm, phone: event.target.value })} /><Field label="Address" name="address" required value={shopForm.address} onChange={(event) => setShopForm({ ...shopForm, address: event.target.value })} /><Button type="submit" disabled={busy}>{busy ? 'Creating shop…' : 'Create shop'}</Button></form></section>
+            <section className="workspace-panel onboarding">
+              <p className="shopkeeper-kicker">START HERE</p>
+              <h2>Set up your first shop.</h2>
+              <p>Once it is added, you can list the products you already sell and manage incoming orders.</p>
+              <form className="workspace-form" onSubmit={createShop}>
+                <Field label="Shop name" name="name" required value={shopForm.name} onChange={(event) => setShopForm({ ...shopForm, name: event.target.value })} />
+                <Field label="Phone" name="phone" type="tel" required value={shopForm.phone} onChange={(event) => setShopForm({ ...shopForm, phone: event.target.value })} />
+                <Field label="Address" name="address" required value={shopForm.address} onChange={(event) => setShopForm({ ...shopForm, address: event.target.value })} />
+                <div className="shop-location-capture">
+                  <div>
+                    <strong>Shop map location</strong>
+                    <span>{shopForm.latitude && shopForm.longitude ? `${shopForm.latitude}, ${shopForm.longitude}` : 'Optional, but helps customers discover nearby shops.'}</span>
+                  </div>
+                  <Button tone="quiet" type="button" disabled={busy} onClick={() => void captureNewShopLocation()}>Use this device location</Button>
+                  {shopLocationMessage && <p role="status">{shopLocationMessage}</p>}
+                </div>
+                <Button type="submit" disabled={busy}>{busy ? 'Creating shop…' : 'Create shop'}</Button>
+              </form>
+            </section>
           ) : section === 'overview' ? <Overview shop={selectedShop} lowStock={lowStock} orders={selectedShopOrders} onOpen={(target) => setSection(target)} />
             : section === 'orders' ? <Orders orders={selectedShopOrders} busy={busy} onMove={moveOrder} />
               : section === 'inventory' ? <Inventory inventory={inventory} lowStock={lowStock} products={availableProducts} showAdd={showAddItem} busy={busy} itemForm={itemForm} onItemForm={setItemForm} onToggleAdd={() => setShowAddItem((current) => !current)} onAdd={addInventory} onUpdate={updateItem} onRestock={openRestock} onThreshold={openThreshold} />
-                : <ShopDetails shop={selectedShop} />}
+                : <ShopDetails key={selectedShop?.id ?? 'shop'} shop={selectedShop} token={token} onUpdated={(updated) => setShops((current) => current.map((entry) => entry.id === updated.id ? updated : entry))} />}
         </main>
       </div>
       <nav className="shopkeeper-bottom-nav" aria-label="Shopkeeper workspace mobile navigation">{SECTIONS.map((entry) => <button key={entry.id} type="button" className={section === entry.id ? 'is-active' : ''} onClick={() => setSection(entry.id)}><span aria-hidden="true">{entry.icon}</span>{entry.label}</button>)}</nav>
@@ -304,6 +355,97 @@ function Inventory({ inventory, lowStock, products, showAdd, busy, itemForm, onI
   return <section><div className="section-title section-title--row"><div><p className="shopkeeper-kicker">INVENTORY</p><h2>Your shelf</h2><p>{lowStock.length ? `${lowStock.length} item${lowStock.length === 1 ? '' : 's'} need attention.` : 'All stock levels are currently above their alerts.'}</p></div><Button disabled={busy || products.length === 0} onClick={onToggleAdd}>{showAdd ? 'Close' : 'Add product'}</Button></div>{showAdd && <form className="workspace-panel workspace-form inventory-add" onSubmit={(event) => void onAdd(event)}><label className="field"><span className="field__label">Existing product</span><select required value={itemForm.productId} onChange={(event) => onItemForm({ ...itemForm, productId: event.target.value })}><option value="">Choose a product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}{product.category ? ` · ${product.category}` : ''}</option>)}</select></label><Field label="Price (₹)" name="price" type="number" min="0" step="0.01" required value={itemForm.price} onChange={(event) => onItemForm({ ...itemForm, price: event.target.value })} /><Field label="Opening stock" name="stockQuantity" type="number" min="0" required value={itemForm.stockQuantity} onChange={(event) => onItemForm({ ...itemForm, stockQuantity: event.target.value })} /><Button type="submit" disabled={busy}>Add to shelf</Button></form>}{inventory.length ? <div className="inventory-list">{inventory.map((item) => <article className="inventory-card" key={item.id}><div><div className="inventory-card__title"><h3>{item.productName}</h3>{item.lowStock && <span className="stock-alert">Low stock</span>}</div><p>{item.category || 'Uncategorised'} · {formatRupees(item.price)}</p></div><div className="inventory-card__stock"><strong>{item.stockQuantity}</strong><span>in stock</span></div><div className="inventory-card__controls"><label><span>Price</span><input aria-label={`${item.productName} price`} type="number" min="0" step="0.01" defaultValue={item.price} onBlur={(event) => { const price = Number(event.target.value); if (Number.isFinite(price) && price !== item.price) void onUpdate(item, { price }) }} /></label><label><span>Stock</span><input aria-label={`${item.productName} stock`} type="number" min="0" defaultValue={item.stockQuantity} onBlur={(event) => { const stockQuantity = Number(event.target.value); if (Number.isInteger(stockQuantity) && stockQuantity !== item.stockQuantity) void onUpdate(item, { stockQuantity }) }} /></label><label className="availability"><input type="checkbox" checked={item.available} onChange={(event) => void onUpdate(item, { available: event.target.checked })} /> Available</label><button type="button" disabled={busy} onClick={() => void onRestock(item)}>Restock</button><button type="button" disabled={busy} onClick={() => void onThreshold(item)}>Stock alert: {item.lowStockThreshold}</button></div></article>)}</div> : <p className="workspace-state">No products are on this shop’s shelf yet.</p>}</section>
 }
 
-function ShopDetails({ shop }: { shop: Shop | null }) {
-  return <section className="workspace-panel shop-details"><p className="shopkeeper-kicker">SHOP DETAILS</p><h2>{shop?.name}</h2><dl><div><dt>Owner</dt><dd>{shop?.ownerName || 'Not listed'}</dd></div><div><dt>Phone</dt><dd>{shop?.phone || 'Not listed'}</dd></div><div><dt>Address</dt><dd>{shop?.address || 'Not listed'}</dd></div><div><dt>Status</dt><dd>{shop?.active ? 'Active on Apniko' : 'Inactive'}</dd></div></dl><p className="empty-copy">Shop details are shown from Apniko. Editing shop details will be added when the reviewed backend capability is available.</p></section>
+function ShopDetails({
+  shop,
+  token,
+  onUpdated,
+}: {
+  shop: Shop | null
+  token: string
+  onUpdated: (shop: Shop) => void
+}) {
+  const [form, setForm] = useState({
+    name: shop?.name ?? '',
+    phone: shop?.phone ?? '',
+    address: shop?.address ?? '',
+    latitude: shop?.latitude == null ? '' : String(shop.latitude),
+    longitude: shop?.longitude == null ? '' : String(shop.longitude),
+  })
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+
+  async function captureLocation() {
+    setMessage('Requesting the device location…')
+    try {
+      const coordinates = await getCurrentCoordinates()
+      setForm((current) => ({
+        ...current,
+        latitude: coordinates.latitude.toFixed(6),
+        longitude: coordinates.longitude.toFixed(6),
+      }))
+      setMessage('Coordinates captured. Save the shop to publish its nearby location.')
+    } catch (caught) {
+      setMessage(messageFor(caught))
+    }
+  }
+
+  async function saveShop(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!shop) return
+    const hasLatitude = form.latitude.trim() !== ''
+    const hasLongitude = form.longitude.trim() !== ''
+    if (hasLatitude !== hasLongitude) {
+      setMessage('Both latitude and longitude are required. Capture the location again or clear both fields.')
+      return
+    }
+
+    setSaving(true)
+    setMessage('')
+    try {
+      const updated = await apiRequest<Shop>(`/api/shops/${shop.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone,
+          address: form.address,
+          latitude: hasLatitude ? Number(form.latitude) : null,
+          longitude: hasLongitude ? Number(form.longitude) : null,
+        }),
+      }, token)
+      onUpdated(updated)
+      setMessage('Shop details saved.')
+    } catch (caught) {
+      setMessage(messageFor(caught))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!shop) return <p className="workspace-state">Choose a shop to manage its details.</p>
+
+  return (
+    <section className="workspace-panel shop-details">
+      <p className="shopkeeper-kicker">SHOP PROFILE</p>
+      <h2>{shop.name}</h2>
+      <form className="workspace-form" onSubmit={(event) => void saveShop(event)}>
+        <Field label="Shop name" name="shopName" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+        <Field label="Phone" name="shopPhone" type="tel" required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+        <Field label="Address" name="shopAddress" required value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+        <div className="shop-location-capture">
+          <div>
+            <strong>Shop map location</strong>
+            <span>{form.latitude && form.longitude ? `${form.latitude}, ${form.longitude}` : 'No coordinates saved yet.'}</span>
+          </div>
+          <Button tone="quiet" type="button" disabled={saving} onClick={() => void captureLocation()}>Use this device location</Button>
+          <p>Allow location access while standing at the shop. Customers can then sort shops by distance.</p>
+        </div>
+        {message && <p className="workspace-message" role="status">{message}</p>}
+        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save shop details'}</Button>
+      </form>
+      <dl className="shop-details__summary">
+        <div><dt>Owner</dt><dd>{shop.ownerName || 'Not listed'}</dd></div>
+        <div><dt>Status</dt><dd>{shop.active ? 'Active on Apniko' : 'Inactive'}</dd></div>
+      </dl>
+    </section>
+  )
 }
