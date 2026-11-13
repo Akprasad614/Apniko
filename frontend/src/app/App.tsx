@@ -4,10 +4,11 @@ import { RequireRole } from './RequireRole'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
-import { PortalPage } from '../pages/PortalPage'
 import { RegisterPage } from '../pages/RegisterPage'
 import { CustomerStorefront } from '../features/customer/CustomerStorefront'
 import { ShopkeeperDashboard } from '../features/shopkeeper/ShopkeeperDashboard'
+import { AdminDashboard } from '../features/admin/AdminDashboard'
+import { DeliveryDashboard } from '../features/delivery/DeliveryDashboard'
 import { roleHomePath } from '../lib/roles'
 
 function AccountRedirect() {
@@ -26,8 +27,8 @@ export function App() {
           <Route path="/account" element={<AccountRedirect />} />
           <Route path="/customer/*" element={<RequireRole allowed={['CUSTOMER']}><CustomerStorefront /></RequireRole>} />
           <Route path="/shopkeeper/*" element={<RequireRole allowed={['SHOPKEEPER']}><ShopkeeperDashboard /></RequireRole>} />
-          <Route path="/delivery/*" element={<RequireRole allowed={['DELIVERY_PARTNER']}><PortalPage /></RequireRole>} />
-          <Route path="/admin/*" element={<RequireRole allowed={['ADMIN']}><PortalPage /></RequireRole>} />
+          <Route path="/delivery/*" element={<RequireRole allowed={['DELIVERY_PARTNER']}><DeliveryDashboard /></RequireRole>} />
+          <Route path="/admin/*" element={<RequireRole allowed={['ADMIN']}><AdminDashboard /></RequireRole>} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
