@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
-import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
 import {
@@ -15,6 +14,7 @@ import type {
   MarketplacePage,
   MarketplaceShop,
 } from './marketplace'
+import { CustomerOrders } from './CustomerOrders'
 import './customer-storefront.css'
 
 const PAGE_SIZE = 24
@@ -52,6 +52,9 @@ export function CustomerStorefront() {
   const [productError, setProductError] = useState('')
   const [basketError, setBasketError] = useState('')
   const [notice, setNotice] = useState('')
+  const [deliveryMode, setDeliveryMode] = useState<'SHOP_DELIVERY' | 'PLATFORM_DELIVERY' | 'CUSTOMER_PICKUP'>('SHOP_DELIVERY')
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
+  const [ordersRefreshKey, setOrdersRefreshKey] = useState(0)
 
   const selectedShop = useMemo(
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
@@ -228,6 +231,59 @@ export function CustomerStorefront() {
     }
   }
 
+  async function placeOrder() {
+    if (selectedShopId === null || !basket?.items.length || checkoutBusy) return
+
+    setCheckoutBusy(true)
+    setBasketError('')
+    setNotice('')
+
+    try {
+      const order = await apiRequest<{ id: number; status: string }>(
+        `/api/customer/cart/${selectedShopId}/checkout`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ deliveryMode }),
+        },
+        token,
+      )
+
+      setNotice(order?.id
+        ? `Order #${order.id} has been placed. You can follow its progress below.`
+        : 'Your order has been placed. You can follow its progress below.')
+      setBasket({
+        cartId: null,
+        shopId: selectedShopId,
+        shopName: selectedShop?.name ?? '',
+        items: [],
+        totalAmount: 0,
+      })
+      setOrdersRefreshKey((current) => current + 1)
+      void loadProducts(0, false)
+
+      // Checkout is already complete if refreshing the now-empty cart fails.
+      try {
+        const refreshedBasket = await apiRequest<Basket>(
+          `/api/customer/cart/${selectedShopId}`,
+          {},
+          token,
+        )
+        setBasket(refreshedBasket)
+      } catch {
+        // Keep the empty basket state; the next page refresh will retry it.
+      }
+
+      document.getElementById('customer-orders')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    } catch (error) {
+      setBasketError(messageFor(error))
+    } finally {
+      setCheckoutBusy(false)
+    }
+  }
+
   const greetingName = session?.name.trim().split(/\s+/)[0] || 'there'
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
 
@@ -236,12 +292,13 @@ export function CustomerStorefront() {
       <a className="skip-link" href="#customer-main">Skip to marketplace</a>
       <header className="customer-header">
         <div className="customer-wrap customer-header__inner">
-          <BrandMark />
+          <Link className="customer-wordmark" to="/">apniko<span>.</span></Link>
           <div className="customer-header__right">
             <span className="customer-header__welcome">A good day to shop local, {greetingName}.</span>
             <span className="customer-header__basket-count" aria-label={`${basketCount} items in basket`}>
               Basket <strong>{basketCount}</strong>
             </span>
+            <a className="customer-header__orders-link" href="#customer-orders">Your orders</a>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
         </div>
@@ -466,16 +523,40 @@ export function CustomerStorefront() {
                   <strong>{formatRupees(basket?.totalAmount ?? 0)}</strong>
                 </div>
                 <p className="basket-panel__note">Your basket belongs to this shop. Choose another shop to see its separate basket.</p>
+                <div className="basket-checkout">
+                  <label htmlFor="delivery-mode">How would you like to receive it?</label>
+                  <select
+                    id="delivery-mode"
+                    value={deliveryMode}
+                    onChange={(event) => setDeliveryMode(event.target.value as typeof deliveryMode)}
+                  >
+                    <option value="SHOP_DELIVERY">Delivery by this shop</option>
+                    <option value="PLATFORM_DELIVERY">Apniko delivery</option>
+                    <option value="CUSTOMER_PICKUP">I'll collect it</option>
+                  </select>
+                  <button
+                    className="basket-checkout__button"
+                    type="button"
+                    disabled={checkoutBusy || loadingBasket || !basket?.items.length || basket.items.some((item) => !item.available || item.quantity > item.availableStock)}
+                    onClick={() => void placeOrder()}
+                  >
+                    {checkoutBusy ? 'Placing order…' : 'Place order'}
+                    <span aria-hidden="true">→</span>
+                  </button>
+                  <p className="basket-checkout__note">The shop confirms availability when it receives your order. The total shown here is the price of the items in your basket.</p>
+                </div>
                 <Link className="basket-panel__back" to="/">Back to Apniko home ↗</Link>
               </aside>
             </div>
           </section>
         )}
+
+        <CustomerOrders refreshKey={ordersRefreshKey} />
       </main>
 
       <footer className="customer-footer">
         <div className="customer-wrap customer-footer__inner">
-          <BrandMark />
+          <Link className="customer-wordmark" to="/">apniko<span>.</span></Link>
           <span>Good groceries. Closer to home.</span>
           <span>APNIKO / CUSTOMER</span>
         </div>
