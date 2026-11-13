@@ -46,7 +46,7 @@ class ProductImageStorageServiceTest {
         );
 
         assertThrows(BadRequestException.class, () -> storage.store(upload));
-        assertFalse(Files.exists(storageDirectory));
+        assertEquals(0, storageDirectory.toFile().list().length);
     }
 
     @Test
@@ -58,7 +58,7 @@ class ProductImageStorageServiceTest {
         );
 
         assertThrows(BadRequestException.class, () -> storage.store(upload));
-        assertFalse(Files.exists(storageDirectory));
+        assertEquals(0, storageDirectory.toFile().list().length);
     }
 
     private byte[] pngBytes() throws Exception {
