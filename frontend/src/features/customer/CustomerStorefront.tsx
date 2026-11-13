@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
+import { getCurrentCoordinates } from '../../lib/geolocation'
 import { CustomerAddressBook } from './CustomerAddressBook'
 import { CustomerCheckout } from './CustomerCheckout'
 import { CustomerOrders } from './CustomerOrders'
@@ -11,13 +12,17 @@ import { ProductImage } from './ProductImage'
 import {
   buildMarketplaceSearchPath,
   filterMarketplaceShops,
+  formatDistanceKm,
   formatRupees,
+  getShopDistanceKm,
+  sortShopsByDistance,
 } from './marketplace'
 import type {
   Basket,
   MarketplaceInventoryItem,
   MarketplacePage,
   MarketplaceShop,
+  CustomerCoordinates,
 } from './marketplace'
 import './customer-storefront.css'
 import './customer-discovery.css'
@@ -51,6 +56,9 @@ export function CustomerStorefront() {
 
   const [shops, setShops] = useState<MarketplaceShop[]>([])
   const [categories, setCategories] = useState<string[]>([])
+  const [customerLocation, setCustomerLocation] = useState<CustomerCoordinates | null>(null)
+  const [locatingCustomer, setLocatingCustomer] = useState(false)
+  const [locationMessage, setLocationMessage] = useState('')
   const [searchMode, setSearchMode] = useState<SearchMode>('products')
   const [browseShopId, setBrowseShopId] = useState<number | null>(null)
   const [cartShopId, setCartShopId] = useState<number | null>(null)
@@ -88,9 +96,31 @@ export function CustomerStorefront() {
     [shops, cartShopId],
   )
   const filteredShops = useMemo(
-    () => filterMarketplaceShops(shops, appliedSearch),
-    [shops, appliedSearch],
+    () => sortShopsByDistance(filterMarketplaceShops(shops, appliedSearch), customerLocation),
+    [shops, appliedSearch, customerLocation],
   )
+  const discoveryShops = useMemo(
+    () => sortShopsByDistance(shops, customerLocation),
+    [shops, customerLocation],
+  )
+
+  function distanceLabelForShop(shop: MarketplaceShop): string | null {
+    return formatDistanceKm(getShopDistanceKm(shop, customerLocation))
+  }
+
+  async function locateCustomer() {
+    setLocatingCustomer(true)
+    setLocationMessage('Finding your location…')
+    try {
+      const coordinates = await getCurrentCoordinates()
+      setCustomerLocation(coordinates)
+      setLocationMessage('Nearby shops are now sorted by distance from your location.')
+    } catch (caught) {
+      setLocationMessage(messageFor(caught))
+    } finally {
+      setLocatingCustomer(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -452,6 +482,7 @@ export function CustomerStorefront() {
                     </div>
                     <h3>{shop.name}</h3>
                     <p>{shop.address || 'Address not listed'}</p>
+                    {distanceLabelForShop(shop) && <span className="discovery-shop-card__distance">{distanceLabelForShop(shop)} from you</span>}
                     {shop.ownerName && <span className="discovery-shop-card__owner">Run by {shop.ownerName}</span>}
                     <button type="button" onClick={() => openShop(shop)}>Browse this shop <span aria-hidden="true">→</span></button>
                   </article>
@@ -477,18 +508,27 @@ export function CustomerStorefront() {
                     <p className="discovery-eyebrow">SHOP BY STORE</p>
                     <h2 id="shops-strip-title">Explore local shops</h2>
                   </div>
-                  <button type="button" onClick={() => changeSearchMode('shops')}>View all shops <span aria-hidden="true">→</span></button>
+                  <div className="discovery-shop-strip__actions">
+                    <button type="button" onClick={() => void locateCustomer()} disabled={locatingCustomer}>
+                      {locatingCustomer ? 'Locating…' : customerLocation ? 'Refresh my location' : 'Use my location'}
+                    </button>
+                    <button type="button" onClick={() => changeSearchMode('shops')}>View all shops <span aria-hidden="true">→</span></button>
+                  </div>
                 </div>
+                {locationMessage && <p className="discovery-location-message" role="status">{locationMessage}</p>}
                 {loadingShops ? (
                   <div className="discovery-shop-strip__loading" role="status">Loading shops…</div>
                 ) : shops.length === 0 ? (
                   <p className="discovery-shop-strip__empty">Shops will appear here as they join Apniko.</p>
                 ) : (
                   <div className="discovery-shop-strip__items">
-                    {shops.slice(0, 6).map((shop) => (
+                    {discoveryShops.slice(0, 6).map((shop) => (
                       <button type="button" className="discovery-shop-chip" key={shop.id} onClick={() => openShop(shop)}>
                         <span className="discovery-shop-chip__initials">{shopInitials(shop.name)}</span>
-                        <span><strong>{shop.name}</strong><small>{shop.address || 'Local store'}</small></span>
+                        <span>
+                          <strong>{shop.name}</strong>
+                          <small>{shop.address || 'Local store'}{distanceLabelForShop(shop) ? ` · ${distanceLabelForShop(shop)}` : ''}</small>
+                        </span>
                         <span aria-hidden="true">›</span>
                       </button>
                     ))}
@@ -581,7 +621,21 @@ export function CustomerStorefront() {
                             const shop = shops.find((entry) => entry.id === product.shopId)
                             if (shop) openShop(shop)
                           }}
-                        >{product.shopName} <span aria-hidden="true">↗</span></button>
+                        >
+                          {product.shopName}
+                          {formatDistanceKm(getShopDistanceKm({
+                            latitude: product.shopLatitude,
+                            longitude: product.shopLongitude,
+                          }, customerLocation)) && (
+                            <small className="discovery-product-card__distance">
+                              {formatDistanceKm(getShopDistanceKm({
+                                latitude: product.shopLatitude,
+                                longitude: product.shopLongitude,
+                              }, customerLocation))}
+                            </small>
+                          )}
+                          <span aria-hidden="true">↗</span>
+                        </button>
                         <div className="discovery-product-card__bottom">
                           <div>
                             <strong>{formatRupees(product.price)}</strong>
