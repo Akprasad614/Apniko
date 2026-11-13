@@ -50,6 +50,8 @@ class CustomerMarketplaceServiceTest {
         assertEquals(1, result.size());
         assertEquals("Local Fresh", result.get(0).getName());
         assertTrue(result.get(0).isActive());
+        assertEquals(12.97, result.get(0).getLatitude());
+        assertEquals(77.59, result.get(0).getLongitude());
     }
 
     @Test
@@ -133,6 +135,8 @@ class CustomerMarketplaceServiceTest {
         Shop shop = mock(Shop.class);
         when(shop.getId()).thenReturn(7L);
         when(shop.getName()).thenReturn("Fresh Basket");
+        when(shop.getLatitude()).thenReturn(12.97);
+        when(shop.getLongitude()).thenReturn(77.59);
 
         ShopInventory inventory = new ShopInventory();
         inventory.setShop(shop);
@@ -157,6 +161,8 @@ class CustomerMarketplaceServiceTest {
         assertEquals("https://cdn.example.com/products/basmati-rice.jpg",
                 result.getContent().get(0).getImageUrl());
         assertEquals(7L, result.getContent().get(0).getShopId());
+        assertEquals(12.97, result.getContent().get(0).getShopLatitude());
+        assertEquals(77.59, result.getContent().get(0).getShopLongitude());
     }
 
     @Test
