@@ -189,6 +189,8 @@ class CustomerMarketplaceServiceTest {
         when(shop.getId()).thenReturn(id);
         when(shop.getName()).thenReturn(name);
         when(shop.isActive()).thenReturn(active);
+        when(shop.getLatitude()).thenReturn(12.97);
+        when(shop.getLongitude()).thenReturn(77.59);
         return shop;
     }
 }
