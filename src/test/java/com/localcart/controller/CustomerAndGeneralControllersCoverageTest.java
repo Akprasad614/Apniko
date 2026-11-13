@@ -106,6 +106,11 @@ class CustomerAndGeneralControllersCoverageTest {
         when(userRepository.findByEmail("owner@example.com"))
                 .thenReturn(Optional.of(user(12L, Role.SHOPKEEPER, true)));
         assertEquals(403, controller.getMyOrders().getStatusCode().value());
+
+        securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn("inactive@example.com");
+        when(userRepository.findByEmail("inactive@example.com"))
+                .thenReturn(Optional.of(user(11L, Role.CUSTOMER, false)));
+        assertEquals(404, controller.getMyOrders().getStatusCode().value());
     }
 
     @Test
