@@ -162,6 +162,37 @@ export function ShopkeeperWorkspace() {
     } catch (caught) { setError(messageFor(caught)) } finally { setBusy(false) }
   }
 
+  async function uploadInventoryImage(item: InventoryItem, file: File) {
+    if (selectedShopId === null) return
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setError('Choose a JPEG or PNG image.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Product photos must be 5 MB or smaller.')
+      return
+    }
+
+    const payload = new FormData()
+    payload.append('file', file)
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await apiRequest<InventoryItem>(
+        `/api/shopkeeper/shops/${selectedShopId}/inventory/${item.id}/image`,
+        { method: 'POST', body: payload },
+        token,
+      )
+      await loadInventory(selectedShopId)
+      setNotice(`${item.productName} photo uploaded.`)
+    } catch (caught) {
+      setError(messageFor(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function updateItem(item: InventoryItem, values: Partial<Pick<InventoryItem, 'price' | 'stockQuantity' | 'available'>>) {
     setBusy(true); setError(''); setNotice('')
     try {
@@ -287,7 +318,7 @@ export function ShopkeeperWorkspace() {
             </section>
           ) : section === 'overview' ? <Overview shop={selectedShop} lowStock={lowStock} orders={selectedShopOrders} onOpen={(target) => setSection(target)} />
             : section === 'orders' ? <Orders orders={selectedShopOrders} busy={busy} onMove={moveOrder} />
-              : section === 'inventory' ? <Inventory inventory={inventory} lowStock={lowStock} products={availableProducts} showAdd={showAddItem} busy={busy} itemForm={itemForm} onItemForm={setItemForm} onToggleAdd={() => setShowAddItem((current) => !current)} onAdd={addInventory} onUpdate={updateItem} onRestock={openRestock} onThreshold={openThreshold} />
+              : section === 'inventory' ? <Inventory inventory={inventory} lowStock={lowStock} products={availableProducts} showAdd={showAddItem} busy={busy} itemForm={itemForm} onItemForm={setItemForm} onToggleAdd={() => setShowAddItem((current) => !current)} onAdd={addInventory} onUpdate={updateItem} onUploadImage={uploadInventoryImage} onRestock={openRestock} onThreshold={openThreshold} />
                 : <ShopDetails key={selectedShop?.id ?? 'shop'} shop={selectedShop} token={token} onUpdated={(updated) => setShops((current) => current.map((entry) => entry.id === updated.id ? updated : entry))} />}
         </main>
       </div>
@@ -351,8 +382,157 @@ function Orders({ orders, busy, onMove }: { orders: ShopkeeperOrder[]; busy: boo
   return <section><div className="section-title"><p className="shopkeeper-kicker">ORDERS</p><h2>Incoming and in progress</h2></div>{orders.length ? <div className="order-list">{orders.map((order) => <article className="order-card" key={order.id}><div className="order-card__top"><div><strong>Order #{order.id}</strong><span className={`status-tag status-tag--${order.status.toLowerCase()}`}>{statusLabel(order.status)}</span></div><b>{formatRupees(order.totalAmount)}</b></div><p className="order-card__meta">{order.deliveryMode.replaceAll('_', ' ').toLowerCase()} · {order.items.length} item{order.items.length === 1 ? '' : 's'}</p><ul>{order.items.map((item) => <li key={item.id}><span>{item.quantity} × {item.product.name}</span><span>{formatRupees(item.price * item.quantity)}</span></li>)}</ul><div className="order-card__actions">{nextShopkeeperStatus[order.status] && <Button disabled={busy} onClick={() => void onMove(order)}>{statusActionLabel[order.status]}</Button>}{['PLACED', 'ACCEPTED', 'PREPARING', 'READY'].includes(order.status) && <button className="danger-action" disabled={busy} type="button" onClick={() => void onMove(order, true)}>Cancel order</button>}</div></article>)}</div> : <p className="workspace-state">There are no orders for your shops yet.</p>}</section>
 }
 
-function Inventory({ inventory, lowStock, products, showAdd, busy, itemForm, onItemForm, onToggleAdd, onAdd, onUpdate, onRestock, onThreshold }: { inventory: InventoryItem[]; lowStock: InventoryItem[]; products: Product[]; showAdd: boolean; busy: boolean; itemForm: { productId: string; price: string; stockQuantity: string }; onItemForm: (value: { productId: string; price: string; stockQuantity: string }) => void; onToggleAdd: () => void; onAdd: (event: FormEvent<HTMLFormElement>) => Promise<void>; onUpdate: (item: InventoryItem, values: Partial<Pick<InventoryItem, 'price' | 'stockQuantity' | 'available'>>) => Promise<void>; onRestock: (item: InventoryItem) => void; onThreshold: (item: InventoryItem) => void }) {
-  return <section><div className="section-title section-title--row"><div><p className="shopkeeper-kicker">INVENTORY</p><h2>Your shelf</h2><p>{lowStock.length ? `${lowStock.length} item${lowStock.length === 1 ? '' : 's'} need attention.` : 'All stock levels are currently above their alerts.'}</p></div><Button disabled={busy || products.length === 0} onClick={onToggleAdd}>{showAdd ? 'Close' : 'Add product'}</Button></div>{showAdd && <form className="workspace-panel workspace-form inventory-add" onSubmit={(event) => void onAdd(event)}><label className="field"><span className="field__label">Existing product</span><select required value={itemForm.productId} onChange={(event) => onItemForm({ ...itemForm, productId: event.target.value })}><option value="">Choose a product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}{product.category ? ` · ${product.category}` : ''}</option>)}</select></label><Field label="Price (₹)" name="price" type="number" min="0" step="0.01" required value={itemForm.price} onChange={(event) => onItemForm({ ...itemForm, price: event.target.value })} /><Field label="Opening stock" name="stockQuantity" type="number" min="0" required value={itemForm.stockQuantity} onChange={(event) => onItemForm({ ...itemForm, stockQuantity: event.target.value })} /><Button type="submit" disabled={busy}>Add to shelf</Button></form>}{inventory.length ? <div className="inventory-list">{inventory.map((item) => <article className="inventory-card" key={item.id}><div><div className="inventory-card__title"><h3>{item.productName}</h3>{item.lowStock && <span className="stock-alert">Low stock</span>}</div><p>{item.category || 'Uncategorised'} · {formatRupees(item.price)}</p></div><div className="inventory-card__stock"><strong>{item.stockQuantity}</strong><span>in stock</span></div><div className="inventory-card__controls"><label><span>Price</span><input aria-label={`${item.productName} price`} type="number" min="0" step="0.01" defaultValue={item.price} onBlur={(event) => { const price = Number(event.target.value); if (Number.isFinite(price) && price !== item.price) void onUpdate(item, { price }) }} /></label><label><span>Stock</span><input aria-label={`${item.productName} stock`} type="number" min="0" defaultValue={item.stockQuantity} onBlur={(event) => { const stockQuantity = Number(event.target.value); if (Number.isInteger(stockQuantity) && stockQuantity !== item.stockQuantity) void onUpdate(item, { stockQuantity }) }} /></label><label className="availability"><input type="checkbox" checked={item.available} onChange={(event) => void onUpdate(item, { available: event.target.checked })} /> Available</label><button type="button" disabled={busy} onClick={() => void onRestock(item)}>Restock</button><button type="button" disabled={busy} onClick={() => void onThreshold(item)}>Stock alert: {item.lowStockThreshold}</button></div></article>)}</div> : <p className="workspace-state">No products are on this shop’s shelf yet.</p>}</section>
+function Inventory({
+  inventory,
+  lowStock,
+  products,
+  showAdd,
+  busy,
+  itemForm,
+  onItemForm,
+  onToggleAdd,
+  onAdd,
+  onUpdate,
+  onUploadImage,
+  onRestock,
+  onThreshold,
+}: {
+  inventory: InventoryItem[]
+  lowStock: InventoryItem[]
+  products: Product[]
+  showAdd: boolean
+  busy: boolean
+  itemForm: { productId: string; price: string; stockQuantity: string }
+  onItemForm: (value: { productId: string; price: string; stockQuantity: string }) => void
+  onToggleAdd: () => void
+  onAdd: (event: FormEvent<HTMLFormElement>) => Promise<void>
+  onUpdate: (item: InventoryItem, values: Partial<Pick<InventoryItem, 'price' | 'stockQuantity' | 'available'>>) => Promise<void>
+  onUploadImage: (item: InventoryItem, file: File) => Promise<void>
+  onRestock: (item: InventoryItem) => void
+  onThreshold: (item: InventoryItem) => void
+}) {
+  return (
+    <section>
+      <div className="section-title section-title--row">
+        <div>
+          <p className="shopkeeper-kicker">INVENTORY</p>
+          <h2>Your shelf</h2>
+          <p>{lowStock.length
+            ? `${lowStock.length} item${lowStock.length === 1 ? '' : 's'} need attention.`
+            : 'All stock levels are currently above their alerts.'}</p>
+        </div>
+        <Button disabled={busy || products.length === 0} onClick={onToggleAdd}>
+          {showAdd ? 'Close' : 'Add product'}
+        </Button>
+      </div>
+
+      {showAdd && (
+        <form className="workspace-panel workspace-form inventory-add" onSubmit={(event) => void onAdd(event)}>
+          <label className="field">
+            <span className="field__label">Existing product</span>
+            <select required value={itemForm.productId} onChange={(event) => onItemForm({ ...itemForm, productId: event.target.value })}>
+              <option value="">Choose a product</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}{product.category ? ` · ${product.category}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Field label="Price (₹)" name="price" type="number" min="0" step="0.01" required value={itemForm.price} onChange={(event) => onItemForm({ ...itemForm, price: event.target.value })} />
+          <Field label="Opening stock" name="stockQuantity" type="number" min="0" required value={itemForm.stockQuantity} onChange={(event) => onItemForm({ ...itemForm, stockQuantity: event.target.value })} />
+          <Button type="submit" disabled={busy}>Add to shelf</Button>
+        </form>
+      )}
+
+      {inventory.length ? (
+        <div className="inventory-list">
+          {inventory.map((item) => (
+            <article className="inventory-card" key={item.id}>
+              <div className="inventory-card__main">
+                <div className="inventory-card__title">
+                  <h3>{item.productName}</h3>
+                  {item.lowStock && <span className="stock-alert">Low stock</span>}
+                </div>
+                <p>{item.category || 'Uncategorised'} · {formatRupees(item.price)}</p>
+              </div>
+
+              <div className="inventory-card__stock">
+                <strong>{item.stockQuantity}</strong>
+                <span>in stock</span>
+              </div>
+
+              <div className="inventory-card__photo-row">
+                {item.imageUrl ? (
+                  <img className="inventory-card__photo" src={item.imageUrl} alt={item.productName} loading="lazy" />
+                ) : (
+                  <div className="inventory-card__photo inventory-card__photo--empty">
+                    <span aria-hidden="true">＋</span>
+                    <small>No shop photo</small>
+                  </div>
+                )}
+                <label className="inventory-image-upload">
+                  <span>{item.imageUrl ? 'Replace photo' : 'Add product photo'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    aria-label={`Upload a photo for ${item.productName}`}
+                    disabled={busy}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) void onUploadImage(item, file)
+                      event.currentTarget.value = ''
+                    }}
+                  />
+                  <small>JPEG or PNG · up to 5 MB</small>
+                </label>
+              </div>
+
+              <div className="inventory-card__controls">
+                <label>
+                  <span>Price</span>
+                  <input
+                    aria-label={`${item.productName} price`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    defaultValue={item.price}
+                    onBlur={(event) => {
+                      const price = Number(event.target.value)
+                      if (Number.isFinite(price) && price !== item.price) void onUpdate(item, { price })
+                    }}
+                  />
+                </label>
+                <label>
+                  <span>Stock</span>
+                  <input
+                    aria-label={`${item.productName} stock`}
+                    type="number"
+                    min="0"
+                    defaultValue={item.stockQuantity}
+                    onBlur={(event) => {
+                      const stockQuantity = Number(event.target.value)
+                      if (Number.isInteger(stockQuantity) && stockQuantity !== item.stockQuantity) {
+                        void onUpdate(item, { stockQuantity })
+                      }
+                    }}
+                  />
+                </label>
+                <label className="availability">
+                  <input type="checkbox" checked={item.available} onChange={(event) => void onUpdate(item, { available: event.target.checked })} />
+                  Available
+                </label>
+                <button type="button" disabled={busy} onClick={() => void onRestock(item)}>Restock</button>
+                <button type="button" disabled={busy} onClick={() => void onThreshold(item)}>Stock alert: {item.lowStockThreshold}</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="workspace-state">No products are on this shop’s shelf yet.</p>
+      )}
+    </section>
+  )
 }
 
 function ShopDetails({
