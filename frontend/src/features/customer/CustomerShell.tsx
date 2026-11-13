@@ -1,7 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/Button'
-import { Wordmark } from '../../components/Wordmark'
 import './customer-shell.css'
 
 const navigation = [
@@ -27,7 +26,7 @@ export function CustomerShell() {
       <a className="skip-link" href="#customer-main">Skip to customer content</a>
       <header className="customer-shell-header">
         <div className="customer-shell-header__inner">
-          <Link className="customer-shell-brand" to="/customer/home" aria-label="Apniko home"><Wordmark /></Link>
+          <Link className="customer-shell-brand" to="/customer/home" aria-label="Apniko home">apniko<span>.</span></Link>
           <div className="customer-shell-header__account">
             <span>Good to see you, <strong>{session?.name.split(/\s+/)[0] || 'there'}</strong></span>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
@@ -68,7 +67,7 @@ export function CustomerShell() {
       </nav>
 
       <footer className="customer-shell-footer">
-        <Wordmark />
+        <Link className="customer-shell-footer__brand" to="/customer/home">apniko<span>.</span></Link>
         <span>Good groceries. Closer to home.</span>
         <span>APNIKO / CUSTOMER</span>
       </footer>
