@@ -1,5 +1,7 @@
 package com.localcart.controller;
 
+import com.localcart.dto.CancelOrderRequest;
+import jakarta.validation.Valid;
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderStatus;
 import com.localcart.entity.Role;
@@ -112,9 +114,47 @@ public class ShopkeeperOrderController {
                 );
     }
 
+    @PutMapping("/{orderId}/reject")
+    public ResponseEntity<Order> rejectOrder(
+            @PathVariable Long orderId,
+            @Valid @RequestBody(required = false) CancelOrderRequest request) {
+
+        User shopkeeper = getCurrentShopkeeper();
+        if (shopkeeper == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!isOwner(order, shopkeeper)) {
+            return ResponseEntity.status(403).build();
+        }
+        if (order.getStatus() != OrderStatus.PLACED) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String reason = request == null || request.getReason() == null
+                || request.getReason().isBlank()
+                ? "Rejected by shopkeeper"
+                : request.getReason().trim();
+
+        Optional<Order> rejectedOrder = orderService.rejectOrderByShopkeeper(
+                orderId,
+                shopkeeper.getEmail(),
+                reason
+        );
+
+        return rejectedOrder
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.badRequest().build());
+    }
+
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<Order> cancelOrder(
-            @PathVariable Long orderId) {
+            @PathVariable Long orderId,
+            @Valid @RequestBody(required = false) CancelOrderRequest request) {
 
         User shopkeeper = getCurrentShopkeeper();
 
@@ -139,7 +179,9 @@ public class ShopkeeperOrderController {
                 orderService.cancelOrderByShopkeeper(
                         orderId,
                         shopkeeper.getEmail(),
-                        "Cancelled by shopkeeper"
+                        request == null || request.getReason() == null || request.getReason().isBlank()
+                                ? "Cancelled by shopkeeper"
+                                : request.getReason().trim()
                 );
 
         return cancelledOrder

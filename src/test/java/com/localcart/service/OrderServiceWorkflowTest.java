@@ -127,6 +127,46 @@ class OrderServiceWorkflowTest {
     }
 
     @Test
+    void shopkeeperCanRejectOnlyAPlacedOrder() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(108L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(paymentRepository.findByOrderId(108L)).thenReturn(Optional.empty());
+
+        Optional<Order> rejected = orderService.rejectOrderByShopkeeper(
+                108L, shopkeeper.getEmail(), "Out of stock");
+
+        assertTrue(rejected.isPresent());
+        assertEquals(OrderStatus.CANCELLED, rejected.get().getStatus());
+        verify(orderStatusHistoryRepository).save(argThat(history ->
+                "Out of stock".equals(history.getNote())
+        ));
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperCannotRejectAnOrderAfterItWasAccepted() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.ACCEPTED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(109L)).thenReturn(Optional.of(order));
+
+        Optional<Order> rejected = orderService.rejectOrderByShopkeeper(
+                109L, shopkeeper.getEmail(), "Too late");
+
+        assertTrue(rejected.isEmpty());
+        assertEquals(OrderStatus.ACCEPTED, order.getStatus());
+        verify(orderStatusHistoryRepository, never()).save(any());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     void availableDeliveryQueueContainsOnlyReadyPlatformDeliveryOrders() {
         Order platformOrder = order(OrderStatus.READY, DeliveryMode.PLATFORM_DELIVERY);
         Order shopOrder = order(OrderStatus.READY, DeliveryMode.SHOP_DELIVERY);

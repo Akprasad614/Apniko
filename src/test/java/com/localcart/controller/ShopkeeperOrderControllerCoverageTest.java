@@ -131,6 +131,32 @@ class ShopkeeperOrderControllerCoverageTest {
     }
 
     @Test
+    void rejectEndpointDelegatesToLockedShopkeeperRejection() {
+        User owner = user(12L, Role.SHOPKEEPER, true);
+        Order order = new Order();
+        order.setStatus(OrderStatus.PLACED);
+        Shop shop = mock(Shop.class);
+        when(shop.getOwner()).thenReturn(owner);
+        order.setShop(shop);
+        securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn("owner@example.com");
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(order));
+        when(orderService.rejectOrderByShopkeeper(7L, "owner@example.com", "Out of stock"))
+                .thenReturn(Optional.of(order));
+
+        var response = controller.rejectOrder(7L, cancelRequest("Out of stock"));
+
+        assertEquals(200, response.getStatusCode().value());
+        verify(orderService).rejectOrderByShopkeeper(7L, "owner@example.com", "Out of stock");
+    }
+
+    private static com.localcart.dto.CancelOrderRequest cancelRequest(String reason) {
+        com.localcart.dto.CancelOrderRequest request = new com.localcart.dto.CancelOrderRequest();
+        request.setReason(reason);
+        return request;
+    }
+
+    @Test
     void cancelEndpointReturnsBadRequestWhenCancellationIsRejected() {
         User owner = user(12L, Role.SHOPKEEPER, true);
         Order order = new Order();
@@ -143,7 +169,7 @@ class ShopkeeperOrderControllerCoverageTest {
         when(orderService.cancelOrderByShopkeeper(6L, "owner@example.com", "Cancelled by shopkeeper"))
                 .thenReturn(Optional.empty());
 
-        assertEquals(400, controller.cancelOrder(6L).getStatusCode().value());
+        assertEquals(400, controller.cancelOrder(6L, null).getStatusCode().value());
     }
 
     private static User user(Long id, Role role, boolean active) {

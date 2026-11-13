@@ -696,6 +696,41 @@ public class OrderService {
     }
 
     @Transactional
+    public Optional<Order> rejectOrderByShopkeeper(
+            Long orderId,
+            String email,
+            String reason) {
+
+        User shopkeeper = getShopkeeper(email);
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElse(null);
+
+        if (order == null) {
+            return Optional.empty();
+        }
+
+        if (order.getShop() == null
+                || order.getShop().getOwner() == null
+                || !order.getShop().getOwner().getId().equals(shopkeeper.getId())) {
+            throw new BadRequestException(
+                    "You are not authorized to reject this order"
+            );
+        }
+
+        // Check the status after taking the row lock so a concurrent acceptance
+        // cannot turn a rejection into an unintended cancellation.
+        if (order.getStatus() != OrderStatus.PLACED) {
+            return Optional.empty();
+        }
+
+        return cancelAndRestock(
+                order,
+                shopkeeper,
+                normalizeCancellationReason(reason, "Rejected by shopkeeper")
+        );
+    }
+
+    @Transactional
     public Optional<Order> cancelOrderByShopkeeper(
             Long orderId,
             String email,
