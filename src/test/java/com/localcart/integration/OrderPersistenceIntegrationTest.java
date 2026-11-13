@@ -93,6 +93,9 @@ class OrderPersistenceIntegrationTest {
 
         Order saved = orderRepository.saveAndFlush(order);
         Long orderId = saved.getId();
+        Long shopId = shop.getId();
+        Long customerId = customer.getId();
+        Long productId = product.getId();
 
         entityManager.flush();
         entityManager.clear();
@@ -103,13 +106,13 @@ class OrderPersistenceIntegrationTest {
                 () -> assertNotNull(reloaded.getId()),
                 () -> assertEquals(OrderStatus.PLACED, reloaded.getStatus()),
                 () -> assertEquals(DeliveryMode.CUSTOMER_PICKUP, reloaded.getDeliveryMode()),
-                () -> assertEquals(120.0, reloaded.getTotalAmount()),
-                () -> assertEquals(shop.getId(), reloaded.getShop().getId()),
-                () -> assertEquals(customer.getId(), reloaded.getCustomer().getId()),
+                () -> assertEquals(120.0, reloaded.getTotalAmount(), 0.001),
+                () -> assertEquals(shopId, reloaded.getShop().getId()),
+                () -> assertEquals(customerId, reloaded.getCustomer().getId()),
                 () -> assertEquals(1, reloaded.getItems().size()),
-                () -> assertEquals(product.getId(), reloaded.getItems().get(0).getProduct().getId()),
+                () -> assertEquals(productId, reloaded.getItems().get(0).getProduct().getId()),
                 () -> assertEquals(2, reloaded.getItems().get(0).getQuantity()),
-                () -> assertEquals(60.0, reloaded.getItems().get(0).getPrice())
+                () -> assertEquals(60.0, reloaded.getItems().get(0).getPrice(), 0.001)
         );
     }
 }
