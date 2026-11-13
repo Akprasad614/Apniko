@@ -1,37 +1,48 @@
 # Product image delivery
 
-## Storage design
+## Data model and precedence
 
-Apniko stores product metadata and the product image URL in MySQL. The image bytes should live in managed object storage with image CDN delivery (for example, Cloudinary or an S3-compatible service with a CDN in front).
+Apniko supports a shared catalogue image and an optional shop-specific image.
 
-This keeps the relational database small and lets the image service handle resizing, format conversion, caching and delivery.
+- `products.image_url`: nullable image URL for the canonical product catalogue image.
+- `shop_inventory.image_url`: nullable per-shop override for the actual package, brand or variant sold by that shop.
+- Customer and shopkeeper inventory responses expose `imageUrl`.
+- A shop-specific image takes precedence over the shared product catalogue image.
+- If neither image is available, the customer app uses a category-level fallback photo.
+- If an image fails to load, the card shows a safe text placeholder.
 
-- `products.image_url`: nullable HTTPS URL for the product's primary image.
-- `InventoryResponse.imageUrl`: carries the image URL into marketplace and shop inventory responses.
-- Customer product cards prefer the saved product image URL.
-- When a product has no saved image yet, the frontend uses a category-level fallback photo.
-- If both the product image and category photo fail to load, the card displays a safe local text placeholder.
+MySQL stores URL strings only. It does not store image bytes.
 
-The image URL must be an HTTPS URL. The customer image component rejects non-HTTPS values before rendering.
+## Shopkeeper upload flow
 
-## Upload workflow
+Shopkeepers can add or replace a photo from **Shopkeeper → Inventory → Add product photo**.
 
-The product-image upload interface and provider credentials belong in the shopkeeper product catalogue phase. The browser must request a short-lived signed upload or upload token from the backend; provider secrets must never be placed in `VITE_*` variables or shipped to the browser.
+- Accepted image formats: JPEG and PNG.
+- Maximum file size: 5 MB.
+- Maximum dimensions: 6000 × 6000 pixels.
+- The backend checks the actual file signature and verifies the file can be read as an image; it does not trust the browser-supplied MIME type or filename.
+- The upload endpoint requires an authenticated shopkeeper and verifies that the inventory item belongs to a shop owned by that account.
+- Files receive random UUID filenames. A previous per-shop image is removed after its replacement is saved.
+- Public GET access is limited to the product-media path. Uploads remain protected by the shopkeeper role.
+- The browser sends the file as multipart form data. Provider or storage credentials are never exposed in frontend variables.
 
-A future upload flow should:
-1. Shopkeeper selects an image and sees a preview.
-2. Backend checks the authenticated shopkeeper and allowed file size/type.
-3. Backend issues a short-lived upload signature or accepts and validates the file server-side.
-4. Image provider stores the original and creates optimized variants.
-5. Backend saves the HTTPS delivery URL against the catalogue product.
-6. Marketplace responses expose that URL.
+## Development storage
 
-## Catalogue quality
+By default, the Spring Boot backend stores photos under `uploads/products` relative to the backend working directory. You can configure the path using `APNIKO_IMAGE_STORAGE_DIR`.
 
-Use one canonical image per catalogue product, rather than separate copies for every shop. Individual shops can later override the catalogue image only if the product packaging or variant genuinely differs.
+The public URLs use the same-origin path `/api/media/products/{generated-file-name}`. This works with the local Vite `/api` proxy and does not require a separate image host during development.
 
-Use images that Apniko or the participating shop has permission to use. Do not scrape arbitrary Google Images results. Keep a category fallback until a product-specific image is available.
+The backend creates the storage directory automatically. Back up this folder together with the database when using the local-file storage adapter.
 
-## Current Phase 1 scope
+## Production deployment
 
-Phase 1 adds the database field, API response field, secure URL selection, category fallback images and customer card rendering. It does not yet add an upload provider, provider credentials or a shopkeeper upload screen; those belong to the shopkeeper product-management phase.
+The current adapter is a local-filesystem implementation. It is suitable for development and a single backend host with a persistent mounted volume. Before deploying multiple backend instances or using ephemeral containers, move the adapter to managed object storage (for example, S3-compatible storage or Cloudinary) with CDN delivery, or mount shared persistent storage.
+
+The storage interface should continue to return an HTTPS URL. The frontend accepts HTTPS image/CDN URLs and the trusted same-origin Apniko media path. Never store image blobs in MySQL, and never scrape arbitrary Google Images results. Use photos that Apniko or the participating shop has permission to use.
+
+## Operations
+
+- Keep `uploads/products` (or the configured storage directory) outside source control.
+- Back up product images and MySQL metadata together.
+- Use unique filenames so replacing a photo does not leave browsers serving a stale cached version.
+- Configure a persistent volume before production launch.
