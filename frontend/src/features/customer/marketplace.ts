@@ -5,12 +5,16 @@ export interface MarketplaceShop {
   phone: string
   address: string
   active: boolean
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface MarketplaceInventoryItem {
   id: number
   shopId: number
   shopName: string
+  shopLatitude?: number | null
+  shopLongitude?: number | null
   productId: number
   productName: string
   category: string | null
@@ -57,6 +61,13 @@ export interface MarketplaceSearchOptions {
   page?: number
   size?: number
 }
+
+export interface CustomerCoordinates {
+  latitude: number
+  longitude: number
+}
+
+const EARTH_RADIUS_KM = 6371
 
 const CATEGORY_IMAGE_URLS: Array<{ match: RegExp; url: string }> = [
   {
@@ -123,6 +134,73 @@ export function filterMarketplaceShops(
     shop.ownerName,
     shop.address,
   ].some((value) => value.toLocaleLowerCase().includes(normalizedQuery)))
+}
+
+export function distanceBetweenCoordinatesKm(
+  origin: CustomerCoordinates,
+  destination: CustomerCoordinates,
+): number | null {
+  const coordinates = [
+    origin.latitude,
+    origin.longitude,
+    destination.latitude,
+    destination.longitude,
+  ]
+  if (!coordinates.every(Number.isFinite)) return null
+  if (Math.abs(origin.latitude) > 90 || Math.abs(destination.latitude) > 90) return null
+  if (Math.abs(origin.longitude) > 180 || Math.abs(destination.longitude) > 180) return null
+
+  const radians = (degrees: number) => degrees * Math.PI / 180
+  const latitudeDelta = radians(destination.latitude - origin.latitude)
+  const longitudeDelta = radians(destination.longitude - origin.longitude)
+  const originLatitude = radians(origin.latitude)
+  const destinationLatitude = radians(destination.latitude)
+
+  const haversine = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(originLatitude) * Math.cos(destinationLatitude)
+    * Math.sin(longitudeDelta / 2) ** 2
+  const centralAngle = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+
+  return EARTH_RADIUS_KM * centralAngle
+}
+
+export function getShopDistanceKm(
+  shop: Pick<MarketplaceShop, 'latitude' | 'longitude'>,
+  origin: CustomerCoordinates | null,
+): number | null {
+  if (!origin || shop.latitude == null || shop.longitude == null) return null
+
+  return distanceBetweenCoordinatesKm(origin, {
+    latitude: shop.latitude,
+    longitude: shop.longitude,
+  })
+}
+
+export function sortShopsByDistance(
+  shops: MarketplaceShop[],
+  origin: CustomerCoordinates | null,
+): MarketplaceShop[] {
+  if (!origin) return [...shops]
+
+  return shops
+    .map((shop, index) => ({
+      shop,
+      index,
+      distance: getShopDistanceKm(shop, origin),
+    }))
+    .sort((left, right) => {
+      if (left.distance === null && right.distance === null) return left.index - right.index
+      if (left.distance === null) return 1
+      if (right.distance === null) return -1
+      return left.distance - right.distance || left.index - right.index
+    })
+    .map((entry) => entry.shop)
+}
+
+export function formatDistanceKm(distanceKm: number | null): string | null {
+  if (distanceKm === null || !Number.isFinite(distanceKm) || distanceKm < 0) return null
+  if (distanceKm < 1) return `${Math.max(50, Math.round(distanceKm * 1000 / 50) * 50)} m away`
+  return `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km away`
 }
 
 export function isSafeProductImageUrl(value: string | null | undefined): value is string {
