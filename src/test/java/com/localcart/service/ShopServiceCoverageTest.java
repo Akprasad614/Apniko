@@ -49,13 +49,44 @@ class ShopServiceCoverageTest {
         assertEquals("Fresh Store", response.getName());
         assertEquals("Owner", response.getOwnerName());
         assertTrue(response.isActive());
-        verify(shopRepository).save(argThat(shop -> shop.getOwner() == owner && shop.isActive()));
+        assertEquals(12.9716, response.getLatitude());
+        assertEquals(77.5946, response.getLongitude());
+        verify(shopRepository).save(argThat(shop -> shop.getOwner() == owner
+                && shop.isActive()
+                && shop.getLatitude().equals(12.9716)
+                && shop.getLongitude().equals(77.5946)));
     }
 
     @Test
     void rejectsShopCreationWithoutAuthenticatedEmail() {
         assertThrows(BadRequestException.class, () -> service.createShop(null, createRequest()));
         verifyNoInteractions(userRepository, shopRepository);
+    }
+
+    @Test
+    void rejectsShopCreationWithOnlyOneCoordinate() {
+        CreateShopRequest request = createRequest();
+        request.setLatitude(12.9716);
+        request.setLongitude(null);
+        when(userRepository.findByEmail("owner@example.com"))
+                .thenReturn(Optional.of(user(21L, "Owner", "owner@example.com", Role.SHOPKEEPER, true)));
+
+        assertThrows(BadRequestException.class,
+                () -> service.createShop("owner@example.com", request));
+        verify(shopRepository, never()).save(any(Shop.class));
+    }
+
+    @Test
+    void rejectsCoordinatesOutsideLatitudeAndLongitudeRanges() {
+        CreateShopRequest request = createRequest();
+        request.setLatitude(91.0);
+        request.setLongitude(77.0);
+        when(userRepository.findByEmail("owner@example.com"))
+                .thenReturn(Optional.of(user(21L, "Owner", "owner@example.com", Role.SHOPKEEPER, true)));
+
+        assertThrows(BadRequestException.class,
+                () -> service.createShop("owner@example.com", request));
+        verify(shopRepository, never()).save(any(Shop.class));
     }
 
     @Test
@@ -131,9 +162,13 @@ class ShopServiceCoverageTest {
         when(shopRepository.save(shop)).thenReturn(shop);
         UpdateShopRequest request = updateRequest("Updated Name", "9999999999", "New Address");
 
+        request.setLatitude(12.9716);
+        request.setLongitude(77.5946);
         ShopResponse response = service.updateShop(5L, "owner@example.com", request);
 
         assertEquals("Updated Name", response.getName());
+        assertEquals(12.9716, response.getLatitude());
+        assertEquals(77.5946, response.getLongitude());
         assertEquals("9999999999", response.getPhone());
         assertEquals("New Address", response.getAddress());
     }
@@ -189,6 +224,8 @@ class ShopServiceCoverageTest {
         request.setName("Fresh Store");
         request.setPhone("9876543210");
         request.setAddress("Bengaluru");
+        request.setLatitude(12.9716);
+        request.setLongitude(77.5946);
         return request;
     }
 
