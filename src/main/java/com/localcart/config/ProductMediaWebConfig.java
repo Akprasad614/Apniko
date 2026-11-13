@@ -21,8 +21,12 @@ public class ProductMediaWebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String location = imageRoot.toUri().toString();
+        if (!location.endsWith("/")) {
+            location += "/";
+        }
         registry.addResourceHandler("/api/media/products/**")
-                .addResourceLocations(imageRoot.toUri().toString())
+                .addResourceLocations(location)
                 .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
     }
 }
