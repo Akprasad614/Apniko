@@ -7,6 +7,7 @@ import { NotFoundPage } from '../pages/NotFoundPage'
 import { PortalPage } from '../pages/PortalPage'
 import { RegisterPage } from '../pages/RegisterPage'
 import { CustomerStorefront } from '../features/customer/CustomerStorefront'
+import { ShopkeeperDashboard } from '../features/shopkeeper/ShopkeeperDashboard'
 import { roleHomePath } from '../lib/roles'
 
 function AccountRedirect() {
@@ -24,7 +25,7 @@ export function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/account" element={<AccountRedirect />} />
           <Route path="/customer/*" element={<RequireRole allowed={['CUSTOMER']}><CustomerStorefront /></RequireRole>} />
-          <Route path="/shopkeeper/*" element={<RequireRole allowed={['SHOPKEEPER']}><PortalPage /></RequireRole>} />
+          <Route path="/shopkeeper/*" element={<RequireRole allowed={['SHOPKEEPER']}><ShopkeeperDashboard /></RequireRole>} />
           <Route path="/delivery/*" element={<RequireRole allowed={['DELIVERY_PARTNER']}><PortalPage /></RequireRole>} />
           <Route path="/admin/*" element={<RequireRole allowed={['ADMIN']}><PortalPage /></RequireRole>} />
           <Route path="*" element={<NotFoundPage />} />
