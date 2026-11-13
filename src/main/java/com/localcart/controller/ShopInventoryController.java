@@ -9,9 +9,11 @@ import com.localcart.dto.UpdateLowStockThresholdRequest;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.ShopInventoryService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
@@ -45,6 +47,24 @@ public class ShopInventoryController {
             return ResponseEntity.status(401).build();
         }
         return ResponseEntity.ok(inventoryService.getMyInventory(email, shopId));
+    }
+
+    @PostMapping(
+            path = "/{shopId}/inventory/{inventoryId}/image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<InventoryResponse> uploadProductImage(
+            @PathVariable Long shopId,
+            @PathVariable Long inventoryId,
+            @RequestParam("file") MultipartFile file) {
+
+        String email = SecurityUtils.getCurrentUserEmail();
+        if (email == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(
+                inventoryService.uploadProductImage(email, shopId, inventoryId, file)
+        );
     }
 
     @PutMapping("/inventory/{inventoryId}")
