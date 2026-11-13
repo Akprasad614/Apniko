@@ -107,6 +107,131 @@
       ]
     },
     {
+      "name": "Login — Shopkeeper",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{shopkeeperEmail}}\",\n  \"password\": \"{{shopkeeperPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}",
+              "if (!pm.environment.get(\"shopkeeperEmail\") || !pm.environment.get(\"shopkeeperPassword\")) throw new Error(\"Set shopkeeperEmail and shopkeeperPassword in the private local environment first.\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shopkeeper login returns 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test(\"Shopkeeper token is present\", () => pm.expect(data.token).to.be.a(\"string\").and.not.empty);",
+              "pm.test(\"Shopkeeper role is SHOPKEEPER\", () => pm.expect(data.role).to.eql(\"SHOPKEEPER\"));",
+              "pm.environment.set(\"shopkeeperToken\", data.token);",
+              "pm.environment.set(\"shopkeeperUserId\", data.userId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shopkeeper — choose an owned active shop",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/shopkeeper/shops",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shopkeeper",
+            "shops"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{shopkeeperToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Shopkeeper-owned shop list returns 200\", () => pm.response.to.have.status(200));",
+              "const shops = pm.response.json();",
+              "const activeShop = shops.find(shop => shop.active === true);",
+              "pm.test(\"An active shop owned by the signed-in shopkeeper exists\", () => pm.expect(activeShop, \"active shop in the current user's own shop list\").to.exist);",
+              "if (activeShop) pm.environment.set(\"shopId\", String(activeShop.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Customer — list active shops",
       "request": {
         "method": "GET",
@@ -159,13 +284,9 @@
             "exec": [
               "pm.test(\"Marketplace shops returns 200\", () => pm.response.to.have.status(200));",
               "const shops = pm.response.json();",
-              "pm.test(\"Marketplace response is an array\", () => pm.expect(shops).to.be.an(\"array\"));",
               "const shopId = Number(pm.environment.get(\"shopId\"));",
-              "pm.test(\"Configured shop exists and is active\", () => {",
-              "  const shop = shops.find(s => Number(s.id) === shopId);",
-              "  pm.expect(shop, \"Configured shopId\").to.exist;",
-              "  pm.expect(shop.active).to.eql(true);",
-              "});"
+              "const shop = shops.find(entry => Number(entry.id) === shopId && entry.active === true);",
+              "pm.test(\"The shopkeeper-owned shop is available in the customer marketplace\", () => pm.expect(shop, \"active owned shopId\").to.exist);"
             ]
           }
         }
@@ -226,14 +347,12 @@
             "exec": [
               "pm.test(\"Shop products returns 200\", () => pm.response.to.have.status(200));",
               "const products = pm.response.json();",
-              "const productId = Number(pm.environment.get(\"productId\"));",
-              "const product = products.find(p => Number(p.productId) === productId);",
-              "pm.test(\"Configured product is available in this shop\", () => {",
-              "  pm.expect(product, \"Configured productId\").to.exist;",
-              "  pm.expect(product.available).to.eql(true);",
-              "  pm.expect(product.stockQuantity).to.be.at.least(Number(pm.environment.get(\"quantity\") || 1));",
-              "});",
-              "pm.environment.set(\"productPrice\", product.price);"
+              "const product = products.find(entry => entry.available === true && Number(entry.stockQuantity) > 0);",
+              "pm.test(\"The selected shop has an available product in stock\", () => pm.expect(product, \"a product with available stock\").to.exist);",
+              "if (product) {",
+              "  pm.environment.set(\"productId\", String(product.productId));",
+              "  pm.environment.set(\"productPrice\", String(product.price));",
+              "}"
             ]
           }
         }
@@ -631,71 +750,6 @@
               "  pm.expect(payment.status).to.eql(\"PENDING\");",
               "});",
               "pm.environment.set(\"paymentId\", payment.id);"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Login — Shopkeeper",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Accept",
-            "value": "application/json"
-          },
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/auth/login",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "auth",
-            "login"
-          ]
-        },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"{{shopkeeperEmail}}\",\n  \"password\": \"{{shopkeeperPassword}}\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
-              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
-              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
-              "}",
-              "if (!pm.environment.get(\"shopkeeperEmail\") || !pm.environment.get(\"shopkeeperPassword\")) throw new Error(\"Set shopkeeperEmail and shopkeeperPassword in the private local environment first.\");"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"Shopkeeper login returns 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
-              "pm.test(\"Shopkeeper token is present\", () => pm.expect(data.token).to.be.a(\"string\").and.not.empty);",
-              "pm.test(\"Shopkeeper role is SHOPKEEPER\", () => pm.expect(data.role).to.eql(\"SHOPKEEPER\"));",
-              "pm.environment.set(\"shopkeeperToken\", data.token);",
-              "pm.environment.set(\"shopkeeperUserId\", data.userId);"
             ]
           }
         }
