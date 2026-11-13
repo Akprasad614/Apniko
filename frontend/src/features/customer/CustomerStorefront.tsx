@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
-import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
 import {
   buildMarketplaceSearchPath,
@@ -14,7 +13,6 @@ import type {
   MarketplacePage,
   MarketplaceShop,
 } from './marketplace'
-import { CustomerOrders } from './CustomerOrders'
 import './customer-storefront.css'
 
 const PAGE_SIZE = 24
@@ -28,7 +26,7 @@ function messageFor(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
 }
 
-export function CustomerStorefront() {
+export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categories' }) {
   const { session, signOut } = useAuth()
   const token = session?.token ?? ''
 
@@ -52,14 +50,17 @@ export function CustomerStorefront() {
   const [productError, setProductError] = useState('')
   const [basketError, setBasketError] = useState('')
   const [notice, setNotice] = useState('')
-  const [deliveryMode, setDeliveryMode] = useState<'SHOP_DELIVERY' | 'PLATFORM_DELIVERY' | 'CUSTOMER_PICKUP'>('SHOP_DELIVERY')
-  const [checkoutBusy, setCheckoutBusy] = useState(false)
-  const [ordersRefreshKey, setOrdersRefreshKey] = useState(0)
 
   const selectedShop = useMemo(
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
     [shops, selectedShopId],
   )
+
+  useEffect(() => {
+    if (selectedShopId !== null) {
+      window.sessionStorage.setItem('apniko.customer.selectedShopId', String(selectedShopId))
+    }
+  }, [selectedShopId])
 
   useEffect(() => {
     let active = true
@@ -231,80 +232,13 @@ export function CustomerStorefront() {
     }
   }
 
-  async function placeOrder() {
-    if (selectedShopId === null || !basket?.items.length || checkoutBusy) return
-
-    setCheckoutBusy(true)
-    setBasketError('')
-    setNotice('')
-
-    try {
-      const order = await apiRequest<{ id: number; status: string }>(
-        `/api/customer/cart/${selectedShopId}/checkout`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ deliveryMode }),
-        },
-        token,
-      )
-
-      setNotice(order?.id
-        ? `Order #${order.id} has been placed. You can follow its progress below.`
-        : 'Your order has been placed. You can follow its progress below.')
-      setBasket({
-        cartId: null,
-        shopId: selectedShopId,
-        shopName: selectedShop?.name ?? '',
-        items: [],
-        totalAmount: 0,
-      })
-      setOrdersRefreshKey((current) => current + 1)
-      void loadProducts(0, false)
-
-      // Checkout is already complete if refreshing the now-empty cart fails.
-      try {
-        const refreshedBasket = await apiRequest<Basket>(
-          `/api/customer/cart/${selectedShopId}`,
-          {},
-          token,
-        )
-        setBasket(refreshedBasket)
-      } catch {
-        // Keep the empty basket state; the next page refresh will retry it.
-      }
-
-      document.getElementById('customer-orders')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    } catch (error) {
-      setBasketError(messageFor(error))
-    } finally {
-      setCheckoutBusy(false)
-    }
-  }
-
   const greetingName = session?.name.trim().split(/\s+/)[0] || 'there'
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
 
   return (
     <div className="customer-storefront">
-      <a className="skip-link" href="#customer-main">Skip to marketplace</a>
-      <header className="customer-header">
-        <div className="customer-wrap customer-header__inner">
-          <Link className="customer-wordmark" to="/">apniko<span>.</span></Link>
-          <div className="customer-header__right">
-            <span className="customer-header__welcome">A good day to shop local, {greetingName}.</span>
-            <span className="customer-header__basket-count" aria-label={`${basketCount} items in basket`}>
-              Basket <strong>{basketCount}</strong>
-            </span>
-            <a className="customer-header__orders-link" href="#customer-orders">Your orders</a>
-            <Button tone="quiet" onClick={signOut}>Sign out</Button>
-          </div>
-        </div>
-      </header>
-
-      <main id="customer-main" className="customer-wrap customer-main">
+      <main className={`customer-wrap customer-main customer-main--${view}`}>
+        {view === 'home' && (
         <section className="customer-intro" aria-labelledby="customer-title">
           <div>
             <p className="customer-eyebrow"><span /> THE LOCAL SHELF</p>
@@ -319,6 +253,17 @@ export function CustomerStorefront() {
             <span>CHOOSE A SHOP · FIND YOUR USUALS</span>
           </div>
         </section>
+        )}
+
+        {view === 'categories' && (
+          <section className="customer-screen-heading">
+            <p className="customer-eyebrow">FIND YOUR EVERYDAY ESSENTIALS</p>
+            <h1>Shop by <em>category.</em></h1>
+            <p>Choose a category, then browse the products available from your selected neighbourhood shop.</p>
+          </section>
+        )}
+
+
 
         <section className="shop-section" aria-labelledby="shop-section-title">
           <div className="customer-section-heading">
@@ -401,8 +346,31 @@ export function CustomerStorefront() {
               </label>
             </div>
 
-            <div className="marketplace-content">
+            <div className="marketplace-content marketplace-content--full">
               <section className="product-area" aria-label="Products">
+                {view === 'categories' && (
+                  <div className="customer-category-grid" aria-label="Product categories">
+                    {categories.map((category) => (
+                      <button
+                        className={`customer-category-card${activeCategory === category ? ' is-selected' : ''}`}
+                        key={category}
+                        type="button"
+                        aria-pressed={activeCategory === category}
+                        onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
+                      >
+                        <span className="customer-category-card__symbol" aria-hidden="true">{category.slice(0, 1).toUpperCase()}</span>
+                        <strong>{category}</strong>
+                        <span>Explore products <span aria-hidden="true">→</span></span>
+                      </button>
+                    ))}
+                    {categories.length === 0 && (
+                      <div className="customer-state customer-state--empty">
+                        <strong>Categories are being organised.</strong>
+                        <p>Choose a shop to see the categories currently available in its catalogue.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="category-row" aria-label="Filter by category">
                   <button
                     type="button"
@@ -476,91 +444,18 @@ export function CustomerStorefront() {
                 )}
               </section>
 
-              <aside className="basket-panel" aria-labelledby="basket-title">
-                <div className="basket-panel__topline">
-                  <span>YOUR SHOPPING LIST</span>
-                  <span>{basketCount.toString().padStart(2, '0')}</span>
-                </div>
-                <div className="basket-panel__heading">
-                  <div>
-                    <p className="customer-eyebrow">03 / YOUR BASKET</p>
-                    <h3 id="basket-title">A few good things.</h3>
-                  </div>
-                  <span className="basket-panel__asterisk" aria-hidden="true">✳</span>
-                </div>
-                <p className="basket-panel__shop">{selectedShop.name}</p>
-                {basketError && <p className="basket-message basket-message--error" role="alert">{basketError}</p>}
-                {notice && <p className="basket-message basket-message--success" role="status">{notice}</p>}
-                {loadingBasket ? (
-                  <div className="basket-empty" role="status">Opening your basket…</div>
-                ) : basket?.items.length ? (
-                  <div className="basket-items">
-                    {basket.items.map((item) => (
-                      <div className="basket-item" key={item.productId}>
-                        <div className="basket-item__main">
-                          <strong>{item.productName}</strong>
-                          <span>{formatRupees(item.price)} each</span>
-                        </div>
-                        <div className="basket-item__controls">
-                          <button type="button" aria-label={`Decrease ${item.productName}`} onClick={() => void changeQuantity(item.productId, item.quantity - 1)}>−</button>
-                          <span aria-label={`Quantity ${item.quantity}`}>{item.quantity}</span>
-                          <button type="button" aria-label={`Increase ${item.productName}`} disabled={item.quantity >= item.availableStock} onClick={() => void changeQuantity(item.productId, item.quantity + 1)}>+</button>
-                          <button className="basket-item__remove" type="button" onClick={() => void removeProduct(item.productId)}>Remove</button>
-                        </div>
-                        <span className="basket-item__total">{formatRupees(item.lineTotal)}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="basket-empty">
-                    <span aria-hidden="true">↗</span>
-                    <strong>Your basket starts here.</strong>
-                    <p>Add something from {selectedShop.name} and it will show up here.</p>
-                  </div>
-                )}
-                <div className="basket-total">
-                  <span>Basket total</span>
-                  <strong>{formatRupees(basket?.totalAmount ?? 0)}</strong>
-                </div>
-                <p className="basket-panel__note">Your basket belongs to this shop. Choose another shop to see its separate basket.</p>
-                <div className="basket-checkout">
-                  <label htmlFor="delivery-mode">How would you like to receive it?</label>
-                  <select
-                    id="delivery-mode"
-                    value={deliveryMode}
-                    onChange={(event) => setDeliveryMode(event.target.value as typeof deliveryMode)}
-                  >
-                    <option value="SHOP_DELIVERY">Delivery by this shop</option>
-                    <option value="PLATFORM_DELIVERY">Apniko delivery</option>
-                    <option value="CUSTOMER_PICKUP">I'll collect it</option>
-                  </select>
-                  <button
-                    className="basket-checkout__button"
-                    type="button"
-                    disabled={checkoutBusy || loadingBasket || !basket?.items.length || basket.items.some((item) => !item.available || item.quantity > item.availableStock)}
-                    onClick={() => void placeOrder()}
-                  >
-                    {checkoutBusy ? 'Placing order…' : 'Place order'}
-                    <span aria-hidden="true">→</span>
-                  </button>
-                  <p className="basket-checkout__note">The shop confirms availability when it receives your order. The total shown here is the price of the items in your basket.</p>
-                </div>
-                <Link className="basket-panel__back" to="/">Back to Apniko home ↗</Link>
-              </aside>
+
             </div>
           </section>
         )}
 
-        <CustomerOrders refreshKey={ordersRefreshKey} />
-      </main>
-
-      <footer className="customer-footer">
-        <div className="customer-wrap customer-footer__inner">
-          <Link className="customer-wordmark" to="/">apniko<span>.</span></Link>
-          <span>Good groceries. Closer to home.</span>
-          <span>APNIKO / CUSTOMER</span>
+        <div className="customer-basket-shortcut">
+          <span>{basketCount} {basketCount === 1 ? 'item' : 'items'} in your cart</span>
+          <Link to="/customer/cart">Review your cart →</Link>
         </div>
-      </footer>
+
+      </main>
     </div>
   )
+}
 }
