@@ -22,6 +22,7 @@ export interface InventoryItem {
   productId: number
   productName: string
   category: string | null
+  imageUrl?: string | null
   price: number
   stockQuantity: number
   available: boolean
