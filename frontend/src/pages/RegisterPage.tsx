@@ -73,7 +73,7 @@ export function RegisterPage() {
               autoComplete="new-password"
               minLength={12}
               maxLength={72}
-              pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,72}"
+              pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,72}"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
