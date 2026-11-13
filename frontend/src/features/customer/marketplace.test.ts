@@ -94,7 +94,7 @@ describe('customer marketplace helpers', () => {
     expect(formatDistanceKm(0.42)).toBe('400 m away')
     expect(formatDistanceKm(3.24)).toBe('3.2 km away')
     expect(formatDistanceKm(null)).toBeNull()
-    expect(getShopDistanceKm(shops[2], { latitude: 12.9, longitude: 77.6 })).toBeNull()
+    expect(getShopDistanceKm(shops[2]!, { latitude: 12.9, longitude: 77.6 })).toBeNull()
   })
 
   it('uses category-appropriate fallback product photography', () => {
