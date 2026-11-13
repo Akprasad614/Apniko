@@ -93,7 +93,7 @@ export function HomePage() {
       </main>
 
       <footer className="site-footer wrap">
-        <BrandMark />
+        <Wordmark />
         <span>Good things happen close to home.</span>
         <span className="site-footer__copy">© {new Date().getFullYear()} Apniko</span>
       </footer>
