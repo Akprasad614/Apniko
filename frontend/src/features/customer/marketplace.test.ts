@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildMarketplaceSearchPath,
+  distanceBetweenCoordinatesKm,
   filterMarketplaceShops,
+  formatDistanceKm,
   formatRupees,
   getFallbackProductImage,
+  getShopDistanceKm,
   isSafeProductImageUrl,
   resolveProductImageUrl,
+  sortShopsByDistance,
 } from './marketplace'
 import type { MarketplaceShop } from './marketplace'
 
 const shops: MarketplaceShop[] = [
-  { id: 1, name: 'Fresh Basket', ownerName: 'Asha', phone: '', address: 'HSR Layout', active: true },
-  { id: 2, name: 'Daily Needs', ownerName: 'Ravi', phone: '', address: 'BTM Layout', active: true },
+  { id: 1, name: 'Fresh Basket', ownerName: 'Asha', phone: '', address: 'HSR Layout', active: true, latitude: 12.9116, longitude: 77.6389 },
+  { id: 2, name: 'Daily Needs', ownerName: 'Ravi', phone: '', address: 'BTM Layout', active: true, latitude: 12.9166, longitude: 77.6101 },
   { id: 3, name: 'Green Corner', ownerName: 'Meera', phone: '', address: 'Indiranagar', active: true },
 ]
 
@@ -62,6 +66,35 @@ describe('customer marketplace helpers', () => {
     expect(filterMarketplaceShops(shops, 'indiranagar').map((shop) => shop.id)).toEqual([3])
     expect(filterMarketplaceShops(shops, ' ').map((shop) => shop.id)).toEqual([1, 2, 3])
     expect(shops).toHaveLength(3)
+  })
+
+  it('calculates valid distances and rejects invalid coordinates', () => {
+    const distance = distanceBetweenCoordinatesKm(
+      { latitude: 12.9716, longitude: 77.5946 },
+      { latitude: 12.9116, longitude: 77.6389 },
+    )
+    expect(distance).toBeGreaterThan(7)
+    expect(distance).toBeLessThan(9)
+    expect(distanceBetweenCoordinatesKm(
+      { latitude: 91, longitude: 77 },
+      { latitude: 12, longitude: 77 },
+    )).toBeNull()
+  })
+
+  it('sorts geocoded shops by distance and keeps shops without coordinates visible last', () => {
+    const sorted = sortShopsByDistance(
+      shops,
+      { latitude: 12.9716, longitude: 77.5946 },
+    )
+    expect(sorted.map((shop) => shop.id)).toEqual([2, 1, 3])
+    expect(sortShopsByDistance(shops, null).map((shop) => shop.id)).toEqual([1, 2, 3])
+  })
+
+  it('formats shop distance labels without inventing distances for ungeocoded shops', () => {
+    expect(formatDistanceKm(0.42)).toBe('400 m away')
+    expect(formatDistanceKm(3.24)).toBe('3.2 km away')
+    expect(formatDistanceKm(null)).toBeNull()
+    expect(getShopDistanceKm(shops[2], { latitude: 12.9, longitude: 77.6 })).toBeNull()
   })
 
   it('uses category-appropriate fallback product photography', () => {
