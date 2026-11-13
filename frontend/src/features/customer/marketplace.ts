@@ -206,6 +206,11 @@ export function formatDistanceKm(distanceKm: number | null): string | null {
 export function isSafeProductImageUrl(value: string | null | undefined): value is string {
   if (!value?.trim()) return false
 
+  // Images uploaded through Apniko are served from this controlled same-origin path.
+  if (value.startsWith('/api/media/products/') && !value.includes('..') && !value.startsWith('//')) {
+    return true
+  }
+
   try {
     const parsed = new URL(value)
     return parsed.protocol === 'https:' && Boolean(parsed.hostname)
