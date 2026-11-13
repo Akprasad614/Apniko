@@ -1,6 +1,9 @@
 package com.localcart.service;
 
+import com.localcart.entity.Product;
 import com.localcart.entity.Shop;
+import com.localcart.entity.ShopInventory;
+import com.localcart.dto.InventoryResponse;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.ProductRepository;
@@ -118,6 +121,42 @@ class CustomerMarketplaceServiceTest {
                         && pageable.getPageSize() == 15
                         && pageable.getSort().isSorted())
         );
+    }
+
+    @Test
+    void marketplaceResultsIncludeTheStoredProductImageUrl() {
+        Product product = new Product();
+        product.setName("Basmati Rice");
+        product.setCategory("Staples");
+        product.setImageUrl("https://cdn.example.com/products/basmati-rice.jpg");
+
+        Shop shop = mock(Shop.class);
+        when(shop.getId()).thenReturn(7L);
+        when(shop.getName()).thenReturn("Fresh Basket");
+
+        ShopInventory inventory = new ShopInventory();
+        inventory.setShop(shop);
+        inventory.setProduct(product);
+        inventory.setPrice(120.0);
+        inventory.setStockQuantity(8);
+        inventory.setAvailable(true);
+
+        when(inventoryRepository.searchMarketplace(
+                isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenAnswer(invocation -> {
+                    Pageable pageable = invocation.getArgument(5);
+                    return new PageImpl<>(List.of(inventory), pageable, 1);
+                });
+
+        Page<InventoryResponse> result = service.searchProducts(
+                null, null, null, null, null, 0, 24, "name", "asc"
+        );
+
+        assertEquals(1, result.getContent().size());
+        assertEquals("Basmati Rice", result.getContent().get(0).getProductName());
+        assertEquals("https://cdn.example.com/products/basmati-rice.jpg",
+                result.getContent().get(0).getImageUrl());
+        assertEquals(7L, result.getContent().get(0).getShopId());
     }
 
     @Test
