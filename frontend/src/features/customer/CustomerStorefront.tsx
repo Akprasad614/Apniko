@@ -192,49 +192,6 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     }
   }
 
-  async function changeQuantity(productId: number, quantity: number) {
-    if (selectedShopId === null) return
-    const item = basket?.items.find((entry) => entry.productId === productId)
-    if (!item) return
-
-    if (quantity < 1) {
-      await removeProduct(productId)
-      return
-    }
-    if (quantity > item.availableStock) {
-      setBasketError(`Only ${item.availableStock} available for ${item.productName}.`)
-      return
-    }
-
-    setBasketError('')
-    try {
-      const updated = await apiRequest<Basket>(
-        `/api/customer/cart/${selectedShopId}/items/${productId}`,
-        { method: 'PUT', body: JSON.stringify({ quantity }) },
-        token,
-      )
-      setBasket(updated)
-    } catch (error) {
-      setBasketError(messageFor(error))
-    }
-  }
-
-  async function removeProduct(productId: number) {
-    if (selectedShopId === null) return
-    setBasketError('')
-    try {
-      const updated = await apiRequest<Basket>(
-        `/api/customer/cart/${selectedShopId}/items/${productId}`,
-        { method: 'DELETE' },
-        token,
-      )
-      setBasket(updated)
-    } catch (error) {
-      setBasketError(messageFor(error))
-    }
-  }
-
-  const greetingName = session?.name.trim().split(/\s+/)[0] || 'there'
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
 
   return (
