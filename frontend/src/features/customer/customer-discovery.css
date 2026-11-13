@@ -404,7 +404,7 @@
   border: 1px solid var(--discovery-border);
   border-radius: var(--apniko-radius-pill);
   padding: 0.5rem 0.95rem;
-  color: var(--discovery-muted-strong);
+  color: var(--apniko-muted-strong);
   background: #ffffff;
   font-size: 0.7rem;
   font-weight: 750;
