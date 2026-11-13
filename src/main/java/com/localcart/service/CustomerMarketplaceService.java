@@ -209,6 +209,8 @@ public class CustomerMarketplaceService {
         response.setPhone(shop.getPhone());
         response.setAddress(shop.getAddress());
         response.setActive(shop.isActive());
+        response.setLatitude(shop.getLatitude());
+        response.setLongitude(shop.getLongitude());
         return response;
     }
 
@@ -218,6 +220,8 @@ public class CustomerMarketplaceService {
         response.setId(inventory.getId());
         response.setShopId(inventory.getShop().getId());
         response.setShopName(inventory.getShop().getName());
+        response.setShopLatitude(inventory.getShop().getLatitude());
+        response.setShopLongitude(inventory.getShop().getLongitude());
         response.setProductId(inventory.getProduct().getId());
         response.setProductName(inventory.getProduct().getName());
         response.setCategory(inventory.getProduct().getCategory());
