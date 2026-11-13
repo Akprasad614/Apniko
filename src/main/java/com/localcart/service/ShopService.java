@@ -33,23 +33,22 @@ public class ShopService {
             CreateShopRequest request) {
 
         User owner = getShopkeeper(email);
+        validateCoordinates(request.getLatitude(), request.getLongitude());
 
         Shop shop = new Shop();
-
         shop.setName(request.getName());
         shop.setOwnerName(owner.getName());
         shop.setPhone(request.getPhone());
         shop.setAddress(request.getAddress());
+        shop.setLatitude(request.getLatitude());
+        shop.setLongitude(request.getLongitude());
         shop.setActive(true);
         shop.setOwner(owner);
 
-        return toResponse(
-                shopRepository.save(shop)
-        );
+        return toResponse(shopRepository.save(shop));
     }
 
     public List<ShopResponse> getAllShops() {
-
         return shopRepository.findAll()
                 .stream()
                 .map(this::toResponse)
@@ -57,22 +56,14 @@ public class ShopService {
     }
 
     public ShopResponse getShopById(Long id) {
-
         Shop shop = shopRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Shop not found"
-                        ));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         return toResponse(shop);
     }
 
     public List<ShopResponse> getShopsByOwner(Long ownerId) {
-
         if (!userRepository.existsById(ownerId)) {
-            throw new ResourceNotFoundException(
-                    "Owner not found"
-            );
+            throw new ResourceNotFoundException("Owner not found");
         }
 
         return shopRepository.findByOwnerId(ownerId)
@@ -87,18 +78,20 @@ public class ShopService {
             UpdateShopRequest request) {
 
         User owner = getShopkeeper(email);
-
         Shop shop = getShop(shopId);
-
         checkOwnership(shop, owner);
+
+        if (request.getLatitude() != null || request.getLongitude() != null) {
+            validateCoordinates(request.getLatitude(), request.getLongitude());
+            shop.setLatitude(request.getLatitude());
+            shop.setLongitude(request.getLongitude());
+        }
 
         shop.setName(request.getName());
         shop.setPhone(request.getPhone());
         shop.setAddress(request.getAddress());
 
-        return toResponse(
-                shopRepository.save(shop)
-        );
+        return toResponse(shopRepository.save(shop));
     }
 
     public ShopResponse deactivateShop(
@@ -106,78 +99,67 @@ public class ShopService {
             String email) {
 
         User owner = getShopkeeper(email);
-
         Shop shop = getShop(shopId);
-
         checkOwnership(shop, owner);
-
         shop.setActive(false);
 
-        return toResponse(
-                shopRepository.save(shop)
-        );
+        return toResponse(shopRepository.save(shop));
+    }
+
+    private void validateCoordinates(Double latitude, Double longitude) {
+        if (latitude == null && longitude == null) {
+            return;
+        }
+        if (latitude == null || longitude == null) {
+            throw new BadRequestException("Both latitude and longitude are required");
+        }
+        if (!Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
+            throw new BadRequestException("Latitude must be between -90 and 90");
+        }
+        if (!Double.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            throw new BadRequestException("Longitude must be between -180 and 180");
+        }
     }
 
     private User getShopkeeper(String email) {
-
         if (email == null) {
-            throw new BadRequestException(
-                    "User is not authenticated"
-            );
+            throw new BadRequestException("User is not authenticated");
         }
 
         User owner = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        ));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (owner.getRole() != Role.SHOPKEEPER) {
-            throw new BadRequestException(
-                    "Only a shopkeeper can perform this action"
-            );
+            throw new BadRequestException("Only a shopkeeper can perform this action");
         }
-
         if (!owner.isActive()) {
-            throw new BadRequestException(
-                    "Shopkeeper account is inactive"
-            );
+            throw new BadRequestException("Shopkeeper account is inactive");
         }
 
         return owner;
     }
 
     private Shop getShop(Long id) {
-
         return shopRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Shop not found"
-                        ));
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
     }
 
-    private void checkOwnership(
-            Shop shop,
-            User owner) {
-
-        if (shop.getOwner() == null ||
-                !shop.getOwner().getId().equals(owner.getId())) {
-
-            throw new BadRequestException(
-                    "You do not own this shop"
-            );
+    private void checkOwnership(Shop shop, User owner) {
+        if (shop.getOwner() == null || !shop.getOwner().getId().equals(owner.getId())) {
+            throw new BadRequestException("You do not own this shop");
         }
     }
 
     private ShopResponse toResponse(Shop shop) {
-
         return new ShopResponse(
                 shop.getId(),
                 shop.getName(),
                 shop.getOwnerName(),
                 shop.getPhone(),
                 shop.getAddress(),
-                shop.isActive()
+                shop.isActive(),
+                shop.getLatitude(),
+                shop.getLongitude()
         );
     }
 }
