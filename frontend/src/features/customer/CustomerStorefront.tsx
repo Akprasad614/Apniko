@@ -27,7 +27,7 @@ function messageFor(error: unknown): string {
 }
 
 export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categories' }) {
-  const { session, signOut } = useAuth()
+  const { session } = useAuth()
   const token = session?.token ?? ''
 
   const [shops, setShops] = useState<MarketplaceShop[]>([])
@@ -237,7 +237,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
 
   return (
     <div className="customer-storefront">
-      <main className={`customer-wrap customer-main customer-main--${view}`}>
+      <div className={`customer-wrap customer-main customer-main--${view}`}>
         {view === 'home' && (
         <section className="customer-intro" aria-labelledby="customer-title">
           <div>
@@ -450,12 +450,16 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         )}
 
         <div className="customer-basket-shortcut">
-          <span>{basketCount} {basketCount === 1 ? 'item' : 'items'} in your cart</span>
+          <div>
+            <strong>{basketCount} {basketCount === 1 ? 'item' : 'items'} in your cart</strong>
+            {loadingBasket && <small role="status">Refreshing your cart…</small>}
+            {basketError && <small className="customer-basket-shortcut__error" role="alert">{basketError}</small>}
+            {notice && <small role="status">{notice}</small>}
+          </div>
           <Link to="/customer/cart">Review your cart →</Link>
         </div>
 
-      </main>
+      </div>
     </div>
   )
-}
 }
