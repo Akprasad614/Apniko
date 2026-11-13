@@ -1,26 +1,36 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { BrandMark } from '../../components/BrandMark'
 import { Button } from '../../components/Button'
+import { ApiError, apiRequest } from '../../lib/api'
+import { getCurrentCoordinates } from '../../lib/geolocation'
 import { CustomerAddressBook } from './CustomerAddressBook'
 import { CustomerCheckout } from './CustomerCheckout'
 import { CustomerOrders } from './CustomerOrders'
-import { ApiError, apiRequest } from '../../lib/api'
+import { ProductImage } from './ProductImage'
 import {
   buildMarketplaceSearchPath,
+  filterMarketplaceShops,
+  formatDistanceKm,
   formatRupees,
+  getShopDistanceKm,
+  sortShopsByDistance,
 } from './marketplace'
 import type {
   Basket,
   MarketplaceInventoryItem,
   MarketplacePage,
   MarketplaceShop,
+  CustomerCoordinates,
 } from './marketplace'
 import './customer-storefront.css'
+import './customer-discovery.css'
 
 const PAGE_SIZE = 24
+
+type SearchMode = 'products' | 'shops'
+type ProductSort = 'name' | 'price'
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
@@ -31,19 +41,33 @@ function messageFor(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
 }
 
+function shopInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
+}
+
 export function CustomerStorefront() {
   const { session, signOut } = useAuth()
   const token = session?.token ?? ''
 
   const [shops, setShops] = useState<MarketplaceShop[]>([])
   const [categories, setCategories] = useState<string[]>([])
-  const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
+  const [customerLocation, setCustomerLocation] = useState<CustomerCoordinates | null>(null)
+  const [locatingCustomer, setLocatingCustomer] = useState(false)
+  const [locationMessage, setLocationMessage] = useState('')
+  const [searchMode, setSearchMode] = useState<SearchMode>('products')
+  const [browseShopId, setBrowseShopId] = useState<number | null>(null)
+  const [cartShopId, setCartShopId] = useState<number | null>(null)
   const [products, setProducts] = useState<MarketplaceInventoryItem[]>([])
   const [basket, setBasket] = useState<Basket | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const [appliedSearch, setAppliedSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('')
-  const [sortBy, setSortBy] = useState<'name' | 'price'>('name')
+  const [sortBy, setSortBy] = useState<ProductSort>('name')
   const [productPage, setProductPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [loadingShops, setLoadingShops] = useState(true)
@@ -59,10 +83,44 @@ export function CustomerStorefront() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [showOrders, setShowOrders] = useState(false)
 
-  const selectedShop = useMemo(
-    () => shops.find((shop) => shop.id === selectedShopId) ?? null,
-    [shops, selectedShopId],
+  const productRequestRef = useRef(0)
+  const basketRequestRef = useRef(0)
+  const skipNextBasketFetchRef = useRef(false)
+
+  const browseShop = useMemo(
+    () => shops.find((shop) => shop.id === browseShopId) ?? null,
+    [shops, browseShopId],
   )
+  const cartShop = useMemo(
+    () => shops.find((shop) => shop.id === cartShopId) ?? null,
+    [shops, cartShopId],
+  )
+  const filteredShops = useMemo(
+    () => sortShopsByDistance(filterMarketplaceShops(shops, appliedSearch), customerLocation),
+    [shops, appliedSearch, customerLocation],
+  )
+  const discoveryShops = useMemo(
+    () => sortShopsByDistance(shops, customerLocation),
+    [shops, customerLocation],
+  )
+
+  function distanceLabelForShop(shop: MarketplaceShop): string | null {
+    return formatDistanceKm(getShopDistanceKm(shop, customerLocation))
+  }
+
+  async function locateCustomer() {
+    setLocatingCustomer(true)
+    setLocationMessage('Finding your location…')
+    try {
+      const coordinates = await getCurrentCoordinates()
+      setCustomerLocation(coordinates)
+      setLocationMessage('Nearby shops are now sorted by distance from your location.')
+    } catch (caught) {
+      setLocationMessage(messageFor(caught))
+    } finally {
+      setLocatingCustomer(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -71,12 +129,7 @@ export function CustomerStorefront() {
 
     apiRequest<MarketplaceShop[]>('/api/customer/marketplace/shops', {}, token)
       .then((result) => {
-        if (!active) return
-        setShops(result)
-        setSelectedShopId((current) => {
-          if (current !== null && result.some((shop) => shop.id === current)) return current
-          return result[0]?.id ?? null
-        })
+        if (active) setShops(result.filter((shop) => shop.active))
       })
       .catch((error: unknown) => {
         if (active) setPageError(messageFor(error))
@@ -99,12 +152,9 @@ export function CustomerStorefront() {
   }, [token])
 
   const loadProducts = useCallback(async (page: number, append: boolean) => {
-    if (selectedShopId === null) {
-      setProducts([])
-      setHasMore(false)
-      return
-    }
+    if (searchMode !== 'products') return
 
+    const requestId = ++productRequestRef.current
     if (append) setLoadingMore(true)
     else {
       setLoadingProducts(true)
@@ -115,85 +165,170 @@ export function CustomerStorefront() {
       const path = buildMarketplaceSearchPath({
         query: appliedSearch,
         category: activeCategory,
-        shopId: selectedShopId,
+        shopId: browseShopId,
         sortBy,
         direction: 'asc',
         page,
         size: PAGE_SIZE,
       })
       const result = await apiRequest<MarketplacePage<MarketplaceInventoryItem>>(path, {}, token)
+      if (requestId !== productRequestRef.current) return
       setProducts((current) => append ? [...current, ...result.content] : result.content)
       setProductPage(page)
       setHasMore(!result.last && page + 1 < result.totalPages)
     } catch (error) {
+      if (requestId !== productRequestRef.current) return
       setProductError(messageFor(error))
       if (!append) setProducts([])
     } finally {
+      if (requestId === productRequestRef.current) {
+        setLoadingProducts(false)
+        setLoadingMore(false)
+      }
+    }
+  }, [activeCategory, appliedSearch, browseShopId, searchMode, sortBy, token])
+
+  useEffect(() => {
+    if (searchMode === 'products') void loadProducts(0, false)
+    else {
+      productRequestRef.current += 1
+      setProducts([])
+      setHasMore(false)
       setLoadingProducts(false)
       setLoadingMore(false)
     }
-  }, [activeCategory, appliedSearch, selectedShopId, sortBy, token])
+  }, [loadProducts, searchMode])
 
   useEffect(() => {
-    void loadProducts(0, false)
-  }, [loadProducts])
-
-  useEffect(() => {
-    if (selectedShopId === null) {
+    if (cartShopId === null) {
       setBasket(null)
+      setLoadingBasket(false)
+      return
+    }
+
+    if (skipNextBasketFetchRef.current) {
+      skipNextBasketFetchRef.current = false
       return
     }
 
     let active = true
+    const requestId = ++basketRequestRef.current
     setBasket(null)
     setLoadingBasket(true)
     setBasketError('')
-    apiRequest<Basket>(`/api/customer/cart/${selectedShopId}`, {}, token)
+
+    apiRequest<Basket>(`/api/customer/cart/${cartShopId}`, {}, token)
       .then((result) => {
-        if (active) setBasket(result)
+        if (active && requestId === basketRequestRef.current) setBasket(result)
       })
       .catch((error: unknown) => {
-        if (active) setBasketError(messageFor(error))
+        if (active && requestId === basketRequestRef.current) setBasketError(messageFor(error))
       })
       .finally(() => {
-        if (active) setLoadingBasket(false)
+        if (active && requestId === basketRequestRef.current) setLoadingBasket(false)
       })
 
     return () => {
       active = false
     }
-  }, [selectedShopId, token])
+  }, [cartShopId, token])
 
-  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAppliedSearch(searchInput.trim())
   }
 
+  function changeSearchMode(mode: SearchMode) {
+    setSearchMode(mode)
+    setActiveCategory('')
+    setBrowseShopId(null)
+    setAppliedSearch(searchInput.trim())
+    setProductError('')
+  }
+
+  function openShop(shop: MarketplaceShop) {
+    setBrowseShopId(shop.id)
+    setSearchMode('products')
+    setSearchInput('')
+    setAppliedSearch('')
+    setActiveCategory('')
+    setProductError('')
+    setNotice('')
+  }
+
+  function showAllProducts() {
+    setBrowseShopId(null)
+    setSearchMode('products')
+    setSearchInput('')
+    setAppliedSearch('')
+    setActiveCategory('')
+  }
+
   async function addProduct(product: MarketplaceInventoryItem) {
-    if (selectedShopId === null || busyProductId !== null) return
+    if (busyProductId !== null) return
+
+    const switchingShop = cartShopId !== product.shopId
+    const requestId = ++basketRequestRef.current
+    if (switchingShop) {
+      skipNextBasketFetchRef.current = true
+      setCartShopId(product.shopId)
+      setBasket(null)
+      setLoadingBasket(true)
+    }
+
     setBusyProductId(product.productId)
     setBasketError('')
     setNotice('')
+
     try {
       const updated = await apiRequest<Basket>(
-        `/api/customer/cart/${selectedShopId}/items`,
+        `/api/customer/cart/${product.shopId}/items`,
         {
           method: 'POST',
           body: JSON.stringify({ productId: product.productId, quantity: 1 }),
         },
         token,
       )
-      setBasket(updated)
-      setNotice(`${product.productName} added to your basket.`)
+      if (requestId === basketRequestRef.current) {
+        setCartShopId(product.shopId)
+        setBasket(updated)
+        setLoadingBasket(false)
+        setNotice(`${product.productName} added from ${product.shopName}.`)
+      }
     } catch (error) {
-      setBasketError(messageFor(error))
+      if (requestId === basketRequestRef.current) {
+        setBasketError(messageFor(error))
+        try {
+          const existing = await apiRequest<Basket>(`/api/customer/cart/${product.shopId}`, {}, token)
+          if (requestId === basketRequestRef.current) setBasket(existing)
+        } catch {
+          if (requestId === basketRequestRef.current) setBasket(null)
+        } finally {
+          if (requestId === basketRequestRef.current) setLoadingBasket(false)
+        }
+      }
     } finally {
       setBusyProductId(null)
     }
   }
 
+  async function removeProduct(productId: number) {
+    if (cartShopId === null) return
+    setBasketError('')
+    try {
+      const updated = await apiRequest<Basket>(
+        `/api/customer/cart/${cartShopId}/items/${productId}`,
+        { method: 'DELETE' },
+        token,
+      )
+      setBasket(updated)
+    } catch (error) {
+      setBasketError(messageFor(error))
+    }
+  }
+
   async function changeQuantity(productId: number, quantity: number) {
-    if (selectedShopId === null) return
+    if (cartShopId === null) return
     const item = basket?.items.find((entry) => entry.productId === productId)
     if (!item) return
 
@@ -209,23 +344,8 @@ export function CustomerStorefront() {
     setBasketError('')
     try {
       const updated = await apiRequest<Basket>(
-        `/api/customer/cart/${selectedShopId}/items/${productId}`,
+        `/api/customer/cart/${cartShopId}/items/${productId}`,
         { method: 'PUT', body: JSON.stringify({ quantity }) },
-        token,
-      )
-      setBasket(updated)
-    } catch (error) {
-      setBasketError(messageFor(error))
-    }
-  }
-
-  async function removeProduct(productId: number) {
-    if (selectedShopId === null) return
-    setBasketError('')
-    try {
-      const updated = await apiRequest<Basket>(
-        `/api/customer/cart/${selectedShopId}/items/${productId}`,
-        { method: 'DELETE' },
         token,
       )
       setBasket(updated)
@@ -236,271 +356,378 @@ export function CustomerStorefront() {
 
   const greetingName = session?.name.trim().split(/\s+/)[0] || 'there'
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
+  const resultHeading = browseShop
+    ? `Products at ${browseShop.name}`
+    : appliedSearch
+      ? `Products matching “${appliedSearch}”`
+      : activeCategory || 'Popular essentials across local shops'
 
   return (
-    <div className="customer-storefront">
+    <div className="customer-storefront customer-discovery">
       <a className="skip-link" href="#customer-main">Skip to marketplace</a>
-      <header className="customer-header">
+      <header className="customer-header discovery-header">
         <div className="customer-wrap customer-header__inner">
           <BrandMark />
-          <div className="customer-header__right">
-            <span className="customer-header__welcome">A good day to shop local, {greetingName}.</span>
-            <button className="customer-header__orders" type="button" onClick={() => { setShowAddressBook(false); setShowOrders(true) }}>My orders</button>
-            <button className="customer-header__addresses" type="button" aria-label="Open delivery address book" aria-haspopup="dialog" onClick={() => setShowAddressBook(true)}>
-              <span className="customer-header__addresses-label">Addresses</span>
+          <div className="customer-header__right discovery-header__actions">
+            <span className="customer-header__welcome">Welcome, {greetingName}</span>
+            <button
+              className="customer-header__addresses"
+              type="button"
+              aria-label="Manage delivery addresses"
+              aria-haspopup="dialog"
+              onClick={() => setShowAddressBook(true)}
+            >
+              <span className="customer-header__addresses-label">Delivery address</span>
               <span className="customer-header__addresses-icon" aria-hidden="true">⌖</span>
             </button>
-            <span className="customer-header__basket-count" aria-label={`${basketCount} items in basket`}>
+            <button
+              className="customer-header__orders"
+              type="button"
+              onClick={() => setShowOrders(true)}
+            >My orders</button>
+            <a className="discovery-cart-link" href="#customer-basket">
               Basket <strong>{basketCount}</strong>
-            </span>
+            </a>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
         </div>
       </header>
 
-      <main id="customer-main" className="customer-wrap customer-main">
-        <section className="customer-intro" aria-labelledby="customer-title">
+      <main id="customer-main" className="customer-wrap customer-main discovery-main">
+        <section className="discovery-welcome" aria-labelledby="discovery-title">
           <div>
-            <p className="customer-eyebrow"><span /> THE LOCAL SHELF</p>
-            <h1 id="customer-title">Good things are<br /><em>closer than you think.</em></h1>
-            <p className="customer-intro__copy">
-              Browse the shops on Apniko, see what they have in stock, and put together a basket from the store you choose.
-            </p>
+            <p className="discovery-eyebrow">YOUR EVERYDAY MARKETPLACE</p>
+            <h1 id="discovery-title">What do you need<br /><em>today?</em></h1>
+            <p>Find everyday essentials from the shops on Apniko. Compare what is available, choose your shop and build your basket.</p>
           </div>
-          <div className="customer-intro__aside">
-            <span className="customer-intro__aside-mark" aria-hidden="true">✳</span>
-            <p>Every basket starts with a local shop.</p>
-            <span>CHOOSE A SHOP · FIND YOUR USUALS</span>
+          <div className="discovery-welcome__aside">
+            <span className="discovery-welcome__spark" aria-hidden="true">✳</span>
+            <strong>Good things are closer.</strong>
+            <span>PRODUCTS · LOCAL SHOPS · ONE PLACE</span>
           </div>
         </section>
 
-        <section className="shop-section" aria-labelledby="shop-section-title">
-          <div className="customer-section-heading">
-            <div>
-              <p className="customer-eyebrow">01 / PICK YOUR SHOP</p>
-              <h2 id="shop-section-title">The shops on your shelf</h2>
-            </div>
-            <span className="customer-section-heading__count">
-              {loadingShops ? 'Loading shops' : `${shops.length} ${shops.length === 1 ? 'shop' : 'shops'}`}
-            </span>
+        <section className="discovery-search-area" aria-label="Marketplace search">
+          <div className="discovery-search-tabs" role="group" aria-label="Search by">
+            <button
+              type="button"
+              className={searchMode === 'products' ? 'is-active' : ''}
+              aria-pressed={searchMode === 'products'}
+              onClick={() => changeSearchMode('products')}
+            >Products</button>
+            <button
+              type="button"
+              className={searchMode === 'shops' ? 'is-active' : ''}
+              aria-pressed={searchMode === 'shops'}
+              onClick={() => changeSearchMode('shops')}
+            >Shops</button>
           </div>
-
-          {loadingShops ? (
-            <div className="customer-state customer-state--inline" role="status">Finding the shops on Apniko…</div>
-          ) : pageError ? (
-            <div className="customer-state customer-state--error" role="alert">{pageError}</div>
-          ) : shops.length === 0 ? (
-            <div className="customer-state">
-              <strong>Your local shelf is getting ready.</strong>
-              <p>There aren't any active shops listed on Apniko yet. Check back when a local shop joins.</p>
-            </div>
-          ) : (
-            <div className="shop-ribbon" aria-label="Choose a shop">
-              {shops.map((shop, index) => (
-                <button
-                  className={`shop-choice${selectedShopId === shop.id ? ' is-selected' : ''}`}
-                  key={shop.id}
-                  type="button"
-                  aria-pressed={selectedShopId === shop.id}
-                  onClick={() => {
-                    setSelectedShopId(shop.id)
-                    setNotice('')
-                  }}
-                >
-                  <span className="shop-choice__index">SHOP {String(index + 1).padStart(2, '0')}</span>
-                  <strong>{shop.name}</strong>
-                  <span className="shop-choice__address">{shop.address || 'Address not listed'}</span>
-                  <span className="shop-choice__select">{selectedShopId === shop.id ? 'Selected ✓' : 'View this shop ↗'}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          <form className="discovery-search" onSubmit={handleSearch} role="search">
+            <label className="visually-hidden" htmlFor="discovery-search-input">
+              {searchMode === 'shops' ? 'Search shops' : browseShop ? `Search products in ${browseShop.name}` : 'Search products across shops'}
+            </label>
+            <span className="discovery-search__icon" aria-hidden="true">⌕</span>
+            <input
+              id="discovery-search-input"
+              name="q"
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={searchMode === 'shops'
+                ? 'Search shop name, owner or area…'
+                : browseShop
+                  ? `Search products at ${browseShop.name}…`
+                  : 'Search for a product like rice, milk or paneer…'}
+            />
+            {searchInput && (
+              <button
+                type="button"
+                className="discovery-search__clear"
+                onClick={() => {
+                  setSearchInput('')
+                  setAppliedSearch('')
+                }}
+                aria-label="Clear search"
+              >×</button>
+            )}
+            <button className="discovery-search__submit" type="submit">Search</button>
+          </form>
         </section>
 
-        {selectedShop && (
-          <section className="marketplace-section" aria-labelledby="marketplace-title">
-            <div className="marketplace-heading">
+        {pageError && <div className="customer-state customer-state--error" role="alert">{pageError}</div>}
+
+        {searchMode === 'shops' ? (
+          <section className="discovery-results-section" aria-labelledby="shop-results-title">
+            <div className="discovery-section-heading">
               <div>
-                <p className="customer-eyebrow">02 / FROM THE COUNTER OF</p>
-                <h2 id="marketplace-title">{selectedShop.name}</h2>
-                <p className="marketplace-heading__address">{selectedShop.address || 'Local shop'}</p>
+                <p className="discovery-eyebrow">FIND YOUR REGULAR SHOP</p>
+                <h2 id="shop-results-title">{appliedSearch ? `Shops matching “${appliedSearch}”` : 'Shops on Apniko'}</h2>
               </div>
-              <div className="marketplace-heading__owner">
-                <span>SHOPKEEPER</span>
-                <strong>{selectedShop.ownerName || 'Local store'}</strong>
+              <span>{loadingShops ? 'Loading…' : `${filteredShops.length} ${filteredShops.length === 1 ? 'shop' : 'shops'}`}</span>
+            </div>
+            {loadingShops ? (
+              <div className="customer-state customer-state--inline" role="status">Finding shops…</div>
+            ) : filteredShops.length === 0 ? (
+              <div className="customer-state discovery-empty">
+                <strong>No matching shops found.</strong>
+                <p>Try a different shop name, owner's name or area.</p>
               </div>
-            </div>
-
-            <div className="marketplace-tools">
-              <form className="market-search" onSubmit={handleSearch} role="search">
-                <label className="market-search__label" htmlFor="market-search-input">Find something on your list</label>
-                <div className="market-search__row">
-                  <input
-                    id="market-search-input"
-                    name="q"
-                    type="search"
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder="Try rice, milk, tomatoes…"
-                  />
-                  <button type="submit">Search <span aria-hidden="true">→</span></button>
+            ) : (
+              <div className="discovery-shop-grid">
+                {filteredShops.map((shop) => (
+                  <article className="discovery-shop-card" key={shop.id}>
+                    <div className="discovery-shop-card__top">
+                      <span className="discovery-shop-card__initials" aria-hidden="true">{shopInitials(shop.name)}</span>
+                      <span className="discovery-shop-card__state"><i /> Active on Apniko</span>
+                    </div>
+                    <h3>{shop.name}</h3>
+                    <p>{shop.address || 'Address not listed'}</p>
+                    {distanceLabelForShop(shop) && <span className="discovery-shop-card__distance">{distanceLabelForShop(shop)} from you</span>}
+                    {shop.ownerName && <span className="discovery-shop-card__owner">Run by {shop.ownerName}</span>}
+                    <button type="button" onClick={() => openShop(shop)}>Browse this shop <span aria-hidden="true">→</span></button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : (
+          <>
+            {browseShop ? (
+              <section className="discovery-shop-context" aria-label="Selected shop">
+                <button type="button" onClick={showAllProducts}>← All products and shops</button>
+                <div>
+                  <p className="discovery-eyebrow">SHOPPING FROM</p>
+                  <h2>{browseShop.name}</h2>
+                  <span>{browseShop.address || 'Local shop'}</span>
                 </div>
-              </form>
-              <label className="market-sort">
-                <span>Sort by</span>
-                <select value={sortBy} onChange={(event) => setSortBy(event.target.value as 'name' | 'price')}>
-                  <option value="name">Name</option>
-                  <option value="price">Price</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="marketplace-content">
-              <section className="product-area" aria-label="Products">
-                <div className="category-row" aria-label="Filter by category">
-                  <button
-                    type="button"
-                    className={`category-chip${activeCategory === '' ? ' is-active' : ''}`}
-                    aria-pressed={activeCategory === ''}
-                    onClick={() => setActiveCategory('')}
-                  >All items</button>
-                  {categories.map((category) => (
-                    <button
-                      type="button"
-                      className={`category-chip${activeCategory === category ? ' is-active' : ''}`}
-                      aria-pressed={activeCategory === category}
-                      key={category}
-                      onClick={() => setActiveCategory(category)}
-                    >{category}</button>
-                  ))}
-                </div>
-
-                <div className="product-area__heading">
-                  <h3>{appliedSearch ? `Results for “${appliedSearch}”` : activeCategory || 'Available today'}</h3>
-                  <span>Prices and stock are shown by this shop.</span>
-                </div>
-
-                {productError && <div className="customer-state customer-state--error" role="alert">{productError}</div>}
-                {loadingProducts ? (
-                  <div className="customer-state customer-state--inline" role="status">Checking this shop's shelf…</div>
-                ) : products.length === 0 ? (
-                  <div className="customer-state customer-state--empty">
-                    <span aria-hidden="true">✳</span>
-                    <strong>Nothing on this shelf just yet.</strong>
-                    <p>Try another search or category, or choose a different shop.</p>
+              </section>
+            ) : (
+              <section className="discovery-shop-strip" aria-labelledby="shops-strip-title">
+                <div className="discovery-section-heading discovery-section-heading--compact">
+                  <div>
+                    <p className="discovery-eyebrow">SHOP BY STORE</p>
+                    <h2 id="shops-strip-title">Explore local shops</h2>
                   </div>
+                  <div className="discovery-shop-strip__actions">
+                    <button type="button" onClick={() => void locateCustomer()} disabled={locatingCustomer}>
+                      {locatingCustomer ? 'Locating…' : customerLocation ? 'Refresh my location' : 'Use my location'}
+                    </button>
+                    <button type="button" onClick={() => changeSearchMode('shops')}>View all shops <span aria-hidden="true">→</span></button>
+                  </div>
+                </div>
+                {locationMessage && <p className="discovery-location-message" role="status">{locationMessage}</p>}
+                {loadingShops ? (
+                  <div className="discovery-shop-strip__loading" role="status">Loading shops…</div>
+                ) : shops.length === 0 ? (
+                  <p className="discovery-shop-strip__empty">Shops will appear here as they join Apniko.</p>
                 ) : (
-                  <div className="product-list">
-                    {products.map((product, index) => (
-                      <article className="product-row" key={product.id}>
-                        <div className={`product-row__mark product-row__mark--${index % 4}`} aria-hidden="true">
-                          <span>{product.category?.slice(0, 1).toUpperCase() || 'L'}</span>
-                        </div>
-                        <div className="product-row__details">
-                          <span className="product-row__category">{product.category || 'Everyday essentials'}</span>
-                          <h4>{product.productName}</h4>
-                          <span className="product-row__stock">
-                            {product.stockQuantity > 0 && product.available
-                              ? `${product.stockQuantity} available`
-                              : 'Currently unavailable'}
-                          </span>
-                        </div>
-                        <div className="product-row__buy">
-                          <strong>{formatRupees(product.price)}</strong>
+                  <div className="discovery-shop-strip__items">
+                    {discoveryShops.slice(0, 6).map((shop) => (
+                      <button type="button" className="discovery-shop-chip" key={shop.id} onClick={() => openShop(shop)}>
+                        <span className="discovery-shop-chip__initials">{shopInitials(shop.name)}</span>
+                        <span>
+                          <strong>{shop.name}</strong>
+                          <small>{shop.address || 'Local store'}{distanceLabelForShop(shop) ? ` · ${distanceLabelForShop(shop)}` : ''}</small>
+                        </span>
+                        <span aria-hidden="true">›</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            <section className="discovery-category-section" aria-label="Product categories">
+              <div className="discovery-section-heading discovery-section-heading--compact">
+                <div>
+                  <p className="discovery-eyebrow">BROWSE BY CATEGORY</p>
+                  <h2>What’s on your list?</h2>
+                </div>
+                {activeCategory && <button type="button" onClick={() => setActiveCategory('')}>Clear filter</button>}
+              </div>
+              <div className="discovery-category-row">
+                <button
+                  type="button"
+                  className={activeCategory === '' ? 'is-active' : ''}
+                  aria-pressed={activeCategory === ''}
+                  onClick={() => setActiveCategory('')}
+                >All products</button>
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    className={activeCategory === category ? 'is-active' : ''}
+                    aria-pressed={activeCategory === category}
+                    onClick={() => setActiveCategory(category)}
+                  >{category}</button>
+                ))}
+              </div>
+            </section>
+
+            <section className="discovery-results-section" aria-labelledby="product-results-title">
+              <div className="discovery-section-heading">
+                <div>
+                  <p className="discovery-eyebrow">{browseShop ? 'INSIDE THIS SHOP' : 'FROM AVAILABLE SHOPS'}</p>
+                  <h2 id="product-results-title">{resultHeading}</h2>
+                  <p className="discovery-results-subtitle">
+                    {browseShop
+                      ? 'Search and choose products from this shop.'
+                      : 'Each product shows the shop selling it, its price and current stock.'}
+                  </p>
+                </div>
+                <label className="discovery-sort">
+                  <span>Sort</span>
+                  <select value={sortBy} onChange={(event) => setSortBy(event.target.value as ProductSort)}>
+                    <option value="name">Name</option>
+                    <option value="price">Price: low to high</option>
+                  </select>
+                </label>
+              </div>
+
+              {productError && <div className="customer-state customer-state--error" role="alert">{productError}</div>}
+              {loadingProducts ? (
+                <div className="discovery-product-grid" aria-label="Loading products">
+                  {Array.from({ length: 6 }, (_, index) => <div className="discovery-product-skeleton" key={index} />)}
+                </div>
+              ) : products.length === 0 ? (
+                <div className="customer-state discovery-empty">
+                  <strong>{appliedSearch ? 'No products found for this search.' : 'No products are listed here yet.'}</strong>
+                  <p>Try another search or category, or explore a different shop.</p>
+                  {browseShop && <button type="button" onClick={showAllProducts}>Browse all shops</button>}
+                </div>
+              ) : (
+                <div className="discovery-product-grid">
+                  {products.map((product) => (
+                    <article className="discovery-product-card" key={product.id}>
+                      <div className="discovery-product-card__image-wrap">
+                        <ProductImage
+                          imageUrl={product.imageUrl}
+                          productName={product.productName}
+                          category={product.category}
+                        />
+                        <span className={product.available && product.stockQuantity > 0
+                          ? 'discovery-stock-tag'
+                          : 'discovery-stock-tag discovery-stock-tag--out'}>
+                          {product.available && product.stockQuantity > 0 ? 'In stock' : 'Unavailable'}
+                        </span>
+                      </div>
+                      <div className="discovery-product-card__body">
+                        <span className="discovery-product-card__category">{product.category || 'Everyday essentials'}</span>
+                        <h3>{product.productName}</h3>
+                        <button
+                          type="button"
+                          className="discovery-product-card__shop"
+                          onClick={() => {
+                            const shop = shops.find((entry) => entry.id === product.shopId)
+                            if (shop) openShop(shop)
+                          }}
+                        >
+                          {product.shopName}
+                          {formatDistanceKm(getShopDistanceKm({
+                            latitude: product.shopLatitude,
+                            longitude: product.shopLongitude,
+                          }, customerLocation)) && (
+                            <small className="discovery-product-card__distance">
+                              {formatDistanceKm(getShopDistanceKm({
+                                latitude: product.shopLatitude,
+                                longitude: product.shopLongitude,
+                              }, customerLocation))}
+                            </small>
+                          )}
+                          <span aria-hidden="true">↗</span>
+                        </button>
+                        <div className="discovery-product-card__bottom">
+                          <div>
+                            <strong>{formatRupees(product.price)}</strong>
+                            <small>{product.stockQuantity > 0 ? `${product.stockQuantity} available` : 'Out of stock'}</small>
+                          </div>
                           <button
                             type="button"
                             disabled={!product.available || product.stockQuantity < 1 || busyProductId === product.productId}
                             onClick={() => void addProduct(product)}
-                          >
-                            {busyProductId === product.productId ? 'Adding…' : 'Add +'}
-                          </button>
+                          >{busyProductId === product.productId ? 'Adding…' : 'Add +'}</button>
                         </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-
-                {hasMore && !loadingProducts && (
-                  <button
-                    type="button"
-                    className="load-more"
-                    disabled={loadingMore}
-                    onClick={() => void loadProducts(productPage + 1, true)}
-                  >{loadingMore ? 'Loading…' : 'Show more from this shop ↓'}</button>
-                )}
-              </section>
-
-              <aside className="basket-panel" aria-labelledby="basket-title">
-                <div className="basket-panel__topline">
-                  <span>YOUR SHOPPING LIST</span>
-                  <span>{basketCount.toString().padStart(2, '0')}</span>
-                </div>
-                <div className="basket-panel__heading">
-                  <div>
-                    <p className="customer-eyebrow">03 / YOUR BASKET</p>
-                    <h3 id="basket-title">A few good things.</h3>
-                  </div>
-                  <span className="basket-panel__asterisk" aria-hidden="true">✳</span>
-                </div>
-                <p className="basket-panel__shop">{selectedShop.name}</p>
-                {basketError && <p className="basket-message basket-message--error" role="alert">{basketError}</p>}
-                {notice && <p className="basket-message basket-message--success" role="status">{notice}</p>}
-                {loadingBasket ? (
-                  <div className="basket-empty" role="status">Opening your basket…</div>
-                ) : basket?.items.length ? (
-                  <div className="basket-items">
-                    {basket.items.map((item) => (
-                      <div className="basket-item" key={item.productId}>
-                        <div className="basket-item__main">
-                          <strong>{item.productName}</strong>
-                          <span>{formatRupees(item.price)} each</span>
-                        </div>
-                        <div className="basket-item__controls">
-                          <button type="button" aria-label={`Decrease ${item.productName}`} onClick={() => void changeQuantity(item.productId, item.quantity - 1)}>−</button>
-                          <span aria-label={`Quantity ${item.quantity}`}>{item.quantity}</span>
-                          <button type="button" aria-label={`Increase ${item.productName}`} disabled={item.quantity >= item.availableStock} onClick={() => void changeQuantity(item.productId, item.quantity + 1)}>+</button>
-                          <button className="basket-item__remove" type="button" onClick={() => void removeProduct(item.productId)}>Remove</button>
-                        </div>
-                        <span className="basket-item__total">{formatRupees(item.lineTotal)}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="basket-empty">
-                    <span aria-hidden="true">↗</span>
-                    <strong>Your basket starts here.</strong>
-                    <p>Add something from {selectedShop.name} and it will show up here.</p>
-                  </div>
-                )}
-                <div className="basket-total">
-                  <span>Basket total</span>
-                  <strong>{formatRupees(basket?.totalAmount ?? 0)}</strong>
+                    </article>
+                  ))}
                 </div>
+              )}
+
+              {hasMore && !loadingProducts && (
                 <button
-                  className="basket-checkout"
                   type="button"
-                  disabled={loadingBasket || !basket?.items.length}
-                  onClick={() => setShowCheckout(true)}
-                >Continue to checkout →</button>
-                <p className="basket-panel__note">Your basket belongs to this shop. Choose another shop to see its separate basket.</p>
-                <Link className="basket-panel__back" to="/">Back to Apniko home ↗</Link>
-              </aside>
-            </div>
-          </section>
+                  className="discovery-load-more"
+                  disabled={loadingMore}
+                  onClick={() => void loadProducts(productPage + 1, true)}
+                >{loadingMore ? 'Loading more…' : 'Show more products ↓'}</button>
+              )}
+            </section>
+          </>
         )}
+
+        <section className="discovery-basket-section" id="customer-basket" aria-labelledby="basket-title">
+          <div className="discovery-basket-heading">
+            <div>
+              <p className="discovery-eyebrow">YOUR SHOPPING BASKET</p>
+              <h2 id="basket-title">Ready when you are.</h2>
+            </div>
+            <span className="discovery-basket-count">{basketCount} {basketCount === 1 ? 'item' : 'items'}</span>
+          </div>
+          {basketError && <p className="basket-message basket-message--error" role="alert">{basketError}</p>}
+          {notice && <p className="basket-message basket-message--success" role="status">{notice}</p>}
+          {loadingBasket ? (
+            <div className="discovery-basket-empty" role="status">Loading your shop basket…</div>
+          ) : basket?.items.length ? (
+            <>
+              <p className="discovery-basket-shop">Order from <strong>{cartShop?.name ?? basket.shopName}</strong></p>
+              <div className="discovery-basket-items">
+                {basket.items.map((item) => (
+                  <div className="discovery-basket-item" key={item.productId}>
+                    <div>
+                      <strong>{item.productName}</strong>
+                      <span>{formatRupees(item.price)} each</span>
+                    </div>
+                    <div className="discovery-basket-item__controls">
+                      <button type="button" aria-label={`Decrease ${item.productName}`} onClick={() => void changeQuantity(item.productId, item.quantity - 1)}>−</button>
+                      <span>{item.quantity}</span>
+                      <button type="button" aria-label={`Increase ${item.productName}`} disabled={item.quantity >= item.availableStock} onClick={() => void changeQuantity(item.productId, item.quantity + 1)}>+</button>
+                      <button type="button" className="discovery-basket-remove" onClick={() => void removeProduct(item.productId)}>Remove</button>
+                    </div>
+                    <strong className="discovery-basket-item__total">{formatRupees(item.lineTotal)}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="discovery-basket-empty">
+              <strong>Your basket is empty.</strong>
+              <p>Add products from a shop to start an order. Each shop keeps its own basket.</p>
+            </div>
+          )}
+          <div className="discovery-basket-footer">
+            <div><span>Basket total</span><strong>{formatRupees(basket?.totalAmount ?? 0)}</strong></div>
+            <button
+              type="button"
+              disabled={loadingBasket || cartShopId === null || !basket?.items.length}
+              onClick={() => setShowCheckout(true)}
+            >Continue to checkout <span aria-hidden="true">→</span></button>
+          </div>
+          <p className="discovery-basket-note">Your order is placed with one shop at a time. You can switch shops and their baskets remain separate.</p>
+        </section>
       </main>
 
       <footer className="customer-footer">
         <div className="customer-wrap customer-footer__inner">
           <BrandMark />
-          <span>Good groceries. Closer to home.</span>
+          <span>Everyday shopping, closer to home.</span>
           <span>APNIKO / CUSTOMER</span>
         </div>
       </footer>
-      {showCheckout && selectedShopId !== null && basket && (
+
+      {showCheckout && cartShopId !== null && basket && (
         <CustomerCheckout
           token={token}
-          shopId={selectedShopId}
+          shopId={cartShopId}
           basket={basket}
           onClose={() => setShowCheckout(false)}
           onManageAddresses={() => {

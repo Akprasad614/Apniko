@@ -1,6 +1,9 @@
 package com.localcart.service;
 
+import com.localcart.entity.Product;
 import com.localcart.entity.Shop;
+import com.localcart.entity.ShopInventory;
+import com.localcart.dto.InventoryResponse;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.ProductRepository;
@@ -47,6 +50,8 @@ class CustomerMarketplaceServiceTest {
         assertEquals(1, result.size());
         assertEquals("Local Fresh", result.get(0).getName());
         assertTrue(result.get(0).isActive());
+        assertEquals(12.97, result.get(0).getLatitude());
+        assertEquals(77.59, result.get(0).getLongitude());
     }
 
     @Test
@@ -121,6 +126,46 @@ class CustomerMarketplaceServiceTest {
     }
 
     @Test
+    void marketplaceResultsIncludeTheStoredProductImageUrl() {
+        Product product = new Product();
+        product.setName("Basmati Rice");
+        product.setCategory("Staples");
+        product.setImageUrl("https://cdn.example.com/products/basmati-rice.jpg");
+
+        Shop shop = mock(Shop.class);
+        when(shop.getId()).thenReturn(7L);
+        when(shop.getName()).thenReturn("Fresh Basket");
+        when(shop.getLatitude()).thenReturn(12.97);
+        when(shop.getLongitude()).thenReturn(77.59);
+
+        ShopInventory inventory = new ShopInventory();
+        inventory.setShop(shop);
+        inventory.setProduct(product);
+        inventory.setPrice(120.0);
+        inventory.setStockQuantity(8);
+        inventory.setAvailable(true);
+
+        when(inventoryRepository.searchMarketplace(
+                isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenAnswer(invocation -> {
+                    Pageable pageable = invocation.getArgument(5);
+                    return new PageImpl<>(List.of(inventory), pageable, 1);
+                });
+
+        Page<InventoryResponse> result = service.searchProducts(
+                null, null, null, null, null, 0, 24, "name", "asc"
+        );
+
+        assertEquals(1, result.getContent().size());
+        assertEquals("Basmati Rice", result.getContent().get(0).getProductName());
+        assertEquals("https://cdn.example.com/products/basmati-rice.jpg",
+                result.getContent().get(0).getImageUrl());
+        assertEquals(7L, result.getContent().get(0).getShopId());
+        assertEquals(12.97, result.getContent().get(0).getShopLatitude());
+        assertEquals(77.59, result.getContent().get(0).getShopLongitude());
+    }
+
+    @Test
     void priceComparisonRejectsUnknownProduct() {
         when(productRepository.existsById(999L)).thenReturn(false);
 
@@ -144,6 +189,8 @@ class CustomerMarketplaceServiceTest {
         when(shop.getId()).thenReturn(id);
         when(shop.getName()).thenReturn(name);
         when(shop.isActive()).thenReturn(active);
+        when(shop.getLatitude()).thenReturn(12.97);
+        when(shop.getLongitude()).thenReturn(77.59);
         return shop;
     }
 }

@@ -8,18 +8,28 @@ public class ShopResponse {
     private String phone;
     private String address;
     private boolean active;
+    private Double latitude;
+    private Double longitude;
 
     public ShopResponse() {
     }
 
     public ShopResponse(Long id, String name, String ownerName,
                         String phone, String address, boolean active) {
+        this(id, name, ownerName, phone, address, active, null, null);
+    }
+
+    public ShopResponse(Long id, String name, String ownerName,
+                        String phone, String address, boolean active,
+                        Double latitude, Double longitude) {
         this.id = id;
         this.name = name;
         this.ownerName = ownerName;
         this.phone = phone;
         this.address = address;
         this.active = active;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public Long getId() {
@@ -68,5 +78,21 @@ public class ShopResponse {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 }

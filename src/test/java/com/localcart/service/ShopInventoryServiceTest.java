@@ -9,6 +9,7 @@ import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
 import com.localcart.entity.User;
 import com.localcart.exception.BadRequestException;
+import org.springframework.web.multipart.MultipartFile;
 import com.localcart.repository.InventoryMovementRepository;
 import com.localcart.repository.ProductRepository;
 import com.localcart.repository.ShopInventoryRepository;
@@ -31,6 +32,7 @@ class ShopInventoryServiceTest {
     private ShopRepository shopRepository;
     private ProductRepository productRepository;
     private UserRepository userRepository;
+    private ProductImageStorageService imageStorageService;
     private ShopInventoryService inventoryService;
 
     @BeforeEach
@@ -40,13 +42,55 @@ class ShopInventoryServiceTest {
         shopRepository = mock(ShopRepository.class);
         productRepository = mock(ProductRepository.class);
         userRepository = mock(UserRepository.class);
+        imageStorageService = mock(ProductImageStorageService.class);
         inventoryService = new ShopInventoryService(
                 inventoryRepository,
                 movementRepository,
                 shopRepository,
                 productRepository,
-                userRepository
+                userRepository,
+                imageStorageService
         );
+    }
+
+    @Test
+    void uploadProductImageStoresPhotoForInventoryOwnedByTheShopkeeper() {
+        User owner = user(12L, "owner@example.com");
+        Shop shop = shop(1L, owner);
+        Product product = product(101L);
+        ShopInventory inventory = inventory(shop, product, 5, true, 5);
+        inventory.setImageUrl("/api/media/products/old-photo.png");
+        arrangeOwnerAndShop(owner, shop);
+        when(inventoryRepository.findByIdAndShopIdForUpdate(20L, 1L))
+                .thenReturn(Optional.of(inventory));
+        when(inventoryRepository.save(inventory)).thenReturn(inventory);
+
+        MultipartFile file = mock(MultipartFile.class);
+        when(imageStorageService.store(file))
+                .thenReturn("/api/media/products/new-photo.jpg");
+
+        InventoryResponse response = inventoryService.uploadProductImage(
+                "owner@example.com", 1L, 20L, file);
+
+        assertEquals("/api/media/products/new-photo.jpg", response.getImageUrl());
+        verify(inventoryRepository).save(inventory);
+        verify(imageStorageService).delete("/api/media/products/old-photo.png");
+    }
+
+    @Test
+    void uploadProductImageRejectsInventoryFromAnotherShopOwner() {
+        User owner = user(12L, "owner@example.com");
+        User otherOwner = user(99L, "other@example.com");
+        Shop otherShop = shop(1L, otherOwner);
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
+        when(shopRepository.findById(1L)).thenReturn(Optional.of(otherShop));
+
+        MultipartFile file = mock(MultipartFile.class);
+
+        assertThrows(BadRequestException.class,
+                () -> inventoryService.uploadProductImage("owner@example.com", 1L, 20L, file));
+        verifyNoInteractions(imageStorageService);
+        verify(inventoryRepository, never()).save(any(ShopInventory.class));
     }
 
     @Test

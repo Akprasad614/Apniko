@@ -129,3 +129,134 @@
     width: 100%;
   }
 }
+
+
+.shop-location-capture {
+  display: grid;
+  gap: .55rem;
+  border: 1px solid var(--lc-line);
+  border-radius: var(--lc-radius-sm);
+  padding: .85rem;
+  background: #f7f8f2;
+}
+.shop-location-capture > div {
+  display: grid;
+  gap: .2rem;
+}
+.shop-location-capture strong {
+  color: var(--lc-forest);
+  font-size: .75rem;
+}
+.shop-location-capture span,
+.shop-location-capture p {
+  margin: 0;
+  color: var(--lc-muted);
+  font-size: .68rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.shop-location-capture .button {
+  justify-self: start;
+}
+.shop-details__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.3rem 0 0;
+  border-top: 1px solid var(--lc-line);
+  padding-top: 1rem;
+}
+
+
+.inventory-card__photo-row {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: .9rem;
+  border-top: 1px solid var(--lc-line);
+  padding-top: .8rem;
+}
+
+.inventory-card__photo {
+  display: block;
+  width: 84px;
+  height: 84px;
+  flex: 0 0 84px;
+  overflow: hidden;
+  border: 1px solid var(--lc-line);
+  border-radius: var(--lc-radius-sm);
+  object-fit: cover;
+  background: #edf2ef;
+}
+
+.inventory-card__photo--empty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: .1rem;
+  color: var(--lc-moss);
+  background: #edf2ef;
+}
+
+.inventory-card__photo--empty span {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.inventory-card__photo--empty small {
+  color: var(--lc-muted);
+  font-size: .58rem;
+}
+
+.inventory-image-upload {
+  display: grid;
+  justify-items: start;
+  gap: .25rem;
+  min-width: 0;
+  color: var(--lc-forest);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.inventory-image-upload input {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  padding: .15rem 0;
+  color: var(--lc-muted);
+  background: transparent;
+  font-size: .68rem;
+}
+
+.inventory-image-upload input::file-selector-button {
+  min-height: 36px;
+  margin-right: .55rem;
+  border: 1px solid var(--lc-line);
+  border-radius: var(--lc-radius-sm);
+  padding: .4rem .65rem;
+  color: var(--lc-forest);
+  background: #ffffff;
+  font-size: .67rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.inventory-image-upload small {
+  color: var(--lc-muted);
+  font-size: .61rem;
+  font-weight: 500;
+}
+
+@media (max-width: 420px) {
+  .inventory-card__photo {
+    width: 72px;
+    height: 72px;
+    flex-basis: 72px;
+  }
+
+  .inventory-image-upload input {
+    font-size: .62rem;
+  }
+}

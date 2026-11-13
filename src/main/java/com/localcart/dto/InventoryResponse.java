@@ -5,9 +5,12 @@ public class InventoryResponse {
     private Long id;
     private Long shopId;
     private String shopName;
+    private Double shopLatitude;
+    private Double shopLongitude;
     private Long productId;
     private String productName;
     private String category;
+    private String imageUrl;
     private double price;
     private int stockQuantity;
     private boolean available;
@@ -26,6 +29,12 @@ public class InventoryResponse {
     public String getShopName() { return shopName; }
     public void setShopName(String shopName) { this.shopName = shopName; }
 
+    public Double getShopLatitude() { return shopLatitude; }
+    public void setShopLatitude(Double shopLatitude) { this.shopLatitude = shopLatitude; }
+
+    public Double getShopLongitude() { return shopLongitude; }
+    public void setShopLongitude(Double shopLongitude) { this.shopLongitude = shopLongitude; }
+
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
 
@@ -34,6 +43,9 @@ public class InventoryResponse {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }

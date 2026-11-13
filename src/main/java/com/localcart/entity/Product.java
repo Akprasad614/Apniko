@@ -14,6 +14,14 @@ public class Product {
 
     private String category;
 
+    /*
+     * Store the HTTPS CDN/object-storage URL, not image bytes.
+     * Product photos belong in object storage (for example, a managed
+     * image CDN); MySQL keeps the URL alongside the product catalogue data.
+     */
+    @Column(name = "image_url", length = 2048)
+    private String imageUrl;
+
     public Product() {
     }
 
@@ -35,5 +43,13 @@ public class Product {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }

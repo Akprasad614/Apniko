@@ -5,6 +5,8 @@ export interface Shop {
   phone: string
   address: string
   active: boolean
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface Product {
@@ -20,6 +22,7 @@ export interface InventoryItem {
   productId: number
   productName: string
   category: string | null
+  imageUrl?: string | null
   price: number
   stockQuantity: number
   available: boolean

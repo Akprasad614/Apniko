@@ -20,8 +20,12 @@ import com.localcart.repository.ProductRepository;
 import com.localcart.repository.ShopInventoryRepository;
 import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -29,6 +33,7 @@ import java.util.List;
 @Transactional
 public class ShopInventoryService {
 
+    private static final Logger log = LoggerFactory.getLogger(ShopInventoryService.class);
     private static final int DEFAULT_LOW_STOCK_THRESHOLD = 5;
 
     private final ShopInventoryRepository inventoryRepository;
@@ -36,19 +41,37 @@ public class ShopInventoryService {
     private final ShopRepository shopRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final ProductImageStorageService imageStorageService;
 
+    @Autowired
     public ShopInventoryService(
             ShopInventoryRepository inventoryRepository,
             InventoryMovementRepository movementRepository,
             ShopRepository shopRepository,
             ProductRepository productRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ProductImageStorageService imageStorageService) {
 
         this.inventoryRepository = inventoryRepository;
         this.movementRepository = movementRepository;
         this.shopRepository = shopRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.imageStorageService = imageStorageService;
+    }
+
+    /*
+     * Kept for existing unit-test setup and older direct service construction.
+     * Spring uses the @Autowired constructor above and the configured storage path.
+     */
+    public ShopInventoryService(
+            ShopInventoryRepository inventoryRepository,
+            InventoryMovementRepository movementRepository,
+            ShopRepository shopRepository,
+            ProductRepository productRepository,
+            UserRepository userRepository) {
+        this(inventoryRepository, movementRepository, shopRepository, productRepository,
+                userRepository, new ProductImageStorageService("uploads/products"));
     }
 
     public InventoryResponse addInventory(
@@ -96,6 +119,46 @@ public class ShopInventoryService {
 
         return inventoryRepository.findByShopId(shopId)
                 .stream().map(this::toResponse).toList();
+    }
+
+    public InventoryResponse uploadProductImage(
+            String email,
+            Long shopId,
+            Long inventoryId,
+            MultipartFile file) {
+
+        User owner = getShopkeeper(email);
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
+        checkOwnership(shop, owner);
+
+        ShopInventory inventory = inventoryRepository
+                .findByIdAndShopIdForUpdate(inventoryId, shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory item not found in this shop"));
+
+        String previousImageUrl = inventory.getImageUrl();
+        String newImageUrl = imageStorageService.store(file);
+        inventory.setImageUrl(newImageUrl);
+
+        ShopInventory saved;
+        try {
+            saved = inventoryRepository.save(inventory);
+        } catch (RuntimeException exception) {
+            imageStorageService.delete(newImageUrl);
+            throw exception;
+        }
+
+        if (previousImageUrl != null && !previousImageUrl.equals(newImageUrl)) {
+            try {
+                imageStorageService.delete(previousImageUrl);
+            } catch (RuntimeException cleanupFailure) {
+                // The new image is already saved. A failed cleanup must not undo the upload.
+                log.warn("Could not remove the previous image for inventory {}", inventoryId,
+                        cleanupFailure);
+            }
+        }
+
+        return toResponse(saved);
     }
 
     public InventoryResponse updateInventory(
@@ -251,9 +314,14 @@ public class ShopInventoryService {
         response.setId(inventory.getId());
         response.setShopId(inventory.getShop().getId());
         response.setShopName(inventory.getShop().getName());
+        response.setShopLatitude(inventory.getShop().getLatitude());
+        response.setShopLongitude(inventory.getShop().getLongitude());
         response.setProductId(inventory.getProduct().getId());
         response.setProductName(inventory.getProduct().getName());
         response.setCategory(inventory.getProduct().getCategory());
+        response.setImageUrl(inventory.getImageUrl() != null
+                ? inventory.getImageUrl()
+                : inventory.getProduct().getImageUrl());
         response.setPrice(inventory.getPrice());
         response.setStockQuantity(inventory.getStockQuantity());
         response.setAvailable(inventory.isAvailable());

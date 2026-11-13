@@ -13,6 +13,9 @@ public class UpdateShopRequest {
     @NotBlank
     private String address;
 
+    private Double latitude;
+    private Double longitude;
+
     public UpdateShopRequest() {
     }
 
@@ -26,5 +29,33 @@ public class UpdateShopRequest {
 
     public String getAddress() {
         return address;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 }
