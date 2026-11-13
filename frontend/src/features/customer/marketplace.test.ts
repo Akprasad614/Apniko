@@ -105,6 +105,8 @@ describe('customer marketplace helpers', () => {
 
   it('accepts only secure HTTPS product image URLs', () => {
     expect(isSafeProductImageUrl('https://cdn.example.com/products/milk.jpg')).toBe(true)
+    expect(isSafeProductImageUrl('/api/media/products/3b7b7a52-4ec7-4aa9-9774-12e6a3d781e9.png')).toBe(true)
+    expect(isSafeProductImageUrl('//untrusted.example.com/products/milk.jpg')).toBe(false)
     expect(isSafeProductImageUrl('http://cdn.example.com/products/milk.jpg')).toBe(false)
     expect(isSafeProductImageUrl('javascript:alert(1)')).toBe(false)
     expect(isSafeProductImageUrl('not a url')).toBe(false)
