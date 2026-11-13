@@ -1,36 +1,21 @@
-/* Brand */
-.brand {
+/* Text-only wordmark until the final logo is supplied */
+.wordmark {
   display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
   width: fit-content;
+  align-items: center;
   color: var(--lc-forest);
+  font-size: 1.35rem;
+  font-weight: 850;
+  letter-spacing: -0.075em;
+  line-height: 1;
   text-decoration: none;
 }
 
-.brand__symbol {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-}
-
-.brand__symbol svg {
-  width: 100%;
-  height: 100%;
-}
-
-.brand__word {
-  font-size: 1.28rem;
-  font-weight: 850;
-  letter-spacing: -0.075em;
-}
-
-.brand__period {
+.wordmark span {
   color: var(--lc-terracotta);
 }
 
-.brand--light {
+.wordmark--light {
   color: var(--lc-white);
 }
 
@@ -247,18 +232,6 @@
   gap: 1.1rem;
   background: #d7ad78;
   clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
-}
-
-.grocery-bag__stamp {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border: 1px solid var(--lc-forest);
-  border-radius: 50%;
-  color: var(--lc-forest);
-  font-family: var(--lc-font-display);
-  font-size: 1.25rem;
 }
 
 .grocery-bag__word {
@@ -662,117 +635,6 @@
   color: var(--lc-danger);
   background: #f9ece8;
   font-size: 0.78rem;
-}
-
-/* Role landing placeholders */
-.portal-page {
-  min-height: 100vh;
-  background: var(--lc-paper);
-}
-
-.portal-header {
-  display: flex;
-  min-height: 82px;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--lc-line);
-}
-
-.portal-user {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-}
-
-.portal-user__name {
-  color: var(--lc-ink);
-  font-size: 0.77rem;
-  font-weight: 800;
-}
-
-.portal-user__role {
-  border-radius: 999px;
-  padding: 0.3rem 0.55rem;
-  color: var(--lc-moss);
-  background: #e5e9d5;
-  font-size: 0.61rem;
-  font-weight: 850;
-  text-transform: capitalize;
-}
-
-.portal-main {
-  position: relative;
-  min-height: calc(100vh - 82px);
-  padding-block: clamp(4rem, 11vh, 8.5rem);
-}
-
-.portal-main__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.portal-main__id,
-.portal-main__route {
-  color: var(--lc-muted);
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-}
-
-.portal-main h1 {
-  max-width: 800px;
-  font-size: clamp(3.6rem, 7vw, 6.5rem);
-  white-space: normal;
-}
-
-.portal-main__description {
-  max-width: 590px;
-  margin: 1.6rem 0 2.2rem;
-  color: var(--lc-muted);
-  font-size: 1rem;
-  line-height: 1.8;
-}
-
-.portal-next {
-  display: flex;
-  max-width: 650px;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 2.2rem;
-  border: 1px solid var(--lc-line);
-  border-radius: var(--lc-radius-md);
-  padding: 1.2rem;
-  background: rgb(255 253 247 / 75%);
-}
-
-.portal-next__icon {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--lc-forest);
-  background: var(--lc-lime);
-}
-
-.portal-next strong {
-  color: var(--lc-forest);
-  font-size: 0.83rem;
-}
-
-.portal-next p {
-  margin: 0.35rem 0 0;
-  color: var(--lc-muted);
-  font-size: 0.74rem;
-  line-height: 1.65;
-}
-
-.portal-main__route {
-  position: absolute;
-  right: 0;
-  bottom: 2rem;
 }
 
 /* Not found */

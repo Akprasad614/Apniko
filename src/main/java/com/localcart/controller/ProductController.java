@@ -2,6 +2,7 @@ package com.localcart.controller;
 
 import com.localcart.entity.Product;
 import com.localcart.service.ProductService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ public class ProductController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Product> createProduct(
-            @RequestBody Product product) {
+            @Valid @RequestBody Product product) {
 
         Product createdProduct = productService.createProduct(product);
 

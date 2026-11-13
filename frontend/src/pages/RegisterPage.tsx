@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { BrandMark } from '../components/BrandMark'
+import { Wordmark } from '../components/Wordmark'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 
@@ -32,7 +32,7 @@ export function RegisterPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel auth-panel--copy">
-        <BrandMark light />
+        <Wordmark light />
         <div className="auth-panel__message">
           <p className="eyebrow eyebrow--light">A good place to start</p>
           <h1>Make room<br />for <em>local.</em></h1>
@@ -71,11 +71,13 @@ export function RegisterPage() {
               name="password"
               type="password"
               autoComplete="new-password"
-              minLength={6}
+              minLength={12}
+              maxLength={72}
+              pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,72}"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              hint="Use at least 6 characters."
+              hint="Use 12–72 characters with upper- and lower-case letters, a number and a symbol."
             />
             {error && <p className="form-error" role="alert">{error}</p>}
             <Button type="submit" disabled={busy} className="auth-submit">

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
-import { BrandMark } from '../components/BrandMark'
+import { Wordmark } from '../components/Wordmark'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 import { roleHomePath } from '../lib/roles'
@@ -34,7 +34,7 @@ export function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel auth-panel--copy">
-        <BrandMark light />
+        <Wordmark light />
         <div className="auth-panel__message">
           <p className="eyebrow eyebrow--light">Welcome back</p>
           <h1>Your local<br /><em>is waiting.</em></h1>

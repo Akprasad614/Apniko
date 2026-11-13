@@ -4,7 +4,7 @@ import { apiRequest } from '../lib/api'
 import { isAppRole } from '../lib/roles'
 import type { AppRole } from '../lib/roles'
 
-const SESSION_KEY = 'localcart.auth.session'
+const SESSION_KEY = 'apniko.auth.session'
 
 export interface AuthSession {
   token: string

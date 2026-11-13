@@ -18,6 +18,10 @@ function getMessage(payload: unknown, fallback: string): string {
       const value = record[key]
       if (typeof value === 'string' && value.trim()) return value
     }
+    const validationMessage = Object.values(record).find(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0,
+    )
+    if (validationMessage) return validationMessage
   }
   return fallback
 }
@@ -61,5 +65,6 @@ export async function apiRequest<T>(
     )
   }
 
+  if (response.status === 204 || !rawBody.trim()) return undefined as T
   return payload as T
 }

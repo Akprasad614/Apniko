@@ -37,7 +37,6 @@ function formatDateTime(value?: string | null): string {
 export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
   const { session } = useAuth()
   const token = session?.token ?? ''
-  const customerId = session?.userId
   const [orders, setOrders] = useState<CustomerOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -56,7 +55,7 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
     async function loadOrders(initialLoad: boolean) {
       if (initialLoad) setLoading(true)
       try {
-        if (!customerId || !token) {
+        if (!session || !token) {
           if (active) {
             setOrders([])
             setError('Sign in as a customer to see your orders.')
@@ -65,7 +64,7 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
         }
 
         const result = await apiRequest<CustomerOrder[]>(
-          `/api/orders/customer/${customerId}`,
+          '/api/customer/orders',
           {},
           token,
         )
@@ -86,7 +85,7 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
       active = false
       window.clearInterval(intervalId)
     }
-  }, [customerId, manualRefreshKey, refreshKey, token])
+  }, [manualRefreshKey, refreshKey, session, token])
 
   async function toggleHistory(orderId: number) {
     if (expandedOrderId === orderId) {

@@ -2,6 +2,7 @@ package com.localcart.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class CreateManagedUserRequest {
@@ -16,7 +17,8 @@ public class CreateManagedUserRequest {
     private String email;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 8, max = 72, message = "Password must contain between 8 and 72 characters")
+    @Size(min = 12, max = 72, message = "Password must contain between 12 and 72 characters")
+    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,72}$", message = "Password must include upper- and lower-case letters, a number and a symbol")
     private String password;
 
     public CreateManagedUserRequest() {
