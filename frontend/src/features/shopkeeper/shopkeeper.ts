@@ -5,6 +5,8 @@ export interface Shop {
   phone: string
   address: string
   active: boolean
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface Product {
