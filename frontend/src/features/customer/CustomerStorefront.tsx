@@ -72,7 +72,9 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         if (!active) return
         setShops(result)
         setSelectedShopId((current) => {
-          if (current !== null && result.some((shop) => shop.id === current)) return current
+          const savedId = Number(window.sessionStorage.getItem('apniko.customer.selectedShopId'))
+          const preferredId = current ?? (Number.isSafeInteger(savedId) && savedId > 0 ? savedId : null)
+          if (preferredId !== null && result.some((shop) => shop.id === preferredId)) return preferredId
           return result[0]?.id ?? null
         })
       })
