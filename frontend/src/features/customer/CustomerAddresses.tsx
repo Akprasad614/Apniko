@@ -467,8 +467,8 @@ export function CustomerAddresses() {
               </button>
             </form>
 
-            {mapSearchResults.length > 0 && (
-              <div className="customer-map-prelude">
+            <div className="customer-map-prelude">
+              {mapSearchResults.length > 0 && (
                 <div className="customer-map-results" role="list">
                   {mapSearchResults.map((result) => (
                     <button type="button" role="listitem" key={result.lat + ':' + result.lon} onClick={() => chooseSearchResult(result)}>
@@ -477,8 +477,9 @@ export function CustomerAddresses() {
                     </button>
                   ))}
                 </div>
-                <div className="customer-map-instructions">Drag the pin or tap the map to mark the exact delivery point.</div>
-              </div>
+              )}
+              <div className="customer-map-instructions">Drag the pin or tap the map to mark the exact delivery point.</div>
+            </div>
 
             <MapLocationPicker
               initialLocation={mapLocation}
