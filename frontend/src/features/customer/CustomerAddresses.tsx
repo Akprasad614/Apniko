@@ -3,6 +3,8 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
+import { MapLocationPicker } from './MapLocationPicker'
+import type { MapPoint } from './MapLocationPicker'
 import './customer-shell.css'
 
 export interface CustomerAddress {
@@ -36,11 +38,21 @@ interface AddressForm {
   defaultAddress: boolean
 }
 
+interface GeocodingResult {
+  lat: string
+  lon: string
+  display_name: string
+  address?: Record<string, string>
+}
+
 const emptyForm: AddressForm = {
   label: 'Home', recipientName: '', phone: '', addressLine1: '', addressLine2: '',
   landmark: '', city: '', state: '', postalCode: '', latitude: null, longitude: null,
   defaultAddress: false,
 }
+
+const BENGALURU_MAP_FALLBACK: MapPoint = { lat: 12.9716, lng: 77.5946 }
+const GEOCODING_BASE_URL = (import.meta.env.VITE_GEOCODING_BASE_URL || 'https://nominatim.openstreetmap.org').replace(/\/$/, '')
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
@@ -61,6 +73,23 @@ function formFromAddress(address: CustomerAddress): AddressForm {
   }
 }
 
+function addressFieldsFromGeocoding(result: GeocodingResult): Partial<AddressForm> {
+  const parts = result.address ?? {}
+  const house = parts.house_number ?? ''
+  const road = parts.road ?? parts.pedestrian ?? parts.residential ?? parts.footway ?? ''
+  const line1 = [house, road].filter(Boolean).join(' ').trim()
+  const city = parts.city ?? parts.town ?? parts.municipality ?? parts.county ?? parts.village ?? ''
+  const locality = parts.neighbourhood ?? parts.suburb ?? parts.city_district ?? ''
+
+  return {
+    addressLine1: line1 || road || result.display_name.split(',')[0]?.trim() || '',
+    addressLine2: locality,
+    city,
+    state: parts.state ?? '',
+    postalCode: parts.postcode ?? '',
+  }
+}
+
 export function CustomerAddresses() {
   const { session } = useAuth()
   const navigate = useNavigate()
@@ -73,6 +102,15 @@ export function CustomerAddresses() {
   const [locating, setLocating] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [mapOpen, setMapOpen] = useState(false)
+  const [mapLocation, setMapLocation] = useState<MapPoint>(BENGALURU_MAP_FALLBACK)
+  const [mapStatus, setMapStatus] = useState('')
+  const [mapAccuracy, setMapAccuracy] = useState<number | null>(null)
+  const [mapSearch, setMapSearch] = useState('')
+  const [mapSearchResults, setMapSearchResults] = useState<GeocodingResult[]>([])
+  const [searchingMap, setSearchingMap] = useState(false)
+  const [confirmingMapLocation, setConfirmingMapLocation] = useState(false)
+  const [selectedPlaceName, setSelectedPlaceName] = useState('')
   const returnToCart = new URLSearchParams(window.location.search).get('returnTo') === 'cart'
 
   async function loadAddresses() {
@@ -110,67 +148,148 @@ export function CustomerAddresses() {
   function editAddress(address: CustomerAddress) {
     setEditingId(address.id)
     setForm(formFromAddress(address))
+    if (address.latitude !== null && address.longitude !== null) {
+      setMapLocation({ lat: address.latitude, lng: address.longitude })
+    }
     setError('')
     setNotice('')
   }
 
-  function useCurrentLocation() {
+  function requestDeviceLocation() {
     if (!navigator.geolocation) {
-      setError('Location is not available in this browser. Enter your address manually.')
+      setLocating(false)
+      setMapStatus('Location is not available in this browser. Search for your area or move the pin manually.')
       return
     }
+
     setLocating(true)
-    setError('')
-    setNotice('Requesting your location…')
+    setMapStatus('Requesting your current location…')
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const latitude = position.coords.latitude
-        const longitude = position.coords.longitude
-        setForm((current) => ({ ...current, latitude, longitude }))
-        setNotice('Location captured. Looking up the nearby address…')
-        try {
-          const query = new URLSearchParams({
-            format: 'jsonv2', lat: String(latitude), lon: String(longitude), 'accept-language': 'en',
-          })
-          const response = await fetch('https://nominatim.openstreetmap.org/reverse?' + query.toString(), {
-            headers: { Accept: 'application/json' },
-          })
-          if (!response.ok) throw new Error('Address lookup was unavailable')
-          const result = await response.json() as { address?: Record<string, string> }
-          const parts = result.address ?? {}
-          const house = parts.house_number ?? ''
-          const road = parts.road ?? parts.pedestrian ?? parts.residential ?? ''
-          const line1 = [house, road].filter(Boolean).join(' ').trim()
-          const neighbourhood = parts.neighbourhood ?? parts.suburb ?? parts.village ?? ''
-          const city = parts.city ?? parts.town ?? parts.municipality ?? parts.county ?? parts.village ?? ''
-          setForm((current) => ({
-            ...current,
-            addressLine1: line1 || current.addressLine1,
-            addressLine2: current.addressLine2 || neighbourhood,
-            city: city || current.city,
-            state: parts.state ?? current.state,
-            postalCode: parts.postcode ?? current.postalCode,
-            latitude,
-            longitude,
-          }))
-          setNotice(line1 || city
-            ? 'Location details added. Review the address before saving.'
-            : 'Location captured. Complete the address details below.')
-        } catch {
-          setNotice('Location captured. Complete the address details below and save.')
-        } finally {
-          setLocating(false)
-        }
+      (position) => {
+        const point = { lat: position.coords.latitude, lng: position.coords.longitude }
+        setMapLocation(point)
+        setMapAccuracy(position.coords.accuracy)
+        setSelectedPlaceName('Your current location')
+        setMapSearchResults([])
+        setMapStatus('Current location found. Check the pin, or drag it to the exact entrance.')
+        setLocating(false)
       },
       (locationError) => {
         setLocating(false)
-        setNotice('')
-        setError(locationError.code === locationError.PERMISSION_DENIED
-          ? 'Location permission was denied. You can still enter the address manually.'
-          : 'Could not get your location. Check device location settings or enter the address manually.')
+        setMapStatus(locationError.code === locationError.PERMISSION_DENIED
+          ? 'Location permission was denied. Search for your address or move the pin manually.'
+          : 'Could not get your location. Search for your area or move the pin manually.')
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     )
+  }
+
+  function openMapPicker() {
+    setError('')
+    setMapSearch('')
+    setMapSearchResults([])
+    setMapAccuracy(null)
+    setMapLocation(
+      form.latitude !== null && form.longitude !== null
+        ? { lat: form.latitude, lng: form.longitude }
+        : BENGALURU_MAP_FALLBACK,
+    )
+    setSelectedPlaceName('')
+    setMapOpen(true)
+    requestDeviceLocation()
+  }
+
+  async function searchMapLocation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const queryText = mapSearch.trim()
+    if (!queryText) return
+
+    setSearchingMap(true)
+    setMapStatus('Searching this address…')
+    setMapSearchResults([])
+    try {
+      const query = new URLSearchParams({
+        format: 'jsonv2',
+        q: queryText,
+        limit: '5',
+        addressdetails: '1',
+        countrycodes: 'in',
+      })
+      const response = await fetch(GEOCODING_BASE_URL + '/search?' + query.toString(), {
+        headers: { Accept: 'application/json' },
+      })
+      if (!response.ok) throw new Error('Address search is temporarily unavailable.')
+      const results = await response.json() as GeocodingResult[]
+      if (!results.length) {
+        setMapStatus('No matching place found. Try a nearby landmark or full address.')
+        return
+      }
+      setMapSearchResults(results)
+      const first = results[0]
+      if (first) {
+        const point = { lat: Number(first.lat), lng: Number(first.lon) }
+        setMapLocation(point)
+        setSelectedPlaceName(first.display_name)
+        setMapStatus('Choose the correct result below, then adjust the pin if needed.')
+      }
+    } catch (searchError) {
+      setMapStatus(messageFor(searchError))
+    } finally {
+      setSearchingMap(false)
+    }
+  }
+
+  function chooseSearchResult(result: GeocodingResult) {
+    const point = { lat: Number(result.lat), lng: Number(result.lon) }
+    setMapLocation(point)
+    setSelectedPlaceName(result.display_name)
+    setMapSearchResults([])
+    setMapStatus('Location selected. Drag the pin or tap the map to fine-tune it.')
+  }
+
+  function handleMapPositionChange(point: MapPoint) {
+    setMapLocation(point)
+    setSelectedPlaceName('Selected map point')
+    setMapAccuracy(null)
+    setMapStatus('Pin moved. Confirm the location when it points to the right entrance.')
+  }
+
+  async function confirmMapLocation() {
+    setConfirmingMapLocation(true)
+    setMapStatus('Getting address details for this point…')
+    const query = new URLSearchParams({
+      format: 'jsonv2',
+      lat: String(mapLocation.lat),
+      lon: String(mapLocation.lng),
+      zoom: '18',
+      addressdetails: '1',
+    })
+
+    try {
+      const response = await fetch(GEOCODING_BASE_URL + '/reverse?' + query.toString(), {
+        headers: { Accept: 'application/json' },
+      })
+      if (!response.ok) throw new Error('Address details could not be looked up.')
+      const result = await response.json() as GeocodingResult
+      const addressFields = addressFieldsFromGeocoding(result)
+      setForm((current) => ({
+        ...current,
+        ...addressFields,
+        latitude: mapLocation.lat,
+        longitude: mapLocation.lng,
+      }))
+      setNotice('Map location confirmed. Review the address details and save your address.')
+    } catch {
+      setForm((current) => ({
+        ...current,
+        latitude: mapLocation.lat,
+        longitude: mapLocation.lng,
+      }))
+      setNotice('Map coordinates confirmed. Complete the address fields manually before saving.')
+    } finally {
+      setConfirmingMapLocation(false)
+      setMapOpen(false)
+    }
   }
 
   async function saveAddress(event: FormEvent<HTMLFormElement>) {
@@ -273,10 +392,10 @@ export function CustomerAddresses() {
         <section className="customer-address-editor" aria-labelledby="address-editor-title">
           <p className="customer-eyebrow">{editingId ? 'EDIT LOCATION' : 'NEW LOCATION'}</p>
           <h2 id="address-editor-title">{editingId ? 'Update this address.' : 'Add a delivery address.'}</h2>
-          <button type="button" className="customer-location-button" onClick={useCurrentLocation} disabled={locating}>
+          <button type="button" className="customer-location-button" onClick={openMapPicker} disabled={locating}>
             <span aria-hidden="true">⌖</span>{locating ? 'Finding your location…' : 'Use my current location'}
           </button>
-          <p className="customer-address-location-note">Your browser will ask for permission only after you tap the button. You can also fill in every field manually.</p>
+          <p className="customer-address-location-note">A map will open so you can check the pin, move it to your exact entrance, and confirm.</p>
 
           <form className="customer-address-form" onSubmit={(event) => void saveAddress(event)}>
             <label><span>Save this place as</span>
@@ -311,6 +430,71 @@ export function CustomerAddresses() {
           <Link to="/customer/cart" className="customer-feature-back">← Back to cart</Link>
         </section>
       </div>
+
+      {mapOpen && (
+        <div className="customer-map-overlay" role="presentation">
+          <section className="customer-map-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-map-title">
+            <header className="customer-map-header">
+              <button type="button" className="customer-map-back" onClick={() => setMapOpen(false)} aria-label="Close map">←</button>
+              <div>
+                <p className="customer-eyebrow">DELIVERY LOCATION</p>
+                <h2 id="customer-map-title">Pin your exact location</h2>
+              </div>
+            </header>
+
+            <form className="customer-map-search" onSubmit={(event) => void searchMapLocation(event)}>
+              <input
+                value={mapSearch}
+                onChange={(event) => setMapSearch(event.target.value)}
+                placeholder="Search an area or address"
+                aria-label="Search an area or address"
+              />
+              <button type="submit" disabled={searchingMap || !mapSearch.trim()}>
+                {searchingMap ? 'Searching…' : 'Search'}
+              </button>
+            </form>
+
+            {mapSearchResults.length > 0 && (
+              <div className="customer-map-results" role="list">
+                {mapSearchResults.map((result) => (
+                  <button type="button" role="listitem" key={result.lat + ':' + result.lon} onClick={() => chooseSearchResult(result)}>
+                    <strong>{result.display_name.split(',')[0]}</strong>
+                    <span>{result.display_name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="customer-map-instructions">Drag the pin or tap the map to mark the exact delivery point.</div>
+            <MapLocationPicker
+              initialLocation={mapLocation}
+              onLocationChange={handleMapPositionChange}
+              onLoadError={setMapStatus}
+            />
+
+            <div className="customer-map-bottom-sheet">
+              <div className="customer-map-place">
+                <span className="customer-map-place__pin" aria-hidden="true">●</span>
+                <div>
+                  <strong>{selectedPlaceName || 'Selected delivery point'}</strong>
+                  <p>{mapStatus || 'Check that the pin is on the correct building or entrance.'}</p>
+                  {mapAccuracy !== null && <small>GPS accuracy approximately ±{Math.round(mapAccuracy)} m</small>}
+                  <small>{mapLocation.lat.toFixed(6)}, {mapLocation.lng.toFixed(6)}</small>
+                </div>
+              </div>
+              <div className="customer-map-actions">
+                <button type="button" className="customer-map-current" onClick={requestDeviceLocation} disabled={locating}>
+                  <span aria-hidden="true">⌖</span>{locating ? 'Locating…' : 'Current location'}
+                </button>
+                <button type="button" className="customer-map-confirm" onClick={() => void confirmMapLocation()} disabled={confirmingMapLocation}>
+                  {confirmingMapLocation ? 'Confirming…' : 'Confirm & proceed'} <span aria-hidden="true">→</span>
+                </button>
+              </div>
+              <small className="customer-map-attribution-note">Map data © OpenStreetMap contributors</small>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   )
 }
