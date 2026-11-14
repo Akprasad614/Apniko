@@ -8,6 +8,8 @@ public class CheckoutRequest {
     @NotNull
     private DeliveryMode deliveryMode;
 
+    private Long addressId;
+
     public CheckoutRequest() {
     }
 
@@ -18,4 +20,7 @@ public class CheckoutRequest {
     public void setDeliveryMode(DeliveryMode deliveryMode) {
         this.deliveryMode = deliveryMode;
     }
+
+    public Long getAddressId() { return addressId; }
+    public void setAddressId(Long addressId) { this.addressId = addressId; }
 }
