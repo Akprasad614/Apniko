@@ -169,7 +169,7 @@ export function CustomerAddresses() {
   function requestDeviceLocation() {
     if (!navigator.geolocation) {
       setLocating(false)
-      setMapStatus('Location is not available in this browser. Search for your area or move the pin manually.')
+      setMapStatus('Location is not available in this browser. The map starts near Bengaluru; search for your area or move the pin manually.')
       return
     }
 
@@ -189,8 +189,8 @@ export function CustomerAddresses() {
       (locationError) => {
         setLocating(false)
         setMapStatus(locationError.code === locationError.PERMISSION_DENIED
-          ? 'Location permission was denied. Search for your address or move the pin manually.'
-          : 'Could not get your location. Search for your area or move the pin manually.')
+          ? 'Location permission was denied. The map starts near Bengaluru; search for your address or move the pin manually.'
+          : 'Could not get your location. The map starts near Bengaluru; search for your area or move the pin manually.')
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     )
