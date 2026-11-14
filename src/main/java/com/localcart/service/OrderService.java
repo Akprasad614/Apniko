@@ -134,10 +134,6 @@ public class OrderService {
             DeliveryMode deliveryMode,
             OrderDeliveryAddress deliveryAddress) {
 
-        if (deliveryMode != DeliveryMode.CUSTOMER_PICKUP && deliveryAddress == null) {
-            throw new BadRequestException("Select a saved delivery address before placing this order");
-        }
-
         User customer = getCustomer(email);
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
@@ -149,6 +145,10 @@ public class OrderService {
                 .orElseThrow(() -> new BadRequestException("Cart is empty"));
         if (cart.getItems().isEmpty()) {
             throw new BadRequestException("Cart is empty");
+        }
+
+        if (deliveryMode != DeliveryMode.CUSTOMER_PICKUP && deliveryAddress == null) {
+            throw new BadRequestException("Select a saved delivery address before placing this order");
         }
 
         List<OrderItemRequest> items = cart.getItems().stream().map(item -> {
