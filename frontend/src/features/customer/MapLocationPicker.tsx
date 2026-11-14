@@ -147,7 +147,7 @@ export function MapLocationPicker({
               className: 'apniko-leaflet-marker',
               html: '<span class="apniko-leaflet-marker__halo"></span><span class="apniko-leaflet-marker__pin"><span></span></span>',
               iconSize: [44, 56],
-              iconAnchor: [22, 52],
+              iconAnchor: [22, 34],
             }),
           },
         ).addTo(map)
