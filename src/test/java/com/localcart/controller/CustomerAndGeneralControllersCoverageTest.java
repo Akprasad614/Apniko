@@ -7,12 +7,14 @@ import com.localcart.dto.InitiatePaymentRequest;
 import com.localcart.dto.UpdateCartItemRequest;
 import com.localcart.dto.VerifyPaymentRequest;
 import com.localcart.entity.DeliveryMode;
+import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
 import com.localcart.repository.UserRepository;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.AnalyticsService;
 import com.localcart.service.CartService;
+import com.localcart.service.CustomerAddressService;
 import com.localcart.service.CustomerMarketplaceService;
 import com.localcart.service.NotificationService;
 import com.localcart.service.OrderService;
@@ -38,6 +40,7 @@ class CustomerAndGeneralControllersCoverageTest {
     private OrderService orderService;
     private ShopService shopService;
     private CartService cartService;
+    private CustomerAddressService customerAddressService;
     private CustomerMarketplaceService marketplaceService;
     private NotificationService notificationService;
     private PaymentService paymentService;
@@ -50,6 +53,7 @@ class CustomerAndGeneralControllersCoverageTest {
         orderService = mock(OrderService.class);
         shopService = mock(ShopService.class);
         cartService = mock(CartService.class);
+        customerAddressService = mock(CustomerAddressService.class);
         marketplaceService = mock(CustomerMarketplaceService.class);
         notificationService = mock(NotificationService.class);
         paymentService = mock(PaymentService.class);
@@ -127,12 +131,15 @@ class CustomerAndGeneralControllersCoverageTest {
 
     @Test
     void cartControllerDelegatesCartMutationAndCheckoutEndpoints() {
-        CartController controller = new CartController(cartService, orderService);
+        CartController controller = new CartController(cartService, orderService, customerAddressService);
         securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn("customer@example.com");
         AddToCartRequest add = new AddToCartRequest();
         UpdateCartItemRequest update = new UpdateCartItemRequest();
         CheckoutRequest checkout = new CheckoutRequest();
         checkout.setDeliveryMode(DeliveryMode.PLATFORM_DELIVERY);
+        checkout.setAddressId(55L);
+        when(customerAddressService.getDeliveryAddressSnapshot("customer@example.com", 55L))
+                .thenReturn(new OrderDeliveryAddress());
 
         assertEquals(200, controller.getCart(1L).getStatusCode().value());
         assertEquals(200, controller.addToCart(1L, add).getStatusCode().value());
@@ -144,7 +151,9 @@ class CustomerAndGeneralControllersCoverageTest {
         verify(cartService).addToCart("customer@example.com", 1L, add);
         verify(cartService).updateCartItem("customer@example.com", 1L, 99L, update);
         verify(cartService).removeFromCart("customer@example.com", 1L, 99L);
-        verify(orderService).checkoutCart("customer@example.com", 1L, DeliveryMode.PLATFORM_DELIVERY);
+        verify(customerAddressService).getDeliveryAddressSnapshot("customer@example.com", 55L);
+        verify(orderService).checkoutCart("customer@example.com", 1L,
+                DeliveryMode.PLATFORM_DELIVERY, any(OrderDeliveryAddress.class));
     }
 
     @Test
