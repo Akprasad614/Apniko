@@ -53,6 +53,16 @@ const emptyForm: AddressForm = {
 
 const BENGALURU_MAP_FALLBACK: MapPoint = { lat: 12.9716, lng: 77.5946 }
 const GEOCODING_BASE_URL = (import.meta.env.VITE_GEOCODING_BASE_URL || 'https://nominatim.openstreetmap.org').replace(/\/$/, '')
+let lastGeocodingRequestAt = 0
+
+async function fetchGeocoding(url: string): Promise<Response> {
+  const wait = Math.max(0, 1000 - (Date.now() - lastGeocodingRequestAt))
+  if (wait > 0) {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, wait))
+  }
+  lastGeocodingRequestAt = Date.now()
+  return fetch(url, { headers: { Accept: 'application/json' } })
+}
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
@@ -106,6 +116,7 @@ export function CustomerAddresses() {
   const [mapLocation, setMapLocation] = useState<MapPoint>(BENGALURU_MAP_FALLBACK)
   const [mapStatus, setMapStatus] = useState('')
   const [mapAccuracy, setMapAccuracy] = useState<number | null>(null)
+  const [mapLocationReady, setMapLocationReady] = useState(false)
   const [mapSearch, setMapSearch] = useState('')
   const [mapSearchResults, setMapSearchResults] = useState<GeocodingResult[]>([])
   const [searchingMap, setSearchingMap] = useState(false)
@@ -168,6 +179,7 @@ export function CustomerAddresses() {
       (position) => {
         const point = { lat: position.coords.latitude, lng: position.coords.longitude }
         setMapLocation(point)
+        setMapLocationReady(true)
         setMapAccuracy(position.coords.accuracy)
         setSelectedPlaceName('Your current location')
         setMapSearchResults([])
@@ -189,11 +201,13 @@ export function CustomerAddresses() {
     setMapSearch('')
     setMapSearchResults([])
     setMapAccuracy(null)
+    const hasSavedPoint = form.latitude !== null && form.longitude !== null
     setMapLocation(
-      form.latitude !== null && form.longitude !== null
-        ? { lat: form.latitude, lng: form.longitude }
+      hasSavedPoint
+        ? { lat: form.latitude as number, lng: form.longitude as number }
         : BENGALURU_MAP_FALLBACK,
     )
+    setMapLocationReady(hasSavedPoint)
     setSelectedPlaceName('')
     setMapOpen(true)
     requestDeviceLocation()
@@ -215,9 +229,7 @@ export function CustomerAddresses() {
         addressdetails: '1',
         countrycodes: 'in',
       })
-      const response = await fetch(GEOCODING_BASE_URL + '/search?' + query.toString(), {
-        headers: { Accept: 'application/json' },
-      })
+      const response = await fetchGeocoding(GEOCODING_BASE_URL + '/search?' + query.toString())
       if (!response.ok) throw new Error('Address search is temporarily unavailable.')
       const results = await response.json() as GeocodingResult[]
       if (!results.length) {
@@ -229,6 +241,7 @@ export function CustomerAddresses() {
       if (first) {
         const point = { lat: Number(first.lat), lng: Number(first.lon) }
         setMapLocation(point)
+        setMapLocationReady(true)
         setSelectedPlaceName(first.display_name)
         setMapStatus('Choose the correct result below, then adjust the pin if needed.')
       }
@@ -242,6 +255,7 @@ export function CustomerAddresses() {
   function chooseSearchResult(result: GeocodingResult) {
     const point = { lat: Number(result.lat), lng: Number(result.lon) }
     setMapLocation(point)
+    setMapLocationReady(true)
     setSelectedPlaceName(result.display_name)
     setMapSearchResults([])
     setMapStatus('Location selected. Drag the pin or tap the map to fine-tune it.')
@@ -249,6 +263,7 @@ export function CustomerAddresses() {
 
   function handleMapPositionChange(point: MapPoint) {
     setMapLocation(point)
+    setMapLocationReady(true)
     setSelectedPlaceName('Selected map point')
     setMapAccuracy(null)
     setMapStatus('Pin moved. Confirm the location when it points to the right entrance.')
@@ -266,9 +281,7 @@ export function CustomerAddresses() {
     })
 
     try {
-      const response = await fetch(GEOCODING_BASE_URL + '/reverse?' + query.toString(), {
-        headers: { Accept: 'application/json' },
-      })
+      const response = await fetchGeocoding(GEOCODING_BASE_URL + '/reverse?' + query.toString())
       if (!response.ok) throw new Error('Address details could not be looked up.')
       const result = await response.json() as GeocodingResult
       const addressFields = addressFieldsFromGeocoding(result)
@@ -455,17 +468,18 @@ export function CustomerAddresses() {
             </form>
 
             {mapSearchResults.length > 0 && (
-              <div className="customer-map-results" role="list">
-                {mapSearchResults.map((result) => (
-                  <button type="button" role="listitem" key={result.lat + ':' + result.lon} onClick={() => chooseSearchResult(result)}>
-                    <strong>{result.display_name.split(',')[0]}</strong>
-                    <span>{result.display_name}</span>
-                  </button>
-                ))}
+              <div className="customer-map-prelude">
+                <div className="customer-map-results" role="list">
+                  {mapSearchResults.map((result) => (
+                    <button type="button" role="listitem" key={result.lat + ':' + result.lon} onClick={() => chooseSearchResult(result)}>
+                      <strong>{result.display_name.split(',')[0]}</strong>
+                      <span>{result.display_name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="customer-map-instructions">Drag the pin or tap the map to mark the exact delivery point.</div>
               </div>
-            )}
 
-            <div className="customer-map-instructions">Drag the pin or tap the map to mark the exact delivery point.</div>
             <MapLocationPicker
               initialLocation={mapLocation}
               onLocationChange={handleMapPositionChange}
@@ -486,10 +500,11 @@ export function CustomerAddresses() {
                 <button type="button" className="customer-map-current" onClick={requestDeviceLocation} disabled={locating}>
                   <span aria-hidden="true">⌖</span>{locating ? 'Locating…' : 'Current location'}
                 </button>
-                <button type="button" className="customer-map-confirm" onClick={() => void confirmMapLocation()} disabled={confirmingMapLocation}>
+                <button type="button" className="customer-map-confirm" onClick={() => void confirmMapLocation()} disabled={confirmingMapLocation || !mapLocationReady}>
                   {confirmingMapLocation ? 'Confirming…' : 'Confirm & proceed'} <span aria-hidden="true">→</span>
                 </button>
               </div>
+              {!mapLocationReady && <small className="customer-checkout-required-note">Allow location, search your address, or move the map pin before confirming.</small>}
               <small className="customer-map-attribution-note">Map data © OpenStreetMap contributors</small>
             </div>
           </section>
