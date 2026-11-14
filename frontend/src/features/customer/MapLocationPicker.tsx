@@ -5,7 +5,7 @@ export interface MapPoint {
   lng: number
 }
 
-interface LeafletIcon {}
+type LeafletIcon = object
 interface LeafletLayer {
   addTo(map: LeafletMap): LeafletLayer
 }
@@ -103,21 +103,32 @@ export function MapLocationPicker({
   const markerRef = useRef<LeafletMarker | null>(null)
   const onLocationChangeRef = useRef(onLocationChange)
   const [mapReady, setMapReady] = useState(false)
+  const initialLocationRef = useRef(initialLocation)
+  const onLoadErrorRef = useRef(onLoadError)
 
   useEffect(() => {
     onLocationChangeRef.current = onLocationChange
   }, [onLocationChange])
 
   useEffect(() => {
+    initialLocationRef.current = initialLocation
+  }, [initialLocation.lat, initialLocation.lng])
+
+  useEffect(() => {
+    onLoadErrorRef.current = onLoadError
+  }, [onLoadError])
+
+  useEffect(() => {
     let cancelled = false
     let map: LeafletMap | null = null
+    let invalidateTimer: number | undefined
 
     void loadLeaflet()
       .then((leaflet) => {
         if (cancelled || !containerRef.current) return
 
         map = leaflet.map(containerRef.current, {
-          center: [initialLocation.lat, initialLocation.lng],
+          center: [initialLocationRef.current.lat, initialLocationRef.current.lng],
           zoom: 17,
           zoomControl: true,
           scrollWheelZoom: true,
@@ -129,7 +140,7 @@ export function MapLocationPicker({
         }).addTo(map)
 
         const marker = leaflet.marker(
-          [initialLocation.lat, initialLocation.lng],
+          [initialLocationRef.current.lat, initialLocationRef.current.lng],
           {
             draggable: true,
             icon: leaflet.divIcon({
@@ -155,19 +166,20 @@ export function MapLocationPicker({
         mapRef.current = map
         markerRef.current = marker
         setMapReady(true)
-        window.setTimeout(() => map?.invalidateSize(), 120)
+        invalidateTimer = window.setTimeout(() => map?.invalidateSize(), 120)
       })
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : 'The map could not be loaded.'
-        if (!cancelled) onLoadError(message)
+        if (!cancelled) onLoadErrorRef.current(message)
       })
 
     return () => {
       cancelled = true
+      if (invalidateTimer !== undefined) window.clearTimeout(invalidateTimer)
       map?.remove()
       mapRef.current = null
       markerRef.current = null
-      setMapReady(false)
+      
     }
   }, [])
 
