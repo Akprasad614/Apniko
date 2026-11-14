@@ -152,8 +152,8 @@ class CustomerAndGeneralControllersCoverageTest {
         verify(cartService).updateCartItem("customer@example.com", 1L, 99L, update);
         verify(cartService).removeFromCart("customer@example.com", 1L, 99L);
         verify(customerAddressService).getDeliveryAddressSnapshot("customer@example.com", 55L);
-        verify(orderService).checkoutCart("customer@example.com", 1L,
-                DeliveryMode.PLATFORM_DELIVERY, any(OrderDeliveryAddress.class));
+        verify(orderService).checkoutCart(eq("customer@example.com"), eq(1L),
+                eq(DeliveryMode.PLATFORM_DELIVERY), any(OrderDeliveryAddress.class));
     }
 
     @Test
