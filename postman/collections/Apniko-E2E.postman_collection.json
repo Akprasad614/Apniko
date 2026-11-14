@@ -552,6 +552,79 @@
       ]
     },
     {
+      "name": "Customer — save delivery address",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/customer/addresses",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "customer",
+            "addresses"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"label\": \"Home\",\n  \"recipientName\": \"E2E Customer\",\n  \"phone\": \"9876543210\",\n  \"addressLine1\": \"Test House, Test Street\",\n  \"addressLine2\": \"Test Layout\",\n  \"city\": \"Bengaluru\",\n  \"state\": \"Karnataka\",\n  \"postalCode\": \"560001\",\n  \"latitude\": 12.9716,\n  \"longitude\": 77.5946,\n  \"defaultAddress\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{customerToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\\\/\\\\/(localhost|127\\\\.0\\\\.0\\\\.1):8081\\\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Address is saved\", () => pm.response.to.have.status(201));",
+              "const address = pm.response.json();",
+              "pm.test(\"Saved address has an ID\", () => pm.expect(address.id).to.exist);",
+              "pm.test(\"New address is the default address\", () => pm.expect(address.defaultAddress).to.eql(true));",
+              "pm.environment.set(\"customerAddressId\", String(address.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Customer — checkout using platform delivery",
       "request": {
         "method": "POST",
@@ -580,7 +653,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"deliveryMode\": \"PLATFORM_DELIVERY\"\n}",
+          "raw": "{\n  \"deliveryMode\": \"PLATFORM_DELIVERY\",\n  \"addressId\": {{customerAddressId}}\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -626,7 +699,8 @@
               "pm.test(\"Order contains the cart product\", () => pm.expect(orderItem, \"order item\").to.exist);",
               "pm.test(\"Order item quantity matches the cart quantity\", () => pm.expect(Number(orderItem.quantity)).to.eql(Number(pm.environment.get(\"cartExpectedQuantity\"))));",
               "pm.environment.set(\"orderId\", order.id);",
-              "pm.environment.set(\"orderTotal\", order.totalAmount);"
+              "pm.environment.set(\"orderTotal\", order.totalAmount);",
+              "pm.test(\"Order stores the selected delivery address\", () => pm.expect(order.deliveryAddress && order.deliveryAddress.postalCode).to.eql(\"560001\"));"
             ]
           }
         }

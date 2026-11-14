@@ -5,9 +5,11 @@ import com.localcart.dto.CartResponse;
 import com.localcart.dto.CheckoutRequest;
 import com.localcart.dto.UpdateCartItemRequest;
 import com.localcart.entity.Order;
+import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.CartService;
 import com.localcart.service.OrderService;
+import com.localcart.service.CustomerAddressService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,13 +20,16 @@ public class CartController {
 
     private final CartService cartService;
     private final OrderService orderService;
+    private final CustomerAddressService customerAddressService;
 
     public CartController(
             CartService cartService,
-            OrderService orderService) {
+            OrderService orderService,
+            CustomerAddressService customerAddressService) {
 
         this.cartService = cartService;
         this.orderService = orderService;
+        this.customerAddressService = customerAddressService;
     }
 
     @GetMapping("/{shopId}")
@@ -95,12 +100,13 @@ public class CartController {
 
         String email = SecurityUtils.getCurrentUserEmail();
 
+        OrderDeliveryAddress deliveryAddress = null;
+        if (request.getDeliveryMode() != com.localcart.entity.DeliveryMode.CUSTOMER_PICKUP) {
+            deliveryAddress = customerAddressService.getDeliveryAddressSnapshot(email, request.getAddressId());
+        }
+
         return ResponseEntity.ok(
-                orderService.checkoutCart(
-                        email,
-                        shopId,
-                        request.getDeliveryMode()
-                )
+                orderService.checkoutCart(email, shopId, request.getDeliveryMode(), deliveryAddress)
         );
     }
 }

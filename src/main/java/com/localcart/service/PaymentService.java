@@ -32,6 +32,7 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -58,6 +59,13 @@ public class PaymentService {
         this.razorpayGatewayClient = razorpayGatewayClient;
         this.objectMapper = objectMapper;
         this.webhookSecret = webhookSecret == null ? "" : webhookSecret.trim();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentMethod> getAvailableMethods() {
+        return razorpayGatewayClient.isConfigured()
+                ? List.of(PaymentMethod.COD, PaymentMethod.RAZORPAY)
+                : List.of(PaymentMethod.COD);
     }
 
     @Transactional

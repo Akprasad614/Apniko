@@ -6,6 +6,7 @@ import com.localcart.dto.OrderStatusHistoryResponse;
 import com.localcart.entity.Cart;
 import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
+import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.OrderItem;
 import com.localcart.entity.OrderStatus;
 import com.localcart.entity.OrderStatusHistory;
@@ -116,80 +117,52 @@ public class OrderService {
                 customer,
                 shop,
                 request.getItems(),
-                request.getDeliveryMode()
+                request.getDeliveryMode(),
+                null
         );
+    }
+
+    @Transactional
+    public Order checkoutCart(String email, Long shopId, DeliveryMode deliveryMode) {
+        return checkoutCart(email, shopId, deliveryMode, null);
     }
 
     @Transactional
     public Order checkoutCart(
             String email,
             Long shopId,
-            DeliveryMode deliveryMode) {
+            DeliveryMode deliveryMode,
+            OrderDeliveryAddress deliveryAddress) {
 
         User customer = getCustomer(email);
-
         Shop shop = shopRepository.findById(shopId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Shop not found"
-                        ));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         if (!shop.isActive()) {
-            throw new BadRequestException(
-                    "Shop is not active"
-            );
+            throw new BadRequestException("Shop is not active");
         }
 
-        Cart cart = cartRepository
-                .findByCustomerIdAndShopId(
-                        customer.getId(),
-                        shopId
-                )
-                .orElseThrow(() ->
-                        new BadRequestException(
-                                "Cart is empty"
-                        ));
-
+        Cart cart = cartRepository.findByCustomerIdAndShopId(customer.getId(), shopId)
+                .orElseThrow(() -> new BadRequestException("Cart is empty"));
         if (cart.getItems().isEmpty()) {
-            throw new BadRequestException(
-                    "Cart is empty"
-            );
+            throw new BadRequestException("Cart is empty");
         }
 
-        List<OrderItemRequest> items =
-                cart.getItems()
-                        .stream()
-                        .map(item -> {
+        if (deliveryMode != DeliveryMode.CUSTOMER_PICKUP && deliveryAddress == null) {
+            throw new BadRequestException("Select a saved delivery address before placing this order");
+        }
 
-                            OrderItemRequest request =
-                                    new OrderItemRequest();
+        List<OrderItemRequest> items = cart.getItems().stream().map(item -> {
+            OrderItemRequest request = new OrderItemRequest();
+            request.setProductId(item.getProduct().getId());
+            request.setQuantity(item.getQuantity());
+            return request;
+        }).toList();
 
-                            request.setProductId(
-                                    item.getProduct().getId()
-                            );
-
-                            request.setQuantity(
-                                    item.getQuantity()
-                            );
-
-                            return request;
-                        })
-                        .toList();
-
-        Order order = buildOrder(
-                customer,
-                shop,
-                items,
-                deliveryMode
-        ).orElseThrow(() ->
-                new BadRequestException(
-                        "Unable to create order"
-                ));
+        Order order = buildOrder(customer, shop, items, deliveryMode, deliveryAddress)
+                .orElseThrow(() -> new BadRequestException("Unable to create order"));
 
         cart.getItems().clear();
-
         cartRepository.save(cart);
-
         return order;
     }
 
@@ -197,7 +170,8 @@ public class OrderService {
             User customer,
             Shop shop,
             List<OrderItemRequest> items,
-            DeliveryMode deliveryMode) {
+            DeliveryMode deliveryMode,
+            OrderDeliveryAddress deliveryAddress) {
 
         if (items == null || items.isEmpty()) {
             return Optional.empty();
@@ -209,6 +183,7 @@ public class OrderService {
         order.setCustomer(customer);
         order.setStatus(OrderStatus.PLACED);
         order.setDeliveryMode(deliveryMode);
+        order.setDeliveryAddress(deliveryAddress);
 
         order = orderRepository.save(order);
         recordStatusChange(

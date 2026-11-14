@@ -10,6 +10,7 @@ import { CustomerShell } from '../features/customer/CustomerShell'
 import { CustomerCart } from '../features/customer/CustomerCart'
 import { CustomerOrders } from '../features/customer/CustomerOrders'
 import { CustomerAccount } from '../features/customer/CustomerAccount'
+import { CustomerAddresses } from '../features/customer/CustomerAddresses'
 import { CustomerFeaturePage } from '../features/customer/CustomerFeaturePage'
 import { ShopkeeperDashboard } from '../features/shopkeeper/ShopkeeperDashboard'
 import { AdminDashboard } from '../features/admin/AdminDashboard'
@@ -37,8 +38,8 @@ export function App() {
             <Route path="cart" element={<CustomerCart />} />
             <Route path="orders" element={<CustomerOrders refreshKey={0} />} />
             <Route path="account" element={<CustomerAccount />} />
-            <Route path="account/addresses" element={<CustomerFeaturePage feature="addresses" />} />
-            <Route path="account/payment-methods" element={<CustomerFeaturePage feature="payment-methods" />} />
+            <Route path="account/addresses" element={<CustomerAddresses />} />
+            <Route path="account/payment-methods" element={<CustomerFeaturePage />} />
           </Route>
           <Route path="/shopkeeper/*" element={<RequireRole allowed={['SHOPKEEPER']}><ShopkeeperDashboard /></RequireRole>} />
           <Route path="/delivery/*" element={<RequireRole allowed={['DELIVERY_PARTNER']}><DeliveryDashboard /></RequireRole>} />

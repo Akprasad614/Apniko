@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
@@ -17,6 +19,12 @@ public class PaymentController {
 
     public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
+    }
+
+    @GetMapping("/methods")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<List<com.localcart.entity.PaymentMethod>> getAvailableMethods() {
+        return ResponseEntity.ok(paymentService.getAvailableMethods());
     }
 
     @PostMapping("/orders/{orderId}/initiate")

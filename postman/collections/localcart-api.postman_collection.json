@@ -2784,6 +2784,60 @@
           "name": "customer",
           "item": [
             {
+              "name": "addresses",
+              "item": [
+                {
+                  "name": "add delivery address",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"label\": \"Home\",\n  \"recipientName\": \"Customer Name\",\n  \"phone\": \"9876543210\",\n  \"addressLine1\": \"House and street\",\n  \"addressLine2\": \"Locality\",\n  \"city\": \"Bengaluru\",\n  \"state\": \"Karnataka\",\n  \"postalCode\": \"560001\",\n  \"defaultAddress\": true\n}",
+                      "options": {
+                        "raw": {
+                          "headerFamily": "json",
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/customer/addresses",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "customer",
+                        "addresses"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Address saved\", () => pm.response.to.have.status(201));",
+                          "pm.environment.set(\"addressId\", String(pm.response.json().id));"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "name": "cart",
               "item": [
                 {
@@ -3134,7 +3188,7 @@
                             ],
                             "body": {
                               "mode": "raw",
-                              "raw": "{\n  \"deliveryMode\": \"PLATFORM_DELIVERY\"\n}",
+                              "raw": "{\n  \"deliveryMode\": \"PLATFORM_DELIVERY\",\n  \"addressId\": {{addressId}}\n}",
                               "options": {
                                 "raw": {
                                   "headerFamily": "json",
