@@ -1,7 +1,5 @@
 package com.localcart.dto;
 
-import com.localcart.entity.DeliveryMode;
-
 public class ShopResponse {
 
     private Long id;
@@ -10,26 +8,18 @@ public class ShopResponse {
     private String phone;
     private String address;
     private boolean active;
-    private DeliveryMode deliveryMode = DeliveryMode.SHOP_DELIVERY;
 
     public ShopResponse() {
     }
 
     public ShopResponse(Long id, String name, String ownerName,
                         String phone, String address, boolean active) {
-        this(id, name, ownerName, phone, address, active, DeliveryMode.SHOP_DELIVERY);
-    }
-
-    public ShopResponse(Long id, String name, String ownerName,
-                        String phone, String address, boolean active,
-                        DeliveryMode deliveryMode) {
         this.id = id;
         this.name = name;
         this.ownerName = ownerName;
         this.phone = phone;
         this.address = address;
         this.active = active;
-        this.deliveryMode = deliveryMode == null ? DeliveryMode.SHOP_DELIVERY : deliveryMode;
     }
 
     public Long getId() {
@@ -78,13 +68,5 @@ public class ShopResponse {
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public DeliveryMode getDeliveryMode() {
-        return deliveryMode;
-    }
-
-    public void setDeliveryMode(DeliveryMode deliveryMode) {
-        this.deliveryMode = deliveryMode == null ? DeliveryMode.SHOP_DELIVERY : deliveryMode;
     }
 }
