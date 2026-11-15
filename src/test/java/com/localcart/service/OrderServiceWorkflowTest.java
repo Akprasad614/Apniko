@@ -68,7 +68,7 @@ class OrderServiceWorkflowTest {
     @Test
     void shopkeeperCanMovePlacedOrderToAccepted() {
         User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
-        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        Order order = order(OrderStatus.PLACED, DeliveryMode.CUSTOMER_PICKUP);
         order.setShop(shopOwnedBy(shopkeeper));
 
         when(userRepository.findByEmail(shopkeeper.getEmail()))
@@ -77,7 +77,7 @@ class OrderServiceWorkflowTest {
         when(orderRepository.save(order)).thenReturn(order);
 
         Optional<Order> result = orderService.updateShopkeeperOrderStatus(
-                100L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.CUSTOMER_PICKUP
+                100L, OrderStatus.ACCEPTED, shopkeeper.getEmail()
         );
 
         assertTrue(result.isPresent());
@@ -88,7 +88,7 @@ class OrderServiceWorkflowTest {
     }
 
     @Test
-    void shopkeeperCanChooseDeliveryFulfilmentWhenAcceptingAnOrder() {
+    void shopkeeperCannotAcceptUsingAnUnsavedFulfilmentSelection() {
         User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
         Order order = order(OrderStatus.PLACED, null);
         com.localcart.entity.OrderDeliveryAddress address = new com.localcart.entity.OrderDeliveryAddress();
@@ -99,17 +99,15 @@ class OrderServiceWorkflowTest {
 
         when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
         when(orderRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(order)).thenReturn(order);
 
-        Optional<Order> accepted = orderService.updateShopkeeperOrderStatus(
+        assertThrows(BadRequestException.class, () -> orderService.updateShopkeeperOrderStatus(
                 123L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.PLATFORM_DELIVERY
-        );
+        ));
 
-        assertTrue(accepted.isPresent());
-        assertEquals(OrderStatus.ACCEPTED, accepted.get().getStatus());
-        assertEquals(DeliveryMode.PLATFORM_DELIVERY, accepted.get().getDeliveryMode());
-        assertSame(address, accepted.get().getDeliveryAddress());
-        verify(orderRepository).save(order);
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        assertNull(order.getDeliveryMode());
+        assertSame(address, order.getDeliveryAddress());
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test

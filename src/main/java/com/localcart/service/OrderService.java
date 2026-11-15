@@ -422,9 +422,13 @@ public class OrderService {
         OrderStatus currentStatus = order.getStatus();
 
         if (currentStatus == OrderStatus.PLACED && newStatus == OrderStatus.ACCEPTED) {
-            DeliveryMode deliveryModeToAccept = selectedDeliveryMode != null
-                    ? selectedDeliveryMode
-                    : order.getDeliveryMode();
+            if (selectedDeliveryMode != null
+                    && selectedDeliveryMode != order.getDeliveryMode()) {
+                throw new BadRequestException(
+                        "Save the fulfilment method for this order before accepting it"
+                );
+            }
+            DeliveryMode deliveryModeToAccept = order.getDeliveryMode();
             if (deliveryModeToAccept == null) {
                 throw new BadRequestException("Save a fulfilment method before accepting this order");
             }
