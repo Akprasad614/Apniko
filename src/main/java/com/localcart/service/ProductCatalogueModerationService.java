@@ -31,7 +31,7 @@ public class ProductCatalogueModerationService {
 
     @Transactional(readOnly = true)
     public Page<CatalogueReviewItemResponse> getReviewQueue(
-            String requestedStatus, int page, int size) {
+            String requestedStatus, String requestedSearch, int page, int size) {
         if (page < 0) {
             throw new BadRequestException("Page number cannot be negative");
         }
@@ -45,19 +45,24 @@ public class ProductCatalogueModerationService {
                 ? ProductCatalogueReviewStatus.NEEDS_REVIEW.name()
                 : requestedStatus.trim().toUpperCase(Locale.ROOT);
 
-        Page<Product> products;
-        if ("ALL".equals(normalizedStatus)) {
-            products = productRepository.findAll(pageable);
-        } else {
-            ProductCatalogueReviewStatus status;
+        ProductCatalogueReviewStatus status = null;
+        if (!"ALL".equals(normalizedStatus)) {
             try {
                 status = ProductCatalogueReviewStatus.valueOf(normalizedStatus);
             } catch (IllegalArgumentException exception) {
                 throw new BadRequestException(
                         "Status must be NEEDS_REVIEW, ACTIVE, HIDDEN or ALL");
             }
-            products = productRepository.findByCatalogueReviewStatus(status, pageable);
         }
+
+        String searchTerm = requestedSearch == null || requestedSearch.isBlank()
+                ? null : requestedSearch.trim();
+        if (searchTerm != null && searchTerm.length() > 100) {
+            throw new BadRequestException("Search term cannot exceed 100 characters");
+        }
+
+        Page<Product> products = productRepository.searchCatalogueReviewQueue(
+                status, searchTerm, pageable);
         return products.map(this::toResponse);
     }
 
@@ -81,8 +86,11 @@ public class ProductCatalogueModerationService {
             product.setCatalogueReviewReason(
                     reason == null || reason.isBlank()
                             ? "Returned to the catalogue review queue" : reason);
-            product.setCatalogueReviewedAt(null);
-            product.setCatalogueReviewedBy(null);
+            // Keep a manual-review timestamp so future source refreshes cannot
+            // replace an administrator's explicit decision to requeue this item.
+            product.setCatalogueReviewedAt(Instant.now());
+            product.setCatalogueReviewedBy(
+                    adminEmail == null || adminEmail.isBlank() ? "admin" : adminEmail.trim());
         } else {
             product.setCatalogueReviewReason(
                     request.status() == ProductCatalogueReviewStatus.HIDDEN ? reason : null);
