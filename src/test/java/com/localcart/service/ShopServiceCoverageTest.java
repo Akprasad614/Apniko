@@ -3,6 +3,7 @@ package com.localcart.service;
 import com.localcart.dto.CreateShopRequest;
 import com.localcart.dto.ShopResponse;
 import com.localcart.dto.UpdateShopRequest;
+import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.User;
@@ -147,6 +148,34 @@ class ShopServiceCoverageTest {
 
         assertThrows(BadRequestException.class,
                 () -> service.updateShop(6L, "current@example.com", updateRequest("X", "1", "Y")));
+        verify(shopRepository, never()).save(any(Shop.class));
+    }
+
+    @Test
+    void updatesDeliveryModeForOwnedShopkeeper() {
+        User owner = user(32L, "Owner", "owner@example.com", Role.SHOPKEEPER, true);
+        Shop shop = shop(9L, "My Store", owner);
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
+        when(shopRepository.findById(9L)).thenReturn(Optional.of(shop));
+        when(shopRepository.save(shop)).thenReturn(shop);
+
+        ShopResponse response = service.updateDeliveryMode(
+                9L, "owner@example.com", DeliveryMode.PLATFORM_DELIVERY);
+
+        assertEquals(DeliveryMode.PLATFORM_DELIVERY, response.getDeliveryMode());
+        assertEquals(DeliveryMode.PLATFORM_DELIVERY, shop.getDeliveryMode());
+        verify(shopRepository).save(shop);
+    }
+
+    @Test
+    void rejectsChangingDeliveryModeForAnotherOwnersShop() {
+        User currentOwner = user(33L, "Current", "current@example.com", Role.SHOPKEEPER, true);
+        User actualOwner = user(34L, "Actual", "actual@example.com", Role.SHOPKEEPER, true);
+        when(userRepository.findByEmail("current@example.com")).thenReturn(Optional.of(currentOwner));
+        when(shopRepository.findById(10L)).thenReturn(Optional.of(shop(10L, "Other Shop", actualOwner)));
+
+        assertThrows(BadRequestException.class,
+                () -> service.updateDeliveryMode(10L, "current@example.com", DeliveryMode.CUSTOMER_PICKUP));
         verify(shopRepository, never()).save(any(Shop.class));
     }
 

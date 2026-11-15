@@ -1577,3 +1577,28 @@
     grid-template-columns: 1fr;
   }
 }
+
+.customer-checkout-fulfilment {
+  display: grid;
+  gap: 0.18rem;
+  margin-top: 0.85rem;
+  border-left: 2px solid var(--lc-moss);
+  padding: 0.55rem 0.7rem;
+  background: #eef1e5;
+}
+.customer-checkout-fulfilment > span {
+  color: var(--lc-muted);
+  font-size: 0.57rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.customer-checkout-fulfilment strong {
+  color: var(--lc-forest);
+  font-size: 0.72rem;
+}
+.customer-checkout-fulfilment small {
+  color: var(--lc-muted);
+  font-size: 0.58rem;
+  line-height: 1.45;
+}

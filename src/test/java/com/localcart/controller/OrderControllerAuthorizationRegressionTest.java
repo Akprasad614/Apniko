@@ -8,6 +8,7 @@ import com.localcart.repository.OrderRepository;
 import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
 import com.localcart.service.OrderService;
+import com.localcart.service.CustomerAddressService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ class OrderControllerAuthorizationRegressionTest {
     private OrderRepository orderRepository;
     private UserRepository userRepository;
     private ShopRepository shopRepository;
+    private CustomerAddressService customerAddressService;
     private OrderController controller;
 
     @BeforeEach
@@ -38,7 +40,8 @@ class OrderControllerAuthorizationRegressionTest {
         orderRepository = mock(OrderRepository.class);
         userRepository = mock(UserRepository.class);
         shopRepository = mock(ShopRepository.class);
-        controller = new OrderController(orderService, orderRepository, userRepository, shopRepository);
+        customerAddressService = mock(CustomerAddressService.class);
+        controller = new OrderController(orderService, orderRepository, userRepository, shopRepository, customerAddressService);
     }
 
     @AfterEach

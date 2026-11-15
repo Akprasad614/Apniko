@@ -1079,3 +1079,66 @@
     grid-column: 1 / -1;
   }
 }
+
+
+.shopkeeper-fulfilment-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 350px);
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1.4rem;
+  border: 1px solid var(--lc-line);
+  border-left: 3px solid var(--lc-forest);
+  padding: 1.1rem 1.2rem;
+  background: rgb(255 253 247 / 82%);
+}
+.shopkeeper-fulfilment-panel h3 {
+  margin: 0;
+  color: var(--lc-forest);
+  font-family: var(--lc-font-display);
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.shopkeeper-fulfilment-panel > div:first-child > p:last-child {
+  max-width: 560px;
+  margin: 0.4rem 0 0;
+  color: var(--lc-muted);
+  font-size: 0.68rem;
+  line-height: 1.6;
+}
+.shopkeeper-fulfilment-panel__controls {
+  display: grid;
+  gap: 0.45rem;
+}
+.shopkeeper-fulfilment-panel__controls label {
+  color: var(--lc-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+.shopkeeper-fulfilment-panel__controls select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--lc-line);
+  border-radius: var(--lc-radius-sm);
+  padding: 0.5rem 0.65rem;
+  color: var(--lc-forest);
+  background: var(--lc-white);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+.shopkeeper-fulfilment-panel__controls .shopkeeper-primary-button {
+  justify-self: start;
+  min-height: 36px;
+}
+@media (max-width: 760px) {
+  .shopkeeper-fulfilment-panel {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+    padding: 0.9rem;
+  }
+  .shopkeeper-fulfilment-panel__controls .shopkeeper-primary-button {
+    width: 100%;
+  }
+}

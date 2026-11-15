@@ -209,6 +209,7 @@ public class CustomerMarketplaceService {
         response.setPhone(shop.getPhone());
         response.setAddress(shop.getAddress());
         response.setActive(shop.isActive());
+        response.setDeliveryMode(shop.getDeliveryMode());
         return response;
     }
 

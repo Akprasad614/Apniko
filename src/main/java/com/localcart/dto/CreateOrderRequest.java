@@ -12,8 +12,10 @@ public class CreateOrderRequest {
     @NotNull
     private Long shopId;
 
-    @NotNull
+    // Retained for older clients; the shop's saved fulfilment setting is authoritative.
     private DeliveryMode deliveryMode;
+
+    private Long addressId;
 
     @NotEmpty
     private List<@Valid OrderItemRequest> items;
@@ -31,6 +33,14 @@ public class CreateOrderRequest {
 
     public DeliveryMode getDeliveryMode() {
         return deliveryMode;
+    }
+
+    public Long getAddressId() {
+        return addressId;
+    }
+
+    public void setAddressId(Long addressId) {
+        this.addressId = addressId;
     }
 
     public void setDeliveryMode(DeliveryMode deliveryMode) {

@@ -7,6 +7,8 @@ export const SHOPKEEPER_ORDER_PROGRESS = [
 
 export type ShopkeeperOrderStatus = typeof SHOPKEEPER_ORDER_PROGRESS[number]
 
+export type ShopDeliveryMode = 'SHOP_DELIVERY' | 'PLATFORM_DELIVERY' | 'CUSTOMER_PICKUP'
+
 export interface ShopkeeperShop {
   id: number
   name: string
@@ -14,6 +16,7 @@ export interface ShopkeeperShop {
   phone?: string
   address?: string
   active: boolean
+  deliveryMode?: ShopDeliveryMode
 }
 
 export interface ShopkeeperProduct {
