@@ -9,6 +9,7 @@ import com.localcart.entity.Order;
 import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.OrderItem;
 import com.localcart.entity.OrderStatus;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.OrderStatusHistory;
 import com.localcart.entity.PaymentStatus;
 import com.localcart.entity.InventoryMovement;
@@ -218,6 +219,15 @@ public class OrderService {
             if (inventory == null) {
                 throw new BadRequestException(
                         "Product is not available in this shop"
+                );
+            }
+
+            ProductCatalogueReviewStatus reviewStatus =
+                    inventory.getProduct().getCatalogueReviewStatus();
+            if (reviewStatus != null && reviewStatus != ProductCatalogueReviewStatus.ACTIVE) {
+                throw new BadRequestException(
+                        "Product is awaiting catalogue review or has been hidden: "
+                                + inventory.getProduct().getName()
                 );
             }
 
