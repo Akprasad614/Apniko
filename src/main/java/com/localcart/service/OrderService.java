@@ -115,7 +115,7 @@ public class OrderService {
                 customer,
                 shop,
                 request.getItems(),
-                shop.getDeliveryMode(),
+                null,
                 deliveryAddress
         );
     }
@@ -160,11 +160,6 @@ public class OrderService {
             throw new BadRequestException("Cart is empty");
         }
 
-        DeliveryMode shopDeliveryMode = shop.getDeliveryMode();
-        OrderDeliveryAddress orderAddress = shopDeliveryMode == DeliveryMode.CUSTOMER_PICKUP
-                ? null
-                : deliveryAddress;
-
         List<OrderItemRequest> items = cart.getItems().stream().map(item -> {
             OrderItemRequest request = new OrderItemRequest();
             request.setProductId(item.getProduct().getId());
@@ -172,7 +167,9 @@ public class OrderService {
             return request;
         }).toList();
 
-        Order order = buildOrder(customer, shop, items, shopDeliveryMode, orderAddress)
+        // The shopkeeper chooses fulfilment for this order before accepting it.
+        // Keep the customer's address snapshot so either delivery option is possible.
+        Order order = buildOrder(customer, shop, items, null, deliveryAddress)
                 .orElseThrow(() -> new BadRequestException("Unable to create order"));
 
         cart.getItems().clear();
@@ -365,6 +362,15 @@ public class OrderService {
             Long orderId,
             OrderStatus newStatus,
             String email) {
+        return updateShopkeeperOrderStatus(orderId, newStatus, email, null);
+    }
+
+    @Transactional
+    public Optional<Order> updateShopkeeperOrderStatus(
+            Long orderId,
+            OrderStatus newStatus,
+            String email,
+            DeliveryMode selectedDeliveryMode) {
 
         User shopkeeper = getShopkeeper(email);
 
@@ -384,6 +390,25 @@ public class OrderService {
         }
 
         OrderStatus currentStatus = order.getStatus();
+
+        if (currentStatus == OrderStatus.PLACED && newStatus == OrderStatus.ACCEPTED) {
+            if (selectedDeliveryMode == null) {
+                throw new BadRequestException(
+                        "Choose a fulfilment option before accepting this order"
+                );
+            }
+            if (selectedDeliveryMode != DeliveryMode.CUSTOMER_PICKUP
+                    && order.getDeliveryAddress() == null) {
+                throw new BadRequestException(
+                        "This order has no saved delivery address. Ask the customer to add one before choosing delivery"
+                );
+            }
+            order.setDeliveryMode(selectedDeliveryMode);
+        } else if (selectedDeliveryMode != null) {
+            throw new BadRequestException(
+                    "Fulfilment can only be selected when accepting a new order"
+            );
+        }
 
         if (!isValidShopkeeperStatusChange(order, currentStatus, newStatus)) {
             return Optional.empty();
