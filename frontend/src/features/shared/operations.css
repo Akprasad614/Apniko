@@ -688,3 +688,24 @@
     font-size: 0.7rem;
   }
 }
+
+
+.delivery-order__destination {
+  border-left: 2px solid var(--lc-forest);
+  padding: 0.65rem 0.8rem;
+  background: #f0f2e8;
+}
+
+.delivery-order__destination strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--lc-forest);
+  font-size: 0.76rem;
+}
+
+.delivery-order__destination p {
+  margin: 0.18rem 0;
+  color: var(--lc-muted);
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
