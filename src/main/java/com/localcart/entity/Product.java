@@ -145,6 +145,12 @@ public class Product {
     public String getCatalogueReviewedBy() { return catalogueReviewedBy; }
     public void setCatalogueReviewedBy(String catalogueReviewedBy) { this.catalogueReviewedBy = catalogueReviewedBy; }
 
+    @OneToOne(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private ProductPhoto photo;
+
+    public ProductPhoto getPhoto() { return photo; }
+    public void setPhoto(ProductPhoto photo) { this.photo = photo; }
+
     public boolean isVisibleToCustomers() {
         return catalogueReviewStatus == null
                 || catalogueReviewStatus == ProductCatalogueReviewStatus.ACTIVE;

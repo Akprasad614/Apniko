@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
+import { ApprovedProductImage } from './ApprovedProductImage'
 import {
   buildMarketplaceSearchPath,
   formatRupees,
@@ -364,11 +365,16 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                   </div>
                 ) : (
                   <div className="product-list">
-                    {products.map((product, index) => (
+                    {products.map((product) => (
                       <article className="product-row" key={product.id}>
-                        <div className={`product-row__mark product-row__mark--${index % 4}`} aria-hidden="true">
-                          <span>{product.category?.slice(0, 1).toUpperCase() || 'L'}</span>
-                        </div>
+                        <ApprovedProductImage
+                          imageUrl={product.imageUrl}
+                          productName={product.productName}
+                          sourceName={product.imageSourceName}
+                          sourceUrl={product.imageSourceUrl}
+                          license={product.imageLicense}
+                          attribution={product.imageAttribution}
+                        />
                         <div className="product-row__details">
                           <span className="product-row__category">
                             {[product.category, product.subcategory].filter(Boolean).join(' · ') || 'Everyday essentials'}

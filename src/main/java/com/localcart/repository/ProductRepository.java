@@ -2,6 +2,7 @@ package com.localcart.repository;
 
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductCatalogueReviewStatus;
+import com.localcart.entity.ProductImageReviewStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,0 +1,193 @@
+package com.localcart.service;
+
+import com.localcart.dto.ProductPhotoCandidateRequest;
+import com.localcart.dto.ProductPhotoImportTargetResponse;
+import com.localcart.dto.ProductPhotoReviewRequest;
+import com.localcart.dto.ProductPhotoReviewResponse;
+import com.localcart.entity.Product;
+import com.localcart.entity.ProductImageReviewStatus;
+import com.localcart.entity.ProductPhoto;
+import com.localcart.exception.BadRequestException;
+import com.localcart.exception.ResourceNotFoundException;
+import com.localcart.repository.ProductPhotoRepository;
+import com.localcart.repository.ProductRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.net.URI;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.Map;
+
+@Service
+@Transactional
+public class ProductPhotoService {
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final Map<String, String> SOURCES = Map.of(
+            "world.openfoodfacts.org", "Open Food Facts",
+            "world.openbeautyfacts.org", "Open Beauty Facts",
+            "world.openpetfoodfacts.org", "Open Pet Food Facts",
+            "world.openproductsfacts.org", "Open Products Facts"
+    );
+
+    private final ProductRepository productRepository;
+    private final ProductPhotoRepository photoRepository;
+
+    public ProductPhotoService(ProductRepository productRepository, ProductPhotoRepository photoRepository) {
+        this.productRepository = productRepository;
+        this.photoRepository = photoRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductPhotoReviewResponse> getReviewQueue(int page, int size) {
+        validatePage(page, size);
+        return photoRepository.findByReviewStatus(
+                ProductImageReviewStatus.PENDING,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")))
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductPhotoImportTargetResponse> getImportTargets(int page, int size) {
+        validatePage(page, size);
+        return productRepository.findProductsMissingApprovedPhoto(
+                ProductImageReviewStatus.REJECTED,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")))
+                .map(product -> new ProductPhotoImportTargetResponse(
+                        product.getId(), product.getName(), product.getBrand(),
+                        product.getBarcode(), product.getPackSize()));
+    }
+
+    public ProductPhotoReviewResponse submitCandidate(Long productId, ProductPhotoCandidateRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        String barcode = product.getBarcode();
+        if (barcode == null || barcode.isBlank()) {
+            throw new BadRequestException("A verified GTIN barcode is required before looking up a product photo");
+        }
+        if (!barcode.equals(request.matchedBarcode().trim())) {
+            throw new BadRequestException("The source barcode does not exactly match this catalogue product");
+        }
+
+        URI sourceUri = parseHttpsUri(request.sourceUrl(), "Source page");
+        String sourceName = SOURCES.get(sourceUri.getHost().toLowerCase(Locale.ROOT));
+        if (sourceName == null || !sourceName.equals(request.sourceName().trim())
+                || !("/product/" + barcode).equals(sourceUri.getPath())
+                || sourceUri.getQuery() != null || sourceUri.getFragment() != null) {
+            throw new BadRequestException("Use the canonical Open Facts product page for the exact barcode");
+        }
+
+        URI imageUri = parseHttpsUri(request.imageUrl(), "Image");
+        String imageHost = "images." + sourceUri.getHost().substring("world.".length());
+        String imageDigits = imageUri.getPath().replaceAll("[^0-9]", "");
+        if (!imageHost.equalsIgnoreCase(imageUri.getHost())
+                || !imageUri.getPath().contains("/images/products/")
+                || !imageDigits.startsWith(barcode)
+                || imageUri.getQuery() != null || imageUri.getFragment() != null) {
+            throw new BadRequestException("Image must be hosted by the matching Open Facts image server and barcode");
+        }
+        String license = request.license().trim().replace('-', ' ').replaceAll("\\s+", " ");
+        if (!"CC BY SA".equalsIgnoreCase(license)) {
+            throw new BadRequestException("Only CC BY-SA product images can be added from this source");
+        }
+
+        ProductPhoto photo = photoRepository.findByProductId(productId).orElseGet(ProductPhoto::new);
+        if (photo.getReviewStatus() == ProductImageReviewStatus.PENDING) {
+            throw new BadRequestException("This product already has a photograph waiting for review");
+        }
+        photo.setProduct(product);
+        product.setPhoto(photo);
+        photo.setCandidateImageUrl(imageUri.toString());
+        photo.setCandidateSourceName(sourceName);
+        photo.setCandidateSourceUrl(sourceUri.toString());
+        photo.setCandidateLicense("CC BY-SA");
+        photo.setCandidateAttribution(requiredText(request.attribution(), 500, "Attribution"));
+        photo.setCandidateProductName(requiredText(request.sourceProductName(), 200, "Source product name"));
+        photo.setCandidateBarcode(barcode);
+        photo.setReviewStatus(ProductImageReviewStatus.PENDING);
+        photo.setSubmittedAt(Instant.now());
+        photo.setReviewedAt(null);
+        photo.setReviewedBy(null);
+        photo.setReviewReason(null);
+        return toResponse(photoRepository.save(photo));
+    }
+
+    public ProductPhotoReviewResponse reviewCandidate(
+            Long productId, ProductPhotoReviewRequest request, String adminEmail) {
+        if (request == null || request.status() == null
+                || request.status() == ProductImageReviewStatus.PENDING) {
+            throw new BadRequestException("Choose APPROVED or REJECTED for the photo review");
+        }
+        ProductPhoto photo = photoRepository.findByProductId(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Photo candidate not found"));
+        if (photo.getReviewStatus() != ProductImageReviewStatus.PENDING
+                || photo.getCandidateImageUrl() == null) {
+            throw new BadRequestException("This product has no pending photograph");
+        }
+        String reason = request.reason() == null ? "" : request.reason().trim();
+        if (request.status() == ProductImageReviewStatus.REJECTED && reason.isBlank()) {
+            throw new BadRequestException("A reason is required when rejecting a product photo");
+        }
+
+        if (request.status() == ProductImageReviewStatus.APPROVED) {
+            photo.setApprovedImageUrl(photo.getCandidateImageUrl());
+            photo.setSourceName(photo.getCandidateSourceName());
+            photo.setSourceUrl(photo.getCandidateSourceUrl());
+            photo.setLicense(photo.getCandidateLicense());
+            photo.setAttribution(photo.getCandidateAttribution());
+            photo.setReviewStatus(ProductImageReviewStatus.APPROVED);
+            photo.setReviewReason(null);
+        } else {
+            // Keep the last approved image intact when a replacement candidate is rejected.
+            photo.setReviewStatus(photo.getApprovedImageUrl() == null
+                    ? ProductImageReviewStatus.REJECTED : ProductImageReviewStatus.APPROVED);
+            photo.setReviewReason(reason);
+        }
+        photo.clearCandidate();
+        photo.setReviewedAt(Instant.now());
+        photo.setReviewedBy(adminEmail == null || adminEmail.isBlank() ? "admin" : adminEmail.trim());
+        return toResponse(photoRepository.save(photo));
+    }
+
+    private void validatePage(int page, int size) {
+        if (page < 0) throw new BadRequestException("Page number cannot be negative");
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new BadRequestException("Page size must be between 1 and " + MAX_PAGE_SIZE);
+        }
+    }
+
+    private URI parseHttpsUri(String value, String label) {
+        try {
+            URI uri = URI.create(value.trim());
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+                    || uri.getUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443)) {
+                throw new IllegalArgumentException();
+            }
+            return uri;
+        } catch (RuntimeException exception) {
+            throw new BadRequestException(label + " URL must be a valid HTTPS URL");
+        }
+    }
+
+    private String requiredText(String value, int maxLength, String label) {
+        String text = value == null ? "" : value.trim();
+        if (text.isBlank() || text.length() > maxLength) {
+            throw new BadRequestException(label + " is required and must not exceed " + maxLength + " characters");
+        }
+        return text;
+    }
+
+    private ProductPhotoReviewResponse toResponse(ProductPhoto photo) {
+        Product product = photo.getProduct();
+        return new ProductPhotoReviewResponse(
+                product.getId(), product.getName(), product.getBrand(), product.getBarcode(),
+                product.getPackSize(), photo.getCandidateProductName(), photo.getCandidateImageUrl(),
+                photo.getCandidateSourceName(), photo.getCandidateSourceUrl(), photo.getCandidateLicense(),
+                photo.getCandidateAttribution(), photo.getApprovedImageUrl(), photo.getReviewStatus(),
+                photo.getSubmittedAt(), photo.getReviewedAt(), photo.getReviewedBy(), photo.getReviewReason());
+    }
+}

@@ -235,6 +235,14 @@ public class CustomerMarketplaceService {
         response.setPrice(inventory.getPrice());
         response.setStockQuantity(inventory.getStockQuantity());
         response.setAvailable(inventory.isAvailable());
+        var photo = inventory.getProduct().getPhoto();
+        if (photo != null && photo.getApprovedImageUrl() != null) {
+            response.setImageUrl(photo.getApprovedImageUrl());
+            response.setImageSourceName(photo.getSourceName());
+            response.setImageSourceUrl(photo.getSourceUrl());
+            response.setImageLicense(photo.getLicense());
+            response.setImageAttribution(photo.getAttribution());
+        }
         return response;
     }
 
