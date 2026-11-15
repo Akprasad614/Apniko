@@ -32,7 +32,7 @@ All endpoints require an authenticated administrator.
 
 `GET /api/admin/catalogue/review-queue?status=NEEDS_REVIEW&page=0&size=50`
 
-Supported statuses: `NEEDS_REVIEW`, `ACTIVE`, `HIDDEN`, and `ALL`. The default status is `NEEDS_REVIEW`. Page size is limited to 100.
+Supported statuses: `NEEDS_REVIEW`, `ACTIVE`, `HIDDEN`, and `ALL`. The default status is `NEEDS_REVIEW`. Page size is limited to 100. The optional `q` search term is limited to 100 characters and matches product name, brand, barcode, category and subcategory.
 
 ### Approve a product
 
@@ -62,7 +62,7 @@ Supported statuses: `NEEDS_REVIEW`, `ACTIVE`, `HIDDEN`, and `ALL`. The default s
 }
 ```
 
-Hiding requires a non-empty reason. Returning an item to review clears the previous reviewer audit fields.
+Hiding requires a non-empty reason. Returning an item to review records the administrator and timestamp while preserving the review reason. This audit marker also protects the manual requeue decision from being overwritten by later source imports. The queue supports a search term across product name, brand, barcode and category.
 
 ## Customer visibility
 
