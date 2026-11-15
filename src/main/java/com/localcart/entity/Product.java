@@ -9,7 +9,8 @@ import java.time.Instant;
 @Entity
 @Table(name = "products", indexes = {
         @Index(name = "idx_products_brand_name", columnList = "brand,name"),
-        @Index(name = "idx_products_category_subcategory", columnList = "category,subcategory")
+        @Index(name = "idx_products_category_subcategory", columnList = "category,subcategory"),
+        @Index(name = "idx_products_catalogue_review_status", columnList = "catalogue_review_status")
 })
 public class Product {
 
