@@ -12,7 +12,11 @@ describe('shopkeeper order workflow', () => {
     expect(nextShopkeeperOrderStatus('PLACED')).toBe('ACCEPTED')
     expect(nextShopkeeperOrderStatus('ACCEPTED')).toBe('PREPARING')
     expect(nextShopkeeperOrderStatus('PREPARING')).toBe('READY')
-    expect(nextShopkeeperOrderStatus('READY')).toBeNull()
+    expect(nextShopkeeperOrderStatus('READY', 'SHOP_DELIVERY')).toBe('OUT_FOR_DELIVERY')
+    expect(nextShopkeeperOrderStatus('OUT_FOR_DELIVERY', 'SHOP_DELIVERY')).toBe('DELIVERED')
+    expect(nextShopkeeperOrderStatus('READY', 'CUSTOMER_PICKUP')).toBe('DELIVERED')
+    expect(nextShopkeeperOrderStatus('READY', 'PLATFORM_DELIVERY')).toBeNull()
+    expect(nextShopkeeperOrderStatus('OUT_FOR_DELIVERY', 'PLATFORM_DELIVERY')).toBeNull()
     expect(nextShopkeeperOrderStatus('DELIVERED')).toBeNull()
   })
 

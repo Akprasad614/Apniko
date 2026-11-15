@@ -385,16 +385,27 @@ public class OrderService {
 
         OrderStatus currentStatus = order.getStatus();
 
-        if (!isValidShopkeeperStatusChange(currentStatus, newStatus)) {
+        if (!isValidShopkeeperStatusChange(order, currentStatus, newStatus)) {
             return Optional.empty();
         }
+
+        String historyNote = currentStatus == OrderStatus.READY
+                && newStatus == OrderStatus.OUT_FOR_DELIVERY
+                ? "The shop has dispatched the order"
+                : currentStatus == OrderStatus.READY
+                && newStatus == OrderStatus.DELIVERED
+                ? "Customer collected the order from the shop"
+                : currentStatus == OrderStatus.OUT_FOR_DELIVERY
+                && newStatus == OrderStatus.DELIVERED
+                ? "Shop delivery completed"
+                : "Order status updated by shopkeeper";
 
         recordStatusChange(
                 order,
                 currentStatus,
                 newStatus,
                 shopkeeper,
-                "Order status updated by shopkeeper"
+                historyNote
         );
 
         order.setStatus(newStatus);
@@ -402,12 +413,11 @@ public class OrderService {
     }
 
     private boolean isValidShopkeeperStatusChange(
+            Order order,
             OrderStatus currentStatus,
             OrderStatus newStatus) {
 
-        if (currentStatus == null ||
-                newStatus == null) {
-
+        if (order == null || currentStatus == null || newStatus == null) {
             return false;
         }
 
@@ -423,7 +433,19 @@ public class OrderService {
             return newStatus == OrderStatus.READY;
         }
 
-        return false;
+        if (currentStatus == OrderStatus.READY) {
+            if (order.getDeliveryMode() == DeliveryMode.SHOP_DELIVERY) {
+                return newStatus == OrderStatus.OUT_FOR_DELIVERY;
+            }
+            if (order.getDeliveryMode() == DeliveryMode.CUSTOMER_PICKUP) {
+                return newStatus == OrderStatus.DELIVERED;
+            }
+            return false;
+        }
+
+        return currentStatus == OrderStatus.OUT_FOR_DELIVERY
+                && order.getDeliveryMode() == DeliveryMode.SHOP_DELIVERY
+                && newStatus == OrderStatus.DELIVERED;
     }
 
     // =========================================================

@@ -24,7 +24,7 @@ import type {
 import './shopkeeper-dashboard.css'
 
 type DashboardTab = 'overview' | 'orders' | 'inventory'
-type OrderFilter = 'ALL' | 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'CANCELLED'
+type OrderFilter = 'ALL' | 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED'
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
@@ -616,6 +616,8 @@ export function ShopkeeperDashboard() {
                     <option value="ACCEPTED">Accepted</option>
                     <option value="PREPARING">Preparing</option>
                     <option value="READY">Ready</option>
+                    <option value="OUT_FOR_DELIVERY">Out for delivery</option>
+                    <option value="DELIVERED">Delivered</option>
                     <option value="CANCELLED">Cancelled</option>
                   </select>
                   <span>{visibleOrders.length} {visibleOrders.length === 1 ? 'order' : 'orders'}</span>
@@ -625,7 +627,18 @@ export function ShopkeeperDashboard() {
                 ) : (
                   <div className="shopkeeper-order-list">
                     {visibleOrders.map((order) => {
-                      const nextStatus = nextShopkeeperOrderStatus(order.status)
+                      const nextStatus = nextShopkeeperOrderStatus(order.status, order.deliveryMode)
+                      const nextActionLabel = nextStatus === 'OUT_FOR_DELIVERY'
+                        ? 'Mark out for delivery'
+                        : nextStatus === 'DELIVERED' && order.status === 'READY'
+                          ? 'Confirm customer pickup'
+                          : nextStatus === 'DELIVERED'
+                            ? 'Mark delivered'
+                            : nextStatus === 'ACCEPTED'
+                              ? 'Accept order'
+                              : nextStatus === 'PREPARING'
+                                ? 'Start preparing'
+                                : 'Mark ready'
                       const expanded = expandedOrderId === order.id
                       return (
                         <article className="shopkeeper-order" key={order.id}>
@@ -644,7 +657,7 @@ export function ShopkeeperDashboard() {
                           <div className="shopkeeper-order__actions">
                             <button type="button" className="shopkeeper-text-button" aria-expanded={expanded} onClick={() => void toggleOrderHistory(order.id)}>{expanded ? 'Hide timeline' : 'Status timeline'}</button>
                             <div>
-                              {nextStatus && <button type="button" className="shopkeeper-action-button" disabled={busyKey === `order-${order.id}`} onClick={() => void updateOrderStatus(order, nextStatus)}>{busyKey === `order-${order.id}` ? 'Saving…' : nextStatus === 'ACCEPTED' ? 'Accept order' : nextStatus === 'PREPARING' ? 'Start preparing' : 'Mark ready'} <span>→</span></button>}
+                              {nextStatus && <button type="button" className="shopkeeper-action-button" disabled={busyKey === `order-${order.id}`} onClick={() => void updateOrderStatus(order, nextStatus)}>{busyKey === `order-${order.id}` ? 'Saving…' : nextActionLabel} <span>→</span></button>}
                               {canRejectShopkeeperOrder(order.status) && <button type="button" className="shopkeeper-danger-button" disabled={busyKey === `order-${order.id}`} onClick={() => { setConfirmAction({ orderId: order.id, action: 'reject' }); setActionReason('') }}>Reject</button>}
                               {!canRejectShopkeeperOrder(order.status) && canCancelShopkeeperOrder(order.status) && <button type="button" className="shopkeeper-danger-button" disabled={busyKey === `order-${order.id}`} onClick={() => { setConfirmAction({ orderId: order.id, action: 'cancel' }); setActionReason('') }}>Cancel order</button>}
                             </div>

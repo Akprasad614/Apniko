@@ -107,6 +107,70 @@ class OrderServiceWorkflowTest {
     }
 
     @Test
+    void shopkeeperCanCompleteShopDeliveryAfterReady() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(120L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> dispatched = orderService.updateShopkeeperOrderStatus(
+                120L, OrderStatus.OUT_FOR_DELIVERY, shopkeeper.getEmail()
+        );
+        assertTrue(dispatched.isPresent());
+        assertEquals(OrderStatus.OUT_FOR_DELIVERY, dispatched.get().getStatus());
+
+        Optional<Order> delivered = orderService.updateShopkeeperOrderStatus(
+                120L, OrderStatus.DELIVERED, shopkeeper.getEmail()
+        );
+        assertTrue(delivered.isPresent());
+        assertEquals(OrderStatus.DELIVERED, delivered.get().getStatus());
+        verify(orderStatusHistoryRepository, times(2)).save(any());
+        verify(orderRepository, times(2)).save(order);
+    }
+
+    @Test
+    void shopkeeperCanConfirmCustomerPickupAfterReady() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.CUSTOMER_PICKUP);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(121L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> delivered = orderService.updateShopkeeperOrderStatus(
+                121L, OrderStatus.DELIVERED, shopkeeper.getEmail()
+        );
+
+        assertTrue(delivered.isPresent());
+        assertEquals(OrderStatus.DELIVERED, delivered.get().getStatus());
+        verify(orderStatusHistoryRepository).save(argThat(history ->
+                "Customer collected the order from the shop".equals(history.getNote())
+        ));
+    }
+
+    @Test
+    void shopkeeperCannotCompletePlatformDeliveryOrders() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.PLATFORM_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(122L)).thenReturn(Optional.of(order));
+
+        Optional<Order> result = orderService.updateShopkeeperOrderStatus(
+                122L, OrderStatus.OUT_FOR_DELIVERY, shopkeeper.getEmail()
+        );
+
+        assertTrue(result.isEmpty());
+        assertEquals(OrderStatus.READY, order.getStatus());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     void shopkeeperCannotUpdateAnOrderOwnedByAnotherShopkeeper() {
         User currentShopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
         User differentOwner = user(Role.SHOPKEEPER, 99L, "other@example.com");

@@ -5,8 +5,8 @@ import { formatRupees } from './marketplace'
 import {
   canCancelCustomerOrder,
   formatOrderStatus,
+  getOrderProgress,
   getOrderProgressIndex,
-  ORDER_PROGRESS,
 } from './orders'
 import type { OrderStatusHistoryEntry, CustomerOrder } from './orders'
 import './customer-orders.css'
@@ -173,7 +173,8 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
       ) : (
         <div className="customer-orders__list">
           {orders.map((order) => {
-            const progressIndex = getOrderProgressIndex(order.status)
+            const progressSteps = getOrderProgress(order.deliveryMode)
+            const progressIndex = getOrderProgressIndex(order.status, order.deliveryMode)
             const expanded = expandedOrderId === order.id
             return (
               <article className="customer-order" key={order.id}>
@@ -195,7 +196,7 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
                   <p className="customer-order__cancelled">This order has been cancelled.</p>
                 ) : (
                   <ol className="order-progress" aria-label={`Order ${order.id} progress`}>
-                    {ORDER_PROGRESS.map((step, index) => (
+                    {progressSteps.map((step, index) => (
                       <li
                         className={index <= progressIndex ? 'is-complete' : ''}
                         key={step}
