@@ -23,7 +23,7 @@ export interface CustomerOrderItem {
 export interface CustomerOrder {
   id: number
   status: string
-  deliveryMode: string
+  deliveryMode?: string | null
   totalAmount: number
   shop?: {
     id: number
@@ -46,7 +46,7 @@ export function canCancelCustomerOrder(status: string): boolean {
   return status === 'PLACED'
 }
 
-export function getOrderProgress(deliveryMode: string): readonly OrderProgressStatus[] {
+export function getOrderProgress(deliveryMode?: string | null): readonly OrderProgressStatus[] {
   return deliveryMode === 'CUSTOMER_PICKUP'
     ? ['PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERED']
     : ORDER_PROGRESS
