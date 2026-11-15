@@ -39,7 +39,7 @@ class ProductCatalogueModerationServiceTest {
                 eq(ProductCatalogueReviewStatus.NEEDS_REVIEW), isNull(), any()))
                 .thenReturn(new PageImpl<>(List.of(product), PageRequest.of(0, 50), 1));
 
-        var result = service.getReviewQueue(null, 0, 50);
+        var result = service.getReviewQueue(null, null, 0, 50);
 
         assertEquals(1, result.getTotalElements());
         assertEquals(25L, result.getContent().get(0).id());
