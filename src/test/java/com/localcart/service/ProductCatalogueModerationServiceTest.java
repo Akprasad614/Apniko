@@ -35,8 +35,8 @@ class ProductCatalogueModerationServiceTest {
         product.setName("Unclassified item");
         product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
         ReflectionTestUtils.setField(product, "id", 25L);
-        when(productRepository.findByCatalogueReviewStatus(
-                eq(ProductCatalogueReviewStatus.NEEDS_REVIEW), any()))
+        when(productRepository.searchCatalogueReviewQueue(
+                eq(ProductCatalogueReviewStatus.NEEDS_REVIEW), isNull(), any()))
                 .thenReturn(new PageImpl<>(List.of(product), PageRequest.of(0, 50), 1));
 
         var result = service.getReviewQueue(null, 0, 50);
@@ -45,6 +45,38 @@ class ProductCatalogueModerationServiceTest {
         assertEquals(25L, result.getContent().get(0).id());
         assertEquals(ProductCatalogueReviewStatus.NEEDS_REVIEW,
                 result.getContent().get(0).status());
+    }
+
+    @Test
+    void searchFiltersProductsAcrossNameBrandBarcodeAndCategory() {
+        Product product = new Product();
+        product.setName("Poha");
+        product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+        ReflectionTestUtils.setField(product, "id", 26L);
+        when(productRepository.searchCatalogueReviewQueue(
+                eq(ProductCatalogueReviewStatus.NEEDS_REVIEW), eq("poha"), any()))
+                .thenReturn(new PageImpl<>(List.of(product), PageRequest.of(0, 20), 1));
+
+        var result = service.getReviewQueue(" needs_review ", " poha ", 0, 20);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Poha", result.getContent().get(0).name());
+        verify(productRepository).searchCatalogueReviewQueue(
+                eq(ProductCatalogueReviewStatus.NEEDS_REVIEW), eq("poha"), any());
+    }
+
+    @Test
+    void allStatusIncludesLegacyProductsAndRejectsLongSearchTerms() {
+        when(productRepository.searchCatalogueReviewQueue(
+                isNull(), eq("rice"), any()))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        var result = service.getReviewQueue("ALL", "rice", 0, 20);
+
+        assertTrue(result.isEmpty());
+        verify(productRepository).searchCatalogueReviewQueue(isNull(), eq("rice"), any());
+        assertThrows(BadRequestException.class,
+                () -> service.getReviewQueue("ALL", "x".repeat(101), 0, 20));
     }
 
     @Test
@@ -84,7 +116,7 @@ class ProductCatalogueModerationServiceTest {
     }
 
     @Test
-    void requeueClearsPreviousReviewerAuditFields() {
+    void requeueRecordsTheReviewerAndProtectsTheDecisionFromFutureImports() {
         Product product = new Product();
         product.setName("Unclassified item");
         product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.ACTIVE);
@@ -101,8 +133,8 @@ class ProductCatalogueModerationServiceTest {
                 "admin@example.test");
 
         assertEquals(ProductCatalogueReviewStatus.NEEDS_REVIEW, response.status());
-        assertNull(response.reviewedAt());
-        assertNull(response.reviewedBy());
+        assertNotNull(response.reviewedAt());
+        assertEquals("admin@example.test", response.reviewedBy());
         assertEquals("Please verify packaging", response.reviewReason());
     }
 }
