@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canAcceptShopkeeperOrder,
   canCancelShopkeeperOrder,
   canRejectShopkeeperOrder,
   formatInventoryMovement,
@@ -18,6 +19,14 @@ describe('shopkeeper order workflow', () => {
     expect(nextShopkeeperOrderStatus('READY', 'PLATFORM_DELIVERY')).toBeNull()
     expect(nextShopkeeperOrderStatus('OUT_FOR_DELIVERY', 'PLATFORM_DELIVERY')).toBeNull()
     expect(nextShopkeeperOrderStatus('DELIVERED')).toBeNull()
+  })
+
+  it('requires a fulfilment choice before accepting a placed order', () => {
+    expect(canAcceptShopkeeperOrder('PLACED', '')).toBe(false)
+    expect(canAcceptShopkeeperOrder('PLACED', 'SHOP_DELIVERY')).toBe(true)
+    expect(canAcceptShopkeeperOrder('PLACED', 'PLATFORM_DELIVERY')).toBe(true)
+    expect(canAcceptShopkeeperOrder('PLACED', 'CUSTOMER_PICKUP')).toBe(true)
+    expect(canAcceptShopkeeperOrder('ACCEPTED', 'SHOP_DELIVERY')).toBe(false)
   })
 
   it('only offers rejection before the shop accepts an order', () => {
