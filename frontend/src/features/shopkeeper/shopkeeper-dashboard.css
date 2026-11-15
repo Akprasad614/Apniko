@@ -1080,15 +1080,7 @@
   }
 }
 
-  .shopkeeper-fulfilment-panel {
-    grid-template-columns: 1fr;
-    gap: 0.9rem;
-    padding: 0.9rem;
-  }
-  .shopkeeper-fulfilment-panel__controls .shopkeeper-primary-button {
-    width: 100%;
-  }
-}
+
 
 
 .shopkeeper-order__accept-controls {
