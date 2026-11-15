@@ -1,6 +1,7 @@
 package com.localcart.repository;
 
 import com.localcart.entity.ShopInventory;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -68,6 +69,7 @@ public interface ShopInventoryRepository
             WHERE shop.active = true
               AND inventory.available = true
               AND inventory.stockQuantity > 0
+              AND (product.catalogueReviewStatus IS NULL OR product.catalogueReviewStatus = :visibleStatus)
               AND (:searchTerm IS NULL OR
                    LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
               AND (:category IS NULL OR
@@ -84,6 +86,7 @@ public interface ShopInventoryRepository
             WHERE shop.active = true
               AND inventory.available = true
               AND inventory.stockQuantity > 0
+              AND (product.catalogueReviewStatus IS NULL OR product.catalogueReviewStatus = :visibleStatus)
               AND (:searchTerm IS NULL OR
                    LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
               AND (:category IS NULL OR
@@ -98,6 +101,7 @@ public interface ShopInventoryRepository
             @Param("shopId") Long shopId,
             @Param("minPrice") Double minPrice,
             @Param("maxPrice") Double maxPrice,
+            @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus,
             Pageable pageable
     );
 
@@ -109,10 +113,13 @@ public interface ShopInventoryRepository
               AND shop.active = true
               AND inventory.available = true
               AND inventory.stockQuantity > 0
+              AND (inventory.product.catalogueReviewStatus IS NULL
+                   OR inventory.product.catalogueReviewStatus = :visibleStatus)
             ORDER BY inventory.price ASC, shop.name ASC
             """)
     List<ShopInventory> findAvailablePricesForProduct(
-            @Param("productId") Long productId
+            @Param("productId") Long productId,
+            @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus
     );
 
     @Query("""
@@ -123,9 +130,12 @@ public interface ShopInventoryRepository
             WHERE shop.active = true
               AND inventory.available = true
               AND inventory.stockQuantity > 0
+              AND (product.catalogueReviewStatus IS NULL OR product.catalogueReviewStatus = :visibleStatus)
               AND product.category IS NOT NULL
               AND TRIM(product.category) <> ''
             ORDER BY product.category ASC
             """)
-    List<String> findAvailableMarketplaceCategories();
+    List<String> findAvailableMarketplaceCategories(
+            @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus
+    );
 }

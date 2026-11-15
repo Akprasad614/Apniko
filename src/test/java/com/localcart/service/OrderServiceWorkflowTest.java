@@ -1,11 +1,17 @@
 package com.localcart.service;
 
+import com.localcart.entity.Cart;
+import com.localcart.entity.CartItem;
 import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
+import com.localcart.entity.OrderDeliveryAddress;
+import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.OrderStatus;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.User;
+import com.localcart.entity.ShopInventory;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.CartRepository;
 import com.localcart.repository.InventoryMovementRepository;
@@ -19,6 +25,7 @@ import com.localcart.repository.UserRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -63,6 +70,50 @@ class OrderServiceWorkflowTest {
                 userRepository,
                 cartRepository
         );
+    }
+
+    @Test
+    void checkoutRejectsProductThatEnteredCatalogueReviewAfterBeingAddedToCart() {
+        User customer = user(Role.CUSTOMER, 20L, "customer@example.com");
+        Shop shop = mock(Shop.class);
+        when(shop.getId()).thenReturn(1L);
+        when(shop.isActive()).thenReturn(true);
+
+        Product product = new Product();
+        product.setName("100% Micellar Casein");
+        product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+        ReflectionTestUtils.setField(product, "id", 501L);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setProduct(product);
+        cartItem.setQuantity(1);
+        Cart cart = new Cart();
+        cart.setCustomer(customer);
+        cart.setShop(shop);
+        cart.getItems().add(cartItem);
+
+        ShopInventory inventory = new ShopInventory();
+        inventory.setProduct(product);
+        inventory.setAvailable(true);
+        inventory.setStockQuantity(5);
+        inventory.setPrice(100.0);
+
+        when(userRepository.findByEmail("customer@example.com"))
+                .thenReturn(Optional.of(customer));
+        when(shopRepository.findById(1L)).thenReturn(Optional.of(shop));
+        when(cartRepository.findByCustomerIdAndShopId(20L, 1L))
+                .thenReturn(Optional.of(cart));
+        when(shopInventoryRepository.findByShopIdAndProductIdForUpdate(1L, 501L))
+                .thenReturn(Optional.of(inventory));
+        when(orderRepository.save(any(Order.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.checkoutCart("customer@example.com", 1L,
+                        (OrderDeliveryAddress) null));
+
+        verify(shopInventoryRepository, never()).save(any(ShopInventory.class));
+        verify(orderItemRepository, never()).save(any());
     }
 
     @Test

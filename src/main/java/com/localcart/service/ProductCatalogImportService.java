@@ -6,6 +6,7 @@ import com.localcart.dto.ProductImportItem;
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductCatalogueSourceRecord;
 import com.localcart.entity.ProductCategory;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.ProductCatalogueSourceRecordRepository;
 import com.localcart.repository.ProductCategoryRepository;
@@ -34,14 +35,17 @@ public class ProductCatalogImportService {
     private final ProductRepository productRepository;
     private final ProductCategoryRepository categoryRepository;
     private final ProductCatalogueSourceRecordRepository sourceRecordRepository;
+    private final ProductCatalogueQualityService catalogueQualityService;
 
     public ProductCatalogImportService(
             ProductRepository productRepository,
             ProductCategoryRepository categoryRepository,
-            ProductCatalogueSourceRecordRepository sourceRecordRepository) {
+            ProductCatalogueSourceRecordRepository sourceRecordRepository,
+            ProductCatalogueQualityService catalogueQualityService) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.sourceRecordRepository = sourceRecordRepository;
+        this.catalogueQualityService = catalogueQualityService;
     }
 
     public ProductImportBatchResponse importBatch(ProductImportBatchRequest request) {
@@ -265,6 +269,23 @@ public class ProductCatalogImportService {
         if (!Objects.equals(product.getIdentityKey(), identityKey)) {
             product.setIdentityKey(identityKey);
             changed = true;
+        }
+
+        // Automatic checks apply to imported records until an administrator
+        // explicitly reviews them. A later source refresh must not undo that decision.
+        if (product.getCatalogueReviewedAt() == null
+                && (authoritative || product.getCatalogueReviewStatus() == null)) {
+            ProductCatalogueQualityService.Assessment assessment =
+                    catalogueQualityService.assess(product);
+            ProductCatalogueReviewStatus nextStatus = assessment.status();
+            if (product.getCatalogueReviewStatus() != nextStatus) {
+                product.setCatalogueReviewStatus(nextStatus);
+                changed = true;
+            }
+            if (!Objects.equals(product.getCatalogueReviewReason(), assessment.reason())) {
+                product.setCatalogueReviewReason(assessment.reason());
+                changed = true;
+            }
         }
         product.setCatalogueImportedAt(Instant.now());
         return changed;

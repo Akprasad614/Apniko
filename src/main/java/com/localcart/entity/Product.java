@@ -82,6 +82,21 @@ public class Product {
     @Column(name = "catalogue_imported_at")
     private Instant catalogueImportedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "catalogue_review_status", length = 24)
+    private ProductCatalogueReviewStatus catalogueReviewStatus;
+
+    @Size(max = 500)
+    @Column(name = "catalogue_review_reason", length = 500)
+    private String catalogueReviewReason;
+
+    @Column(name = "catalogue_reviewed_at")
+    private Instant catalogueReviewedAt;
+
+    @Size(max = 120)
+    @Column(name = "catalogue_reviewed_by", length = 120)
+    private String catalogueReviewedBy;
+
     public Product() {
     }
 
@@ -120,4 +135,17 @@ public class Product {
     public void setCatalogueSourceLicense(String catalogueSourceLicense) { this.catalogueSourceLicense = catalogueSourceLicense; }
     public Instant getCatalogueImportedAt() { return catalogueImportedAt; }
     public void setCatalogueImportedAt(Instant catalogueImportedAt) { this.catalogueImportedAt = catalogueImportedAt; }
+    public ProductCatalogueReviewStatus getCatalogueReviewStatus() { return catalogueReviewStatus; }
+    public void setCatalogueReviewStatus(ProductCatalogueReviewStatus catalogueReviewStatus) { this.catalogueReviewStatus = catalogueReviewStatus; }
+    public String getCatalogueReviewReason() { return catalogueReviewReason; }
+    public void setCatalogueReviewReason(String catalogueReviewReason) { this.catalogueReviewReason = catalogueReviewReason; }
+    public Instant getCatalogueReviewedAt() { return catalogueReviewedAt; }
+    public void setCatalogueReviewedAt(Instant catalogueReviewedAt) { this.catalogueReviewedAt = catalogueReviewedAt; }
+    public String getCatalogueReviewedBy() { return catalogueReviewedBy; }
+    public void setCatalogueReviewedBy(String catalogueReviewedBy) { this.catalogueReviewedBy = catalogueReviewedBy; }
+
+    public boolean isVisibleToCustomers() {
+        return catalogueReviewStatus == null
+                || catalogueReviewStatus == ProductCatalogueReviewStatus.ACTIVE;
+    }
 }

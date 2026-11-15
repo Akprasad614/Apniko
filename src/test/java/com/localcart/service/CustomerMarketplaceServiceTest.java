@@ -1,6 +1,7 @@
 package com.localcart.service;
 
 import com.localcart.entity.Shop;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.ProductRepository;
@@ -99,9 +100,9 @@ class CustomerMarketplaceServiceTest {
         when(shopRepository.findById(1L)).thenReturn(Optional.of(activeShop));
         when(inventoryRepository.searchMarketplace(
                 eq("rice"), eq("Staples"), eq(1L), eq(10.0), eq(500.0),
-                any(Pageable.class)))
+                eq(ProductCatalogueReviewStatus.ACTIVE), any(Pageable.class)))
                 .thenAnswer(invocation -> {
-                    Pageable pageable = invocation.getArgument(5);
+                    Pageable pageable = invocation.getArgument(6);
                     return new PageImpl<>(List.of(), pageable, 0);
                 });
 
@@ -114,6 +115,7 @@ class CustomerMarketplaceServiceTest {
         verify(shopRepository).findById(1L);
         verify(inventoryRepository).searchMarketplace(
                 eq("rice"), eq("Staples"), eq(1L), eq(10.0), eq(500.0),
+                eq(ProductCatalogueReviewStatus.ACTIVE),
                 argThat(pageable -> pageable.getPageNumber() == 2
                         && pageable.getPageSize() == 15
                         && pageable.getSort().isSorted())
@@ -126,17 +128,20 @@ class CustomerMarketplaceServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> service.compareProductPrices(999L));
-        verify(inventoryRepository, never()).findAvailablePricesForProduct(anyLong());
+        verify(inventoryRepository, never()).findAvailablePricesForProduct(
+                anyLong(), any(ProductCatalogueReviewStatus.class));
     }
 
     @Test
     void priceComparisonUsesOnlyAvailableShopInventory() {
         when(productRepository.existsById(101L)).thenReturn(true);
-        when(inventoryRepository.findAvailablePricesForProduct(101L))
+        when(inventoryRepository.findAvailablePricesForProduct(
+                101L, ProductCatalogueReviewStatus.ACTIVE))
                 .thenReturn(List.of());
 
         assertTrue(service.compareProductPrices(101L).isEmpty());
-        verify(inventoryRepository).findAvailablePricesForProduct(101L);
+        verify(inventoryRepository).findAvailablePricesForProduct(
+                101L, ProductCatalogueReviewStatus.ACTIVE);
     }
 
     private Shop shop(Long id, String name, boolean active) {
