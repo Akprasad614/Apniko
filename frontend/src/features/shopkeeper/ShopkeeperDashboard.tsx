@@ -649,7 +649,7 @@ export function ShopkeeperDashboard() {
                       const nextActionLabel = nextStatus === 'OUT_FOR_DELIVERY'
                         ? 'Mark out for delivery'
                         : nextStatus === 'DELIVERED' && order.status === 'READY'
-                          ? 'Confirm customer pickup'
+                          ? 'Delivered'
                           : nextStatus === 'DELIVERED'
                             ? 'Mark delivered'
                             : nextStatus === 'ACCEPTED'
