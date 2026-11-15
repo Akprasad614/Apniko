@@ -15,6 +15,8 @@ public class CreateOrderRequest {
     @NotNull
     private DeliveryMode deliveryMode;
 
+    private Long addressId;
+
     @NotEmpty
     private List<@Valid OrderItemRequest> items;
 
@@ -31,6 +33,14 @@ public class CreateOrderRequest {
 
     public DeliveryMode getDeliveryMode() {
         return deliveryMode;
+    }
+
+    public Long getAddressId() {
+        return addressId;
+    }
+
+    public void setAddressId(Long addressId) {
+        this.addressId = addressId;
     }
 
     public void setDeliveryMode(DeliveryMode deliveryMode) {
