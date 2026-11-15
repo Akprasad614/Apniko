@@ -12,6 +12,16 @@ interface DeliveryOrder {
   id: number
   status: string
   deliveryMode: string
+  deliveryAddress?: {
+    recipientName?: string | null
+    phone?: string | null
+    addressLine1?: string | null
+    addressLine2?: string | null
+    landmark?: string | null
+    city?: string | null
+    state?: string | null
+    postalCode?: string | null
+  } | null
   totalAmount: number
   shop?: {
     id: number
@@ -140,9 +150,6 @@ export function DeliveryDashboard() {
           <button className="operations-button operations-button--secondary" type="button" disabled={loading} onClick={() => void loadOrders()}>{loading ? 'Refreshing…' : 'Refresh jobs ↻'}</button>
         </section>
 
-        <div className="operations-alert operations-alert--info" role="note">
-          The current order data records the shop collection point, but checkout does not yet save a customer drop-off address. Confirm the destination through your agreed customer contact process before accepting a delivery. Do not use this screen as proof of a delivery address.
-        </div>
         {error && <div className="operations-alert operations-alert--error" role="alert">{error}</div>}
         {notice && <div className="operations-alert operations-alert--success" role="status">{notice}</div>}
 
@@ -166,6 +173,20 @@ export function DeliveryDashboard() {
                     <div><p className="operations-eyebrow">ORDER / {order.id}</p><h2>{order.shop?.name || 'Local shop'}</h2><p>{order.shop?.address || 'Shop address not recorded'}</p></div>
                     <span className="operations-status operations-status--active">{formatStatus(order.status)}</span>
                   </div>
+                  {order.deliveryAddress && (
+                    <div className="delivery-order__destination">
+                      <strong>Customer destination</strong>
+                      <p>{[order.deliveryAddress.recipientName, order.deliveryAddress.phone].filter(Boolean).join(' · ')}</p>
+                      <p>{[
+                        order.deliveryAddress.addressLine1,
+                        order.deliveryAddress.addressLine2,
+                        order.deliveryAddress.landmark,
+                        order.deliveryAddress.city,
+                        order.deliveryAddress.state,
+                        order.deliveryAddress.postalCode,
+                      ].filter(Boolean).join(', ')}</p>
+                    </div>
+                  )}
                   <div className="delivery-order__items">
                     <strong>Items to collect</strong>
                     {(order.items ?? []).map((item) => <div key={item.id}><span>{item.product?.name || 'Product'} × {item.quantity}</span><span>{formatRupees(item.price * item.quantity)}</span></div>)}
