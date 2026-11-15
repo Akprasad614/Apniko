@@ -43,3 +43,7 @@ frontend/coverage/
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
+
+### Apniko catalogue source snapshots (downloaded, not committed) ###
+data/catalogue/source/
+data/catalogue/reports/
