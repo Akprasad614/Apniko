@@ -657,7 +657,7 @@ export function ShopkeeperDashboard() {
                           <div className="shopkeeper-order__actions">
                             <button type="button" className="shopkeeper-text-button" aria-expanded={expanded} onClick={() => void toggleOrderHistory(order.id)}>{expanded ? 'Hide timeline' : 'Status timeline'}</button>
                             <div>
-                              {nextStatus && <button type="button" className="shopkeeper-action-button" disabled={busyKey === `order-${order.id}`} onClick={() => void updateOrderStatus(order, nextStatus)}>{busyKey === `order-${order.id}` ? 'Saving…' : nextStatus === 'ACCEPTED' ? 'Accept order' : nextStatus === 'PREPARING' ? 'Start preparing' : 'Mark ready'} <span>→</span></button>}
+                              {nextStatus && <button type="button" className="shopkeeper-action-button" disabled={busyKey === `order-${order.id}`} onClick={() => void updateOrderStatus(order, nextStatus)}>{busyKey === `order-${order.id}` ? 'Saving…' : nextActionLabel} <span>→</span></button>}
                               {canRejectShopkeeperOrder(order.status) && <button type="button" className="shopkeeper-danger-button" disabled={busyKey === `order-${order.id}`} onClick={() => { setConfirmAction({ orderId: order.id, action: 'reject' }); setActionReason('') }}>Reject</button>}
                               {!canRejectShopkeeperOrder(order.status) && canCancelShopkeeperOrder(order.status) && <button type="button" className="shopkeeper-danger-button" disabled={busyKey === `order-${order.id}`} onClick={() => { setConfirmAction({ orderId: order.id, action: 'cancel' }); setActionReason('') }}>Cancel order</button>}
                             </div>
