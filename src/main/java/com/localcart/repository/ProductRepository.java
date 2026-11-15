@@ -30,4 +30,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("searchTerm") String searchTerm,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT product
+            FROM Product product
+            LEFT JOIN product.photo photo
+            WHERE product.barcode IS NOT NULL
+              AND (photo IS NULL OR photo.approvedImageUrl IS NULL)
+              AND (photo IS NULL OR photo.reviewStatus IS NULL
+                   OR photo.reviewStatus = :rejectedStatus)
+            """)
+    Page<Product> findProductsMissingApprovedPhoto(
+            @Param("rejectedStatus") ProductImageReviewStatus rejectedStatus,
+            Pageable pageable
+    );
+
 }
