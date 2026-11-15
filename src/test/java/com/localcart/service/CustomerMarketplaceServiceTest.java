@@ -102,7 +102,7 @@ class CustomerMarketplaceServiceTest {
                 eq("rice"), eq("Staples"), eq(1L), eq(10.0), eq(500.0),
                 eq(ProductCatalogueReviewStatus.ACTIVE), any(Pageable.class)))
                 .thenAnswer(invocation -> {
-                    Pageable pageable = invocation.getArgument(5);
+                    Pageable pageable = invocation.getArgument(6);
                     return new PageImpl<>(List.of(), pageable, 0);
                 });
 
@@ -128,7 +128,8 @@ class CustomerMarketplaceServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> service.compareProductPrices(999L));
-        verify(inventoryRepository, never()).findAvailablePricesForProduct(anyLong());
+        verify(inventoryRepository, never()).findAvailablePricesForProduct(
+                anyLong(), any(ProductCatalogueReviewStatus.class));
     }
 
     @Test
