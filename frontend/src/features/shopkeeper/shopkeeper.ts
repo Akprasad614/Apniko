@@ -5,7 +5,10 @@ export const SHOPKEEPER_ORDER_PROGRESS = [
   'READY',
 ] as const
 
-export type ShopkeeperOrderStatus = typeof SHOPKEEPER_ORDER_PROGRESS[number]
+export type ShopkeeperOrderStatus =
+  | typeof SHOPKEEPER_ORDER_PROGRESS[number]
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
 
 export type ShopDeliveryMode = 'SHOP_DELIVERY' | 'PLATFORM_DELIVERY' | 'CUSTOMER_PICKUP'
 
@@ -86,11 +89,20 @@ export interface InventoryMovement {
   createdAt?: string | null
 }
 
-export function nextShopkeeperOrderStatus(status: string): ShopkeeperOrderStatus | null {
+export function nextShopkeeperOrderStatus(
+  status: string,
+  deliveryMode?: string,
+): ShopkeeperOrderStatus | null {
   switch (status) {
     case 'PLACED': return 'ACCEPTED'
     case 'ACCEPTED': return 'PREPARING'
     case 'PREPARING': return 'READY'
+    case 'READY':
+      if (deliveryMode === 'SHOP_DELIVERY') return 'OUT_FOR_DELIVERY'
+      if (deliveryMode === 'CUSTOMER_PICKUP') return 'DELIVERED'
+      return null
+    case 'OUT_FOR_DELIVERY':
+      return deliveryMode === 'SHOP_DELIVERY' ? 'DELIVERED' : null
     default: return null
   }
 }
