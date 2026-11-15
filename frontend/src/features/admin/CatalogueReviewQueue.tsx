@@ -206,7 +206,9 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
 
       {loading ? (
         <div className="operations-state" role="status">Loading catalogue review items…</div>
-      ) : result && result.content.length > 0 ? (
+      ) : result === null ? (
+        <div className="operations-state">The review queue could not be loaded. Use refresh to try again.</div>
+      ) : result.content.length > 0 ? (
         <>
           <div className="catalogue-review__list">
             {result.content.map((item) => (
