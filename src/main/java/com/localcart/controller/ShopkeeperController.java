@@ -2,7 +2,6 @@ package com.localcart.controller;
 
 import com.localcart.dto.CreateShopRequest;
 import com.localcart.dto.ShopResponse;
-import com.localcart.dto.UpdateShopDeliveryModeRequest;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
 import com.localcart.repository.UserRepository;
@@ -49,17 +48,6 @@ public class ShopkeeperController {
 
         return ResponseEntity.ok(
                 shopService.getShopsByOwner(user.getId())
-        );
-    }
-
-    @PutMapping("/shops/{shopId}/delivery-mode")
-    public ResponseEntity<ShopResponse> updateDeliveryMode(
-            @PathVariable Long shopId,
-            @Valid @RequestBody UpdateShopDeliveryModeRequest request) {
-
-        String email = SecurityUtils.getCurrentUserEmail();
-        return ResponseEntity.ok(
-                shopService.updateDeliveryMode(shopId, email, request.getDeliveryMode())
         );
     }
 
