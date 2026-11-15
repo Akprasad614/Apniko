@@ -5,6 +5,7 @@ import com.localcart.dto.OrderItemRequest;
 import com.localcart.entity.Cart;
 import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
+import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.OrderItem;
 import com.localcart.entity.Product;
 import com.localcart.entity.ShopInventory;
@@ -157,11 +158,13 @@ class OrderServiceCoverageTest {
         item.setQuantity(2);
         request.setItems(List.of(item));
 
-        Optional<Order> result = service.createOrder(request);
+        OrderDeliveryAddress deliveryAddress = new OrderDeliveryAddress();
+        Optional<Order> result = service.createOrder(request, deliveryAddress);
 
         assertTrue(result.isPresent());
         assertEquals(OrderStatus.PLACED, result.get().getStatus());
-        assertEquals(DeliveryMode.CUSTOMER_PICKUP, result.get().getDeliveryMode());
+        assertNull(result.get().getDeliveryMode());
+        assertSame(deliveryAddress, result.get().getDeliveryAddress());
         assertEquals(80.0, result.get().getTotalAmount());
         assertEquals(3, inventory.getStockQuantity());
         assertTrue(inventory.isAvailable());
