@@ -1,5 +1,6 @@
 package com.localcart.controller;
 
+import com.localcart.dto.AcceptShopkeeperOrderRequest;
 import com.localcart.dto.CancelOrderRequest;
 import jakarta.validation.Valid;
 import com.localcart.entity.Order;
@@ -74,6 +75,33 @@ public class ShopkeeperOrderController {
         }
 
         return ResponseEntity.ok(order);
+    }
+
+    @PutMapping("/{orderId}/accept")
+    public ResponseEntity<Order> acceptOrder(
+            @PathVariable Long orderId,
+            @Valid @RequestBody AcceptShopkeeperOrderRequest request) {
+
+        User shopkeeper = getCurrentShopkeeper();
+        if (shopkeeper == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!isOwner(order, shopkeeper)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return orderService.acceptShopkeeperOrder(
+                        orderId,
+                        request.getDeliveryMode(),
+                        shopkeeper.getEmail()
+                )
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.badRequest().build());
     }
 
     @PutMapping("/{orderId}/status")
