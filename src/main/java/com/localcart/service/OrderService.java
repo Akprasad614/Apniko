@@ -115,7 +115,7 @@ public class OrderService {
                 customer,
                 shop,
                 request.getItems(),
-                shop.getDeliveryMode(),
+                null,
                 deliveryAddress
         );
     }
@@ -160,10 +160,9 @@ public class OrderService {
             throw new BadRequestException("Cart is empty");
         }
 
-        DeliveryMode shopDeliveryMode = shop.getDeliveryMode();
-        OrderDeliveryAddress orderAddress = shopDeliveryMode == DeliveryMode.CUSTOMER_PICKUP
-                ? null
-                : deliveryAddress;
+        // Fulfilment is selected by the shopkeeper when accepting this order.
+        // Keep the customer's saved address until that decision is made.
+        OrderDeliveryAddress orderAddress = deliveryAddress;
 
         List<OrderItemRequest> items = cart.getItems().stream().map(item -> {
             OrderItemRequest request = new OrderItemRequest();
@@ -172,7 +171,7 @@ public class OrderService {
             return request;
         }).toList();
 
-        Order order = buildOrder(customer, shop, items, shopDeliveryMode, orderAddress)
+        Order order = buildOrder(customer, shop, items, null, orderAddress)
                 .orElseThrow(() -> new BadRequestException("Unable to create order"));
 
         cart.getItems().clear();
@@ -361,6 +360,57 @@ public class OrderService {
     // =========================================================
 
     @Transactional
+    public Optional<Order> acceptShopkeeperOrder(
+            Long orderId,
+            DeliveryMode deliveryMode,
+            String email) {
+
+        if (deliveryMode == null) {
+            throw new BadRequestException("Choose a fulfilment method before accepting this order");
+        }
+
+        User shopkeeper = getShopkeeper(email);
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+        if (order == null) {
+            return Optional.empty();
+        }
+
+        if (order.getShop() == null
+                || order.getShop().getOwner() == null
+                || !order.getShop().getOwner().getId().equals(shopkeeper.getId())) {
+            throw new BadRequestException("You are not authorized to accept this order");
+        }
+
+        if (order.getStatus() != OrderStatus.PLACED) {
+            return Optional.empty();
+        }
+
+        if (deliveryMode != DeliveryMode.CUSTOMER_PICKUP
+                && order.getDeliveryAddress() == null) {
+            throw new BadRequestException(
+                    "This order has no saved delivery address. Ask the customer to add one before accepting it."
+            );
+        }
+
+        if (deliveryMode == DeliveryMode.CUSTOMER_PICKUP) {
+            // A pickup order does not need the customer's delivery address.
+            order.setDeliveryAddress(null);
+        }
+
+        order.setDeliveryMode(deliveryMode);
+        order.setStatus(OrderStatus.ACCEPTED);
+        recordStatusChange(
+                order,
+                OrderStatus.PLACED,
+                OrderStatus.ACCEPTED,
+                shopkeeper,
+                "Order accepted. Fulfilment: " + deliveryMode.name()
+        );
+
+        return Optional.of(orderRepository.save(order));
+    }
+
+    @Transactional
     public Optional<Order> updateShopkeeperOrderStatus(
             Long orderId,
             OrderStatus newStatus,
@@ -422,7 +472,9 @@ public class OrderService {
         }
 
         if (currentStatus == OrderStatus.PLACED) {
-            return newStatus == OrderStatus.ACCEPTED;
+            // Acceptance must go through acceptShopkeeperOrder so fulfilment
+            // is selected and persisted at the same time.
+            return false;
         }
 
         if (currentStatus == OrderStatus.ACCEPTED) {
