@@ -29,6 +29,7 @@ class OrderControllerAuthorizationTest {
     private OrderRepository orderRepository;
     private UserRepository userRepository;
     private ShopRepository shopRepository;
+    private CustomerAddressService customerAddressService;
     private OrderController controller;
 
     @BeforeEach
@@ -38,8 +39,9 @@ class OrderControllerAuthorizationTest {
         orderRepository = mock(OrderRepository.class);
         userRepository = mock(UserRepository.class);
         shopRepository = mock(ShopRepository.class);
+        customerAddressService = mock(CustomerAddressService.class);
         controller = new OrderController(
-                orderService, orderRepository, userRepository, shopRepository);
+                orderService, orderRepository, userRepository, shopRepository, customerAddressService);
     }
 
     @AfterEach
