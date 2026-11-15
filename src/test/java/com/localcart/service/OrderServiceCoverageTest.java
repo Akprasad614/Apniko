@@ -129,6 +129,7 @@ class OrderServiceCoverageTest {
     void customerCanCreateOrderAndStockIsDeducted() {
         User customer = user(10L, Role.CUSTOMER, true);
         Shop shop = shop(1L, true);
+        shop.setDeliveryMode(DeliveryMode.CUSTOMER_PICKUP);
         Product product = mock(Product.class);
         when(product.getId()).thenReturn(101L);
         when(product.getName()).thenReturn("Rice");
@@ -160,6 +161,7 @@ class OrderServiceCoverageTest {
 
         assertTrue(result.isPresent());
         assertEquals(OrderStatus.PLACED, result.get().getStatus());
+        assertEquals(DeliveryMode.CUSTOMER_PICKUP, result.get().getDeliveryMode());
         assertEquals(80.0, result.get().getTotalAmount());
         assertEquals(3, inventory.getStockQuantity());
         assertTrue(inventory.isAvailable());
