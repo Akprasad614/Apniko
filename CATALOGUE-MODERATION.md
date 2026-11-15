@@ -66,4 +66,4 @@ Hiding requires a non-empty reason. Returning an item to review clears the previ
 
 ## Customer visibility
 
-Customer marketplace shop-product lists, product search, available categories and price comparisons include only products whose status is null (legacy) or `ACTIVE`. Shop inventory and order-history data are not modified by moderation.
+Customer marketplace shop-product lists, product search, available categories and price comparisons include only products whose status is null (legacy) or `ACTIVE`. Cart additions and quantity updates reject products held for review or hidden; such items already present in a cart are shown as unavailable and excluded from the cart total. Checkout revalidates visibility and rejects stale cart contents. Shop inventory and historical order data are not deleted or detached by moderation.
