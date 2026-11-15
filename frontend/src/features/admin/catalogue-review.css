@@ -40,6 +40,34 @@
   font-size: 0.82rem;
 }
 
+.catalogue-review-search {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.catalogue-review-search label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: min(100%, 280px);
+  color: var(--lc-forest-deep);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.catalogue-review-search input {
+  width: 100%;
+  min-width: 220px;
+  border: 1px solid var(--lc-line);
+  border-radius: 10px;
+  padding: 0.72rem 0.8rem;
+  color: var(--lc-forest-deep);
+  background: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
 .catalogue-review__count {
   display: grid;
   gap: 0.15rem;
