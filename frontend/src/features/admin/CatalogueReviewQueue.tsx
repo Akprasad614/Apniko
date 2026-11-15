@@ -28,6 +28,8 @@ function messageFor(error: unknown): string {
 
 export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
   const [filter, setFilter] = useState<CatalogueReviewFilter>('NEEDS_REVIEW')
+  const [searchDraft, setSearchDraft] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
   const [page, setPage] = useState(0)
   const [result, setResult] = useState<CatalogueReviewPage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,6 +47,7 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
         page: String(page),
         size: '20',
       })
+      if (searchTerm) query.set('q', searchTerm)
       const next = await apiRequest<CatalogueReviewPage>(
         '/api/admin/catalogue/review-queue?' + query.toString(),
         {},
@@ -61,7 +64,7 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
     } finally {
       if (!quiet) setLoading(false)
     }
-  }, [filter, page, token])
+  }, [filter, page, searchTerm, token])
 
   useEffect(() => {
     void loadQueue()
@@ -113,6 +116,13 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
     }
   }
 
+  function searchProducts(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setPage(0)
+    setResult(null)
+    setSearchTerm(searchDraft.trim())
+  }
+
   function hideProduct(event: FormEvent<HTMLFormElement>, item: CatalogueReviewItem) {
     event.preventDefault()
     void updateStatus(item, 'HIDDEN', hideReasons[item.id] ?? '')
@@ -157,6 +167,34 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
             <option value="ALL">All products</option>
           </select>
         </label>
+        <form className="catalogue-review-search" onSubmit={searchProducts}>
+          <label>
+            Search catalogue
+            <input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              maxLength={100}
+              placeholder="Name, brand, barcode or category"
+            />
+          </label>
+          <button type="submit" className="operations-button operations-button--secondary">
+            Search
+          </button>
+          {searchTerm && (
+            <button
+              type="button"
+              className="operations-text-button"
+              onClick={() => {
+                setSearchDraft('')
+                setSearchTerm('')
+                setPage(0)
+                setResult(null)
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </form>
         <div className="catalogue-review__count" aria-live="polite">
           <strong>{totalElements.toLocaleString('en-IN')}</strong>
           <span>{filter === 'NEEDS_REVIEW' ? 'products awaiting review' : 'matching products'}</span>
