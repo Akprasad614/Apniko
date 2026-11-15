@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/test",
+                                "/api/catalogue/categories",
                                 "/api/payments/webhook/razorpay",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -102,7 +103,6 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration)
             throws Exception {
-
         return configuration.getAuthenticationManager();
     }
 }

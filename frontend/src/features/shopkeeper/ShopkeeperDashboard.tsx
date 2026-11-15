@@ -600,7 +600,7 @@ export function ShopkeeperDashboard() {
                     {loadingInventory ? <p className="shopkeeper-muted">Checking stock…</p> : inventory.filter((item) => item.lowStock || item.stockQuantity <= item.lowStockThreshold).length ? (
                       inventory.filter((item) => item.lowStock || item.stockQuantity <= item.lowStockThreshold).slice(0, 5).map((item) => (
                         <div className="shopkeeper-stock-row" key={item.id}>
-                          <div><strong>{item.productName}</strong><small>{item.category || 'Everyday essentials'}</small></div>
+                          <div><strong>{item.productName}</strong><small>{[item.brand, item.packSize, item.category, item.subcategory].filter(Boolean).join(' · ') || 'Everyday essentials'}</small></div>
                           <span>{item.stockQuantity} left</span>
                         </div>
                       ))

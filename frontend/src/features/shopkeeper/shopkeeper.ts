@@ -25,6 +25,10 @@ export interface ShopkeeperProduct {
   id: number
   name: string
   category?: string | null
+  brand?: string | null
+  barcode?: string | null
+  packSize?: string | null
+  subcategory?: string | null
 }
 
 export interface ShopkeeperInventoryItem {
@@ -34,6 +38,11 @@ export interface ShopkeeperInventoryItem {
   productId: number
   productName: string
   category?: string | null
+  subcategory?: string | null
+  brand?: string | null
+  barcode?: string | null
+  packSize?: string | null
+  mrp?: number | null
   price: number
   stockQuantity: number
   available: boolean

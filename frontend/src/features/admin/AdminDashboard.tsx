@@ -33,6 +33,20 @@ interface AdminProduct {
   id: number
   name: string
   category?: string | null
+  subcategory?: string | null
+  brand?: string | null
+  barcode?: string | null
+  packSize?: string | null
+  description?: string | null
+  mrp?: number | null
+  mrpSource?: string | null
+}
+
+interface AdminCategory {
+  id: number
+  name: string
+  slug: string
+  subcategories: Array<{ id: number; name: string; slug: string }>
 }
 
 interface AdminOverview {
@@ -80,6 +94,7 @@ export function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [shops, setShops] = useState<AdminShop[]>([])
   const [products, setProducts] = useState<AdminProduct[]>([])
+  const [categories, setCategories] = useState<AdminCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -91,6 +106,13 @@ export function AdminDashboard() {
   const [roleFilter, setRoleFilter] = useState('ALL')
   const [productName, setProductName] = useState('')
   const [productCategory, setProductCategory] = useState('')
+  const [productSubcategory, setProductSubcategory] = useState('')
+  const [productBrand, setProductBrand] = useState('')
+  const [productBarcode, setProductBarcode] = useState('')
+  const [productPackSize, setProductPackSize] = useState('')
+  const [productDescription, setProductDescription] = useState('')
+  const [productMrp, setProductMrp] = useState('')
+  const [productMrpSource, setProductMrpSource] = useState('')
 
   const shopkeepers = useMemo(
     () => users.filter((user) => user.role === 'SHOPKEEPER' && user.active),
@@ -109,6 +131,7 @@ export function AdminDashboard() {
       apiRequest<AdminUser[]>('/api/admin/users', {}, token),
       apiRequest<AdminShop[]>('/api/admin/shops', {}, token),
       apiRequest<AdminProduct[]>('/api/products', {}, token),
+      apiRequest<AdminCategory[]>('/api/catalogue/categories', {}, token),
     ] as const)
     const failures: string[] = []
     if (results[0].status === 'fulfilled') setOverview(results[0].value)
@@ -119,6 +142,8 @@ export function AdminDashboard() {
     else failures.push(messageFor(results[2].reason))
     if (results[3].status === 'fulfilled') setProducts(results[3].value)
     else failures.push(messageFor(results[3].reason))
+    if (results[4].status === 'fulfilled') setCategories(results[4].value)
+    else failures.push(messageFor(results[4].reason))
     if (failures.length) setError(failures.join(' '))
     if (!quiet) setLoading(false)
   }, [token])
@@ -226,13 +251,30 @@ export function AdminDashboard() {
         '/api/products',
         {
           method: 'POST',
-          body: JSON.stringify({ name: productName.trim(), category: productCategory.trim() }),
+          body: JSON.stringify({
+            name: productName.trim(),
+            category: productCategory.trim(),
+            subcategory: productSubcategory.trim() || null,
+            brand: productBrand.trim() || null,
+            barcode: productBarcode.trim() || null,
+            packSize: productPackSize.trim() || null,
+            description: productDescription.trim() || null,
+            mrp: productMrp.trim() ? Number(productMrp) : null,
+            mrpSource: productMrpSource || null,
+          }),
         },
         token,
       )
       setProducts((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)))
       setProductName('')
       setProductCategory('')
+      setProductSubcategory('')
+      setProductBrand('')
+      setProductBarcode('')
+      setProductPackSize('')
+      setProductDescription('')
+      setProductMrp('')
+      setProductMrpSource('')
       setNotice(created.name + ' was added to the shared catalogue.')
     } catch (createError) {
       setError(messageFor(createError))
@@ -379,15 +421,23 @@ export function AdminDashboard() {
               <section>
                 <div className="operations-section-heading"><div><p className="operations-eyebrow">SHARED PRODUCTS</p><h2>Product catalogue</h2><p>Shopkeepers add these products to their own inventory and set local prices.</p></div></div>
                 <form className="operations-panel operations-form" onSubmit={(event) => void createProduct(event)}>
-                  <div><p className="operations-eyebrow">NEW CATALOGUE ITEM</p><h3>Add a product</h3></div>
+                  <div><p className="operations-eyebrow">NEW CATALOGUE ITEM</p><h3>Add a product</h3><p>Master product details are shared; each shop still controls its own selling price and stock.</p></div>
                   <div className="operations-form-grid operations-form-grid--two">
                     <label>Product name<input value={productName} onChange={(event) => setProductName(event.target.value)} maxLength={120} required /></label>
-                    <label>Category<input value={productCategory} onChange={(event) => setProductCategory(event.target.value)} maxLength={80} placeholder="e.g. Staples" /></label>
+                    <label>Category<select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductSubcategory('') }} required><option value="">Choose a category</option>{categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select></label>
+                    <label>Subcategory<select value={productSubcategory} onChange={(event) => setProductSubcategory(event.target.value)} disabled={!productCategory}><option value="">No subcategory</option>{categories.find((category) => category.name === productCategory)?.subcategories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select></label>
+                    <label>Brand<input value={productBrand} onChange={(event) => setProductBrand(event.target.value)} maxLength={100} placeholder="Brand name" /></label>
+                    <label>Barcode (GTIN)<input value={productBarcode} onChange={(event) => setProductBarcode(event.target.value)} inputMode="numeric" maxLength={14} pattern="([0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14})" placeholder="EAN / GTIN barcode" /></label>
+                    <label>Pack size<input value={productPackSize} onChange={(event) => setProductPackSize(event.target.value)} maxLength={80} placeholder="e.g. 500 g, 1 L, 10 pcs" /></label>
+                    <label>MRP (₹)<input type="number" min="0.01" max="1000000" step="0.01" value={productMrp} onChange={(event) => setProductMrp(event.target.value)} placeholder="Printed pack MRP" /></label>
+                    <label>MRP source<select value={productMrpSource} onChange={(event) => setProductMrpSource(event.target.value)}><option value="">Not recorded</option><option value="pack">Physical pack</option><option value="brand">Brand supplied</option><option value="gov">Government source</option><option value="off">Open Food Facts</option></select></label>
                   </div>
-                  <button className="operations-button" type="submit" disabled={busyKey === 'create-product' || !productName.trim()}>{busyKey === 'create-product' ? 'Adding…' : 'Add to catalogue'}</button>
+                  <label>Product description<textarea value={productDescription} onChange={(event) => setProductDescription(event.target.value)} maxLength={1000} rows={3} placeholder="Product details, pack information or usage notes" /></label>
+                  <p className="operations-help">MRP is a sourced reference value, not the shop's selling price. Enter an MRP source only when an MRP is provided.</p>
+                  <button className="operations-button" type="submit" disabled={busyKey === 'create-product' || !productName.trim() || !productCategory}>{busyKey === 'create-product' ? 'Adding…' : 'Add to catalogue'}</button>
                 </form>
                 <div className="operations-toolbar"><h3>Available products <span>{products.length}</span></h3></div>
-                {products.length ? <div className="operations-product-list">{products.map((product) => <article key={product.id}><div><strong>{product.name}</strong><small>{product.category || 'Uncategorised'}</small></div><span>#{product.id}</span></article>)}</div> : <div className="operations-state">The shared catalogue is empty. Add the first product above.</div>}
+                {products.length ? <div className="operations-product-list">{products.map((product) => <article key={product.id}><div><strong>{product.name}</strong><small>{[product.brand, product.packSize, product.category, product.subcategory, product.barcode ? 'GTIN ' + product.barcode : null].filter(Boolean).join(' · ') || 'Uncategorised'}</small></div><span>#{product.id}</span></article>)}</div> : <div className="operations-state">The shared catalogue is empty. Add the first product above.</div>}
               </section>
             )}
           </>
