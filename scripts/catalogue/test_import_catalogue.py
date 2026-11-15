@@ -30,6 +30,45 @@ class CatalogueImportTests(unittest.TestCase):
         self.assertEqual(pack_size("0.12345", "g"), "0.12345 g")
         self.assertEqual(api_quantity("1000001", "g"), (None, None))
 
+    def test_packsense_quantity_selects_a_complete_amount_unit_pair(self):
+        row = {
+            "code": "4006381333931",
+            "product_name": "Kachi Ghani Mustard Oil",
+            "brands": "Dhara",
+            "product_quantity": "1000",
+            "product_quantity_unit": "",
+            "quantity_amount": "1",
+            "quantity_unit": "l",
+            "existence_status": "present_in_snapshot",
+            "open_error_flags": "0",
+        }
+
+        item = packsense_item(row)
+
+        self.assertIsNotNone(item)
+        self.assertEqual(item["packSize"], "1 l")
+        self.assertEqual(item["netQuantity"], 1.0)
+        self.assertEqual(item["netQuantityUnit"], "l")
+
+    def test_packsense_quantity_does_not_mix_amount_and_unit_columns(self):
+        row = {
+            "code": "4006381333931",
+            "product_name": "Sample Product",
+            "product_quantity": "1000",
+            "product_quantity_unit": "",
+            "quantity_amount": "",
+            "quantity_unit": "l",
+            "existence_status": "present_in_snapshot",
+            "open_error_flags": "0",
+        }
+
+        item = packsense_item(row)
+
+        self.assertIsNotNone(item)
+        self.assertIsNone(item["packSize"])
+        self.assertIsNone(item["netQuantity"])
+        self.assertIsNone(item["netQuantityUnit"])
+
     def test_specific_product_name_overrides_broad_taxonomy(self):
         self.assertEqual(
             category_for("Poha", "Beverages", "en:water"),
