@@ -34,6 +34,47 @@ public class ProductService {
         if (product.getBrand() != null) {
             product.setBrand(product.getBrand().trim());
         }
+        if (product.getSubcategory() != null) {
+            product.setSubcategory(product.getSubcategory().trim());
+        }
+        if (product.getPackSize() != null) {
+            product.setPackSize(product.getPackSize().trim());
+        }
+        if (product.getDescription() != null) {
+            product.setDescription(product.getDescription().trim());
+        }
+
+        if (product.getMrp() == null) {
+            if (product.getMrpSource() != null && !product.getMrpSource().isBlank()) {
+                throw new BadRequestException("MRP source cannot be set without an MRP value");
+            }
+            product.setMrpSource(null);
+        } else {
+            if (product.getMrp().signum() <= 0
+                    || product.getMrp().compareTo(new java.math.BigDecimal("1000000")) > 0
+                    || product.getMrp().scale() > 2) {
+                throw new BadRequestException("MRP must be between ₹0.01 and ₹10,00,000 with at most 2 decimals");
+            }
+            String mrpSource = product.getMrpSource() == null
+                    ? "" : product.getMrpSource().trim().toLowerCase(Locale.ROOT);
+            if (!java.util.Set.of("pack", "brand", "gov", "off").contains(mrpSource)) {
+                throw new BadRequestException("MRP source must be pack, brand, gov or off");
+            }
+            product.setMrpSource(mrpSource);
+        }
+
+        if (product.getNetQuantity() != null
+                && (product.getNetQuantity().signum() <= 0
+                || product.getNetQuantity().compareTo(new java.math.BigDecimal("1000000")) > 0
+                || product.getNetQuantity().scale() > 3)) {
+            throw new BadRequestException("Net quantity must be positive and have at most 3 decimal places");
+        }
+        if (product.getNetQuantity() != null
+                && (product.getNetQuantityUnit() == null
+                || !java.util.Set.of("g", "kg", "ml", "l", "pcs", "unit")
+                        .contains(product.getNetQuantityUnit().trim().toLowerCase(Locale.ROOT)))) {
+            throw new BadRequestException("Net quantity unit must be g, kg, ml, l, pcs or unit");
+        }
 
         String barcode = product.getBarcode();
         if (barcode != null && !barcode.isBlank()) {
