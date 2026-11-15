@@ -637,8 +637,8 @@ export function ShopkeeperDashboard() {
                   <div className="shopkeeper-order-list">
                     {visibleOrders.map((order) => {
                       const nextStatus = nextShopkeeperOrderStatus(order.status, order.deliveryMode)
-                      const savedDeliveryMode = order.deliveryMode ?? ''
-                      const selectedDeliveryMode = fulfilmentDrafts[order.id] ?? savedDeliveryMode
+                      const savedDeliveryMode = order.deliveryMode ?? null
+                      const selectedDeliveryMode = fulfilmentDrafts[order.id] ?? savedDeliveryMode ?? ''
                       const hasDeliveryAddress = Boolean(order.deliveryAddress?.addressLine1?.trim())
                       const canSaveFulfilment = canSaveShopkeeperOrderFulfilment(
                         order.status, selectedDeliveryMode, savedDeliveryMode, hasDeliveryAddress,
