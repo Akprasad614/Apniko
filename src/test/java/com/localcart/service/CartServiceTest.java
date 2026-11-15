@@ -5,6 +5,7 @@ import com.localcart.dto.CartResponse;
 import com.localcart.entity.Cart;
 import com.localcart.entity.CartItem;
 import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
