@@ -100,13 +100,12 @@ public class CartController {
 
         String email = SecurityUtils.getCurrentUserEmail();
 
-        OrderDeliveryAddress deliveryAddress = null;
-        if (request.getDeliveryMode() != com.localcart.entity.DeliveryMode.CUSTOMER_PICKUP) {
-            deliveryAddress = customerAddressService.getDeliveryAddressSnapshot(email, request.getAddressId());
-        }
+        OrderDeliveryAddress deliveryAddress = request.getAddressId() == null
+                ? null
+                : customerAddressService.getDeliveryAddressSnapshot(email, request.getAddressId());
 
         return ResponseEntity.ok(
-                orderService.checkoutCart(email, shopId, request.getDeliveryMode(), deliveryAddress)
+                orderService.checkoutCart(email, shopId, deliveryAddress)
         );
     }
 }
