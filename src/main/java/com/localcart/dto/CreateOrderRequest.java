@@ -12,7 +12,7 @@ public class CreateOrderRequest {
     @NotNull
     private Long shopId;
 
-    @NotNull
+    // Retained for older clients; the shop's saved fulfilment setting is authoritative.
     private DeliveryMode deliveryMode;
 
     private Long addressId;
