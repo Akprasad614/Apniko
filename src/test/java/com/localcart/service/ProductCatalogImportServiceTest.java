@@ -4,6 +4,7 @@ import com.localcart.dto.ProductImportBatchRequest;
 import com.localcart.dto.ProductImportBatchResponse;
 import com.localcart.dto.ProductImportItem;
 import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.ProductCategory;
 import com.localcart.entity.ProductCatalogueSourceRecord;
 import com.localcart.exception.BadRequestException;
@@ -38,7 +39,8 @@ class ProductCatalogImportServiceTest {
     @BeforeEach
     void setUp() {
         service = new ProductCatalogImportService(
-                productRepository, categoryRepository, sourceRecordRepository);
+                productRepository, categoryRepository, sourceRecordRepository,
+                new ProductCatalogueQualityService());
         parent = new ProductCategory("Beverages", "beverages", null);
         ReflectionTestUtils.setField(parent, "id", 1L);
         subcategory = new ProductCategory("Tea, Coffee & Cocoa",
@@ -71,7 +73,8 @@ class ProductCatalogImportServiceTest {
                         && product.getBrand().equals("Sample Brand")
                         && product.getPackSize().equals("250 g")
                         && product.getCategory().equals("Beverages")
-                        && product.getSubcategory().equals("Tea, Coffee & Cocoa")));
+                        && product.getSubcategory().equals("Tea, Coffee & Cocoa")
+                        && product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.ACTIVE));
         verify(sourceRecordRepository).save(argThat(source ->
                 source.getSourceName().equals("PackSense India / Open Food Facts")
                         && source.getSourceLicense().equals("ODbL-1.0")
