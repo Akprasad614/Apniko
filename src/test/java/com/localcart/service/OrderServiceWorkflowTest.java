@@ -2,6 +2,7 @@ package com.localcart.service;
 
 import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
+import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.OrderStatus;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
@@ -68,8 +69,9 @@ class OrderServiceWorkflowTest {
     @Test
     void shopkeeperCanMovePlacedOrderToAccepted() {
         User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
-        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        Order order = order(OrderStatus.PLACED, null);
         order.setShop(shopOwnedBy(shopkeeper));
+        order.setDeliveryAddress(new OrderDeliveryAddress());
 
         when(userRepository.findByEmail(shopkeeper.getEmail()))
                 .thenReturn(Optional.of(shopkeeper));
@@ -77,13 +79,34 @@ class OrderServiceWorkflowTest {
         when(orderRepository.save(order)).thenReturn(order);
 
         Optional<Order> result = orderService.updateShopkeeperOrderStatus(
-                100L, OrderStatus.ACCEPTED, shopkeeper.getEmail()
+                100L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.PLATFORM_DELIVERY
         );
 
         assertTrue(result.isPresent());
         assertEquals(OrderStatus.ACCEPTED, result.get().getStatus());
+        assertEquals(DeliveryMode.PLATFORM_DELIVERY, result.get().getDeliveryMode());
         verify(orderStatusHistoryRepository).save(any());
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperMustChooseFulfilmentBeforeAcceptingAnOrder() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        order.setShop(shopOwnedBy(shopkeeper));
+        order.setDeliveryAddress(new OrderDeliveryAddress());
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.updateShopkeeperOrderStatus(
+                        123L, OrderStatus.ACCEPTED, shopkeeper.getEmail()
+                )
+        );
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        assertNull(order.getDeliveryMode());
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
