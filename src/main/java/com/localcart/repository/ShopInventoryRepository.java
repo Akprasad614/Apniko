@@ -30,8 +30,7 @@ public interface ShopInventoryRepository
             """)
     Optional<ShopInventory> findByShopIdAndProductIdForUpdate(
             @Param("shopId") Long shopId,
-            @Param("productId") Long productId,
-            @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus
+            @Param("productId") Long productId
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -119,7 +118,8 @@ public interface ShopInventoryRepository
             ORDER BY inventory.price ASC, shop.name ASC
             """)
     List<ShopInventory> findAvailablePricesForProduct(
-            @Param("productId") Long productId
+            @Param("productId") Long productId,
+            @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus
     );
 
     @Query("""
