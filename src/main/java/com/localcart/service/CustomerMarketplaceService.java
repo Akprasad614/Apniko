@@ -4,6 +4,7 @@ import com.localcart.dto.InventoryResponse;
 import com.localcart.dto.PriceComparisonResponse;
 import com.localcart.dto.ShopResponse;
 import com.localcart.entity.Shop;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.ShopInventory;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
@@ -76,6 +77,7 @@ public class CustomerMarketplaceService {
                 .stream()
                 .filter(ShopInventory::isAvailable)
                 .filter(inventory -> inventory.getStockQuantity() > 0)
+                .filter(inventory -> inventory.getProduct().isVisibleToCustomers())
                 .sorted((left, right) ->
                         left.getProduct().getName()
                                 .compareToIgnoreCase(right.getProduct().getName()))
@@ -118,6 +120,7 @@ public class CustomerMarketplaceService {
                         shopId,
                         minPrice,
                         maxPrice,
+                        ProductCatalogueReviewStatus.ACTIVE,
                         pageable
                 )
                 .map(this::toInventoryResponse);
@@ -129,14 +132,16 @@ public class CustomerMarketplaceService {
             throw new ResourceNotFoundException("Product not found");
         }
 
-        return inventoryRepository.findAvailablePricesForProduct(productId)
+        return inventoryRepository.findAvailablePricesForProduct(
+                        productId, ProductCatalogueReviewStatus.ACTIVE)
                 .stream()
                 .map(this::toPriceComparisonResponse)
                 .toList();
     }
 
     public List<String> getAvailableCategories() {
-        return inventoryRepository.findAvailableMarketplaceCategories();
+        return inventoryRepository.findAvailableMarketplaceCategories(
+                ProductCatalogueReviewStatus.ACTIVE);
     }
 
     private void validateSearch(
