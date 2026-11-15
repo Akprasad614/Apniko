@@ -3,6 +3,7 @@ package com.localcart.controller;
 import com.localcart.dto.CancelOrderRequest;
 import com.localcart.dto.OrderStatusHistoryResponse;
 import com.localcart.entity.Order;
+import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
 import com.localcart.repository.OrderRepository;
@@ -10,6 +11,7 @@ import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.OrderService;
+import com.localcart.service.CustomerAddressService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,17 +28,20 @@ public class OrderController {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
+    private final CustomerAddressService customerAddressService;
 
     public OrderController(
             OrderService orderService,
             OrderRepository orderRepository,
             UserRepository userRepository,
-            ShopRepository shopRepository) {
+            ShopRepository shopRepository,
+            CustomerAddressService customerAddressService) {
 
         this.orderService = orderService;
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.shopRepository = shopRepository;
+        this.customerAddressService = customerAddressService;
     }
 
     // Customer creates an order
@@ -45,7 +50,11 @@ public class OrderController {
     public ResponseEntity<Order> createOrder(
             @Valid @RequestBody com.localcart.dto.CreateOrderRequest request) {
 
-        Optional<Order> order = orderService.createOrder(request);
+        String email = SecurityUtils.getCurrentUserEmail();
+        OrderDeliveryAddress deliveryAddress = request.getAddressId() == null
+                ? null
+                : customerAddressService.getDeliveryAddressSnapshot(email, request.getAddressId());
+        Optional<Order> order = orderService.createOrder(request, deliveryAddress);
 
         return order
                 .map(ResponseEntity::ok)
