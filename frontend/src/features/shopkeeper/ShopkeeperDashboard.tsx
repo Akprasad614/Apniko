@@ -63,7 +63,7 @@ export function ShopkeeperDashboard() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busyKey, setBusyKey] = useState('')
-  const [deliveryModeDraft, setDeliveryModeDraft] = useState<ShopDeliveryMode>('SHOP_DELIVERY')
+  const [fulfilmentDrafts, setFulfilmentDrafts] = useState<Record<number, ShopDeliveryMode | ''>>({})
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null)
   const [historyByOrder, setHistoryByOrder] = useState<Record<number, ShopkeeperOrderHistory[]>>({})
   const [historyLoadingId, setHistoryLoadingId] = useState<number | null>(null)
@@ -90,10 +90,6 @@ export function ShopkeeperDashboard() {
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
     [shops, selectedShopId],
   )
-
-  useEffect(() => {
-    setDeliveryModeDraft(selectedShop?.deliveryMode ?? 'SHOP_DELIVERY')
-  }, [selectedShop?.id, selectedShop?.deliveryMode])
 
   const selectedShopOrders = useMemo(
     () => orders.filter((order) => order.shop?.id === selectedShopId),
@@ -207,18 +203,42 @@ export function ShopkeeperDashboard() {
     }
   }
 
-  async function updateOrderStatus(order: ShopkeeperOrder, status: string) {
+  async function updateOrderStatus(
+    order: ShopkeeperOrder,
+    status: string,
+    selectedDeliveryMode?: ShopDeliveryMode,
+  ) {
+    if (status === 'ACCEPTED') {
+      if (!selectedDeliveryMode) {
+        setError('Choose a fulfilment method before accepting this order.')
+        return
+      }
+      const hasAddress = Boolean(order.deliveryAddress?.addressLine1?.trim())
+      if (selectedDeliveryMode !== 'CUSTOMER_PICKUP' && !hasAddress) {
+        setError('This order has no saved delivery address. Choose Customer Pickup or ask the customer to add an address.')
+        return
+      }
+    }
+
     setBusyKey(`order-${order.id}`)
     setError('')
     setNotice('')
     try {
       const params = new URLSearchParams({ status })
+      if (selectedDeliveryMode) params.set('deliveryMode', selectedDeliveryMode)
       await apiRequest<ShopkeeperOrder>(
         `/api/shopkeeper/orders/${order.id}/status?${params.toString()}`,
         { method: 'PUT' },
         token,
       )
-      setNotice(`Order #${order.id} moved to ${formatShopkeeperStatus(status)}.`)
+      setFulfilmentDrafts((current) => {
+        const next = { ...current }
+        delete next[order.id]
+        return next
+      })
+      setNotice(status === 'ACCEPTED' && selectedDeliveryMode
+        ? `Order #${order.id} accepted for ${formatShopkeeperStatus(selectedDeliveryMode)}.`
+        : `Order #${order.id} moved to ${formatShopkeeperStatus(status)}.`)
       await loadOrders(true)
     } catch (actionError) {
       setError(messageFor(actionError))
@@ -403,31 +423,6 @@ export function ShopkeeperDashboard() {
     }
   }
 
-  async function saveDeliveryMode() {
-    if (!selectedShop || busyKey === 'delivery-mode') return
-    setBusyKey('delivery-mode')
-    setError('')
-    setNotice('')
-    try {
-      const updated = await apiRequest<ShopkeeperShop>(
-        `/api/shopkeeper/shops/${selectedShop.id}/delivery-mode`,
-        {
-          method: 'PUT',
-          body: JSON.stringify({ deliveryMode: deliveryModeDraft }),
-        },
-        token,
-      )
-      setShops((current) => current.map((shop) => shop.id === selectedShop.id
-        ? { ...shop, deliveryMode: updated.deliveryMode ?? deliveryModeDraft }
-        : shop))
-      setNotice('Customer fulfilment updated for ' + selectedShop.name + '.')
-    } catch (saveError) {
-      setError(messageFor(saveError))
-    } finally {
-      setBusyKey('')
-    }
-  }
-
   async function openMovements(item: ShopkeeperInventoryItem) {
     setMovementItem(item)
     setMovementLoading(true)
@@ -551,7 +546,11 @@ export function ShopkeeperDashboard() {
                       selectedShopOrders.filter((order) => order.status === 'PLACED').slice(0, 4).map((order) => (
                         <div className="shopkeeper-queue-row" key={order.id}>
                           <span>#{order.id}</span>
-                          <div><strong>{order.items?.length ?? 0} line items</strong><small>{formatShopkeeperStatus(order.deliveryMode)}</small></div>
+                          <div><strong>{order.items?.length ?? 0} line items</strong><small>{order.deliveryMode
+                              ? formatShopkeeperStatus(order.deliveryMode)
+                              : order.status === 'PLACED'
+                                ? 'Fulfilment selected when accepting'
+                                : 'Fulfilment not recorded'}</small></div>
                           <strong>{formatShopkeeperRupees(order.totalAmount)}</strong>
                         </div>
                       ))
@@ -571,33 +570,7 @@ export function ShopkeeperDashboard() {
                       ))
                     ) : <p className="shopkeeper-muted">Your current stock levels look healthy.</p>}
                   </section>
-                <section className="shopkeeper-fulfilment-panel" aria-labelledby="shopkeeper-fulfilment-title">
-                  <div>
-                    <p className="shopkeeper-eyebrow">SHOP SETTINGS</p>
-                    <h3 id="shopkeeper-fulfilment-title">How will customers receive their orders?</h3>
-                    <p>Choose the fulfilment method for this shop. Customers will see the arrangement, not a choice.</p>
-                  </div>
-                  <div className="shopkeeper-fulfilment-panel__controls">
-                    <label htmlFor="shopkeeper-delivery-mode">Fulfilment method</label>
-                    <select
-                      id="shopkeeper-delivery-mode"
-                      value={deliveryModeDraft}
-                      onChange={(event) => setDeliveryModeDraft(event.target.value as ShopDeliveryMode)}
-                    >
-                      <option value="SHOP_DELIVERY">Delivery by this shop</option>
-                      <option value="PLATFORM_DELIVERY">Apniko delivery partner</option>
-                      <option value="CUSTOMER_PICKUP">Customer pickup</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="shopkeeper-primary-button"
-                      disabled={busyKey === 'delivery-mode' || deliveryModeDraft === (selectedShop.deliveryMode ?? 'SHOP_DELIVERY')}
-                      onClick={() => void saveDeliveryMode()}
-                    >
-                      {busyKey === 'delivery-mode' ? 'Saving…' : 'Save fulfilment setting'}
-                    </button>
-                  </div>
-                </section>
+                
                 </div>
               </section>
             )}
@@ -628,6 +601,8 @@ export function ShopkeeperDashboard() {
                   <div className="shopkeeper-order-list">
                     {visibleOrders.map((order) => {
                       const nextStatus = nextShopkeeperOrderStatus(order.status, order.deliveryMode)
+                      const selectedDeliveryMode = fulfilmentDrafts[order.id] ?? ''
+                      const hasDeliveryAddress = Boolean(order.deliveryAddress?.addressLine1?.trim())
                       const nextActionLabel = nextStatus === 'OUT_FOR_DELIVERY'
                         ? 'Mark out for delivery'
                         : nextStatus === 'DELIVERED' && order.status === 'READY'
@@ -654,10 +629,59 @@ export function ShopkeeperDashboard() {
                               </div>
                             ))}
                           </div>
+                          {hasDeliveryAddress && order.deliveryAddress && (
+                            <div className="shopkeeper-order__delivery-address">
+                              <strong>Customer delivery address</strong>
+                              <p>{[order.deliveryAddress.recipientName, order.deliveryAddress.phone].filter(Boolean).join(' · ')}</p>
+                              <p>{[
+                                order.deliveryAddress.addressLine1,
+                                order.deliveryAddress.addressLine2,
+                                order.deliveryAddress.landmark,
+                                order.deliveryAddress.city,
+                                order.deliveryAddress.state,
+                                order.deliveryAddress.postalCode,
+                              ].filter(Boolean).join(', ')}</p>
+                            </div>
+                          )}
+                          {!hasDeliveryAddress && order.status === 'PLACED' && (
+                            <p className="shopkeeper-order__address-note">
+                              No delivery address was saved. Customer Pickup is the only fulfilment option available for this order.
+                            </p>
+                          )}
                           <div className="shopkeeper-order__actions">
                             <button type="button" className="shopkeeper-text-button" aria-expanded={expanded} onClick={() => void toggleOrderHistory(order.id)}>{expanded ? 'Hide timeline' : 'Status timeline'}</button>
                             <div>
-                              {nextStatus && <button type="button" className="shopkeeper-action-button" disabled={busyKey === `order-${order.id}`} onClick={() => void updateOrderStatus(order, nextStatus)}>{busyKey === `order-${order.id}` ? 'Saving…' : nextActionLabel} <span>→</span></button>}
+                              {order.status === 'PLACED' ? (
+                                <div className="shopkeeper-order__accept-controls">
+                                  <label className="shopkeeper-order__fulfilment-select">
+                                    <span>Fulfilment for this order</span>
+                                    <select
+                                      aria-label={`Fulfilment method for order #${order.id}`}
+                                      value={selectedDeliveryMode}
+                                      onChange={(event) => setFulfilmentDrafts((current) => ({
+                                        ...current,
+                                        [order.id]: event.target.value as ShopDeliveryMode | '',
+                                      }))}
+                                    >
+                                      <option value="">Choose delivery option</option>
+                                      <option value="SHOP_DELIVERY" disabled={!hasDeliveryAddress}>Delivery by this shop</option>
+                                      <option value="PLATFORM_DELIVERY" disabled={!hasDeliveryAddress}>Apniko delivery partner</option>
+                                      <option value="CUSTOMER_PICKUP">Customer pickup</option>
+                                    </select>
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className="shopkeeper-action-button"
+                                    disabled={busyKey === `order-${order.id}` || !selectedDeliveryMode
+                                      || (selectedDeliveryMode !== 'CUSTOMER_PICKUP' && !hasDeliveryAddress)}
+                                    onClick={() => void updateOrderStatus(order, 'ACCEPTED', selectedDeliveryMode || undefined)}
+                                  >
+                                    {busyKey === `order-${order.id}` ? 'Saving…' : 'Accept order'} <span>→</span>
+                                  </button>
+                                </div>
+                              ) : nextStatus && (
+                                <button type="button" className="shopkeeper-action-button" disabled={busyKey === `order-${order.id}`} onClick={() => void updateOrderStatus(order, nextStatus)}>{busyKey === `order-${order.id}` ? 'Saving…' : nextActionLabel} <span>→</span></button>
+                              )}
                               {canRejectShopkeeperOrder(order.status) && <button type="button" className="shopkeeper-danger-button" disabled={busyKey === `order-${order.id}`} onClick={() => { setConfirmAction({ orderId: order.id, action: 'reject' }); setActionReason('') }}>Reject</button>}
                               {!canRejectShopkeeperOrder(order.status) && canCancelShopkeeperOrder(order.status) && <button type="button" className="shopkeeper-danger-button" disabled={busyKey === `order-${order.id}`} onClick={() => { setConfirmAction({ orderId: order.id, action: 'cancel' }); setActionReason('') }}>Cancel order</button>}
                             </div>
