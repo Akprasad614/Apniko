@@ -156,6 +156,21 @@ def api_quantity(amount: object, unit: object) -> tuple[float | None, str | None
 
     return float(normalized_quantity), normalized_unit
 
+def packsense_quantity(row: dict[str, str]) -> tuple[str, str]:
+    """Choose a complete PackSense quantity/unit pair without mixing columns.
+
+    product_quantity and quantity_amount describe alternate representations.
+    A value from one representation must never be paired with the other's unit.
+    """
+    candidates = (
+        (row.get("product_quantity"), row.get("product_quantity_unit")),
+        (row.get("quantity_amount"), row.get("quantity_unit")),
+    )
+    for amount, unit in candidates:
+        if decimal_value(amount) is not None and unit_value(unit) is not None:
+            return clean(amount), clean(unit)
+    return "", ""
+
 
 def category_for(product_name: object, *taxonomy_values: object) -> tuple[str, str]:
     """Prefer explicit product identity over broad taxonomy or flavour keywords."""
@@ -265,8 +280,7 @@ def packsense_item(row: dict[str, str]) -> dict | None:
     ):
         return None
 
-    amount = (row.get("product_quantity") or row.get("quantity_amount") or "").strip()
-    unit = (row.get("product_quantity_unit") or row.get("quantity_unit") or "").strip()
+    amount, unit = packsense_quantity(row)
     size = pack_size(amount, unit)
     net_quantity, normalized_unit = api_quantity(amount, unit)
     category, subcategory = category_for(
