@@ -83,6 +83,42 @@ class ProductCatalogImportServiceTest {
     }
 
     @Test
+    void laterImportDoesNotOverwriteAnAdministratorRequeuedProduct() {
+        mockCategory();
+        Product product = new Product();
+        product.setName("Sample Tea");
+        product.setBrand("Sample Brand");
+        product.setBarcode("4006381333931");
+        product.setPackSize("250 g");
+        product.setNetQuantity(new BigDecimal("250"));
+        product.setNetQuantityUnit("g");
+        product.setCategory("Beverages");
+        product.setSubcategory("Tea, Coffee & Cocoa");
+        product.setCatalogueSource("PackSense India / Open Food Facts");
+        product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+        product.setCatalogueReviewReason("Please verify packaging");
+        product.setCatalogueReviewedAt(java.time.Instant.now());
+        product.setCatalogueReviewedBy("admin@example.test");
+
+        when(productRepository.findByBarcode("4006381333931"))
+                .thenReturn(Optional.of(product));
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
+                "PackSense India / Open Food Facts", "4006381333931"))
+                .thenReturn(Optional.of(new ProductCatalogueSourceRecord()));
+        when(productRepository.save(any(Product.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProductImportBatchResponse response = service.importBatch(batch(item(
+                "4006381333931", "Sample Tea", "Sample Brand", "250 g", null, null)));
+
+        assertEquals(0, response.rejected());
+        assertEquals(ProductCatalogueReviewStatus.NEEDS_REVIEW, product.getCatalogueReviewStatus());
+        assertEquals("Please verify packaging", product.getCatalogueReviewReason());
+        assertEquals("admin@example.test", product.getCatalogueReviewedBy());
+        assertNotNull(product.getCatalogueReviewedAt());
+    }
+
+    @Test
     void rejectsInvalidBarcodeWithoutWritingCatalogueRows() {
         ProductImportBatchResponse response = service.importBatch(
                 batch(item("4006381333932", "Bad Barcode", "Brand", "250 g", null, null)));
