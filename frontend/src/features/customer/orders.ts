@@ -52,7 +52,7 @@ export function getOrderProgress(deliveryMode?: string | null): readonly OrderPr
     : ORDER_PROGRESS
 }
 
-export function getOrderProgressIndex(status: string, deliveryMode = ''): number {
+export function getOrderProgressIndex(status: string, deliveryMode?: string | null): number {
   return getOrderProgress(deliveryMode).indexOf(status as OrderProgressStatus)
 }
 
