@@ -142,20 +142,56 @@ def pack_size(amount: object, unit: object) -> str | None:
     return f"{amount_text} {normalized_unit}"
 
 
-def category_for(*values: object) -> tuple[str, str]:
-    text = " ".join(clean(value).lower().replace("-", " ") for value in values)
-    text = re.sub(r"[^a-z0-9 ]+", " ", text)
+def api_quantity(amount: object, unit: object) -> tuple[float | None, str | None]:
+    """Return a DB-safe numeric quantity while retaining full packSize text."""
+    quantity = decimal_value(amount)
+    normalized_unit = unit_value(unit) if quantity is not None else None
+    if quantity is None or normalized_unit is None:
+        return None, None
+
+    normalized_quantity = quantity.normalize()
+    decimal_places = max(0, -normalized_quantity.as_tuple().exponent)
+    if quantity > Decimal("1000000") or decimal_places > 3:
+        return None, None
+
+    return float(normalized_quantity), normalized_unit
+
+
+def category_for(product_name: object, *taxonomy_values: object) -> tuple[str, str]:
+    """Prefer explicit product identity over broad taxonomy or flavour keywords."""
+    name = clean(product_name).lower().replace("-", " ")
+    name = re.sub(r"[^a-z0-9 ]+", " ", name)
+    name = re.sub(r"\\s+", " ", name).strip()
+
+    # Product-name rules avoid broad taxonomy terms (for example, "fruit"
+    # in a croissant flavour or "vegetable" in vegetable oil) winning first.
+    name_checks = [
+        (("poha", "flattened rice", "beaten rice", "rice flakes"), "Foodgrains, Oil & Masala", "Rice & Rice Products"),
+        (("mustard oil", "sunflower oil", "groundnut oil", "rice bran oil",
+          "coconut oil", "olive oil", "soybean oil", "edible oil", "cooking oil",
+          "vegetable oil", "palmolein", "kachi ghani", "ghee"),
+         "Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
+        (("croissant", "pastry", "rusk", "bun", "pav", "bread", "bakery", "cake"),
+         "Dairy, Bakery & Eggs", "Bread & Bakery"),
+        (("hair oil", "massage oil"), "Beauty & Hygiene", "Hair Care"),
+    ]
+    for words, category, subcategory in name_checks:
+        if any(word in name for word in words):
+            return category, subcategory
+
+    taxonomy_text = " ".join(
+        clean(value).lower().replace("-", " ") for value in taxonomy_values
+    )
+    taxonomy_text = re.sub(r"[^a-z0-9 ]+", " ", taxonomy_text)
+    all_text = f"{taxonomy_text} {name}".strip()
 
     checks = [
         (("baby", "diaper", "nappy", "infant"), "Baby Care", "Diapers & Wipes"),
         (("pet food", "dog food", "cat food", "pet care"), "Kitchen, Garden & Pets", "Pet Food & Supplies"),
         (("leafy", "spinach", "lettuce", "methi", "greens"), "Fruits & Vegetables", "Leafy Greens"),
-        (("vegetable", "vegetables", "sabzi", "produce"), "Fruits & Vegetables", "Fresh Vegetables"),
-        (("fruit", "fruits"), "Fruits & Vegetables", "Fresh Fruits"),
         (("laundry", "detergent", "dishwash", "cleaner", "cleaning", "household"), "Cleaning & Household", "Home & Surface Cleaning"),
         (("shampoo", "skin care", "skincare", "cosmetic", "oral care", "toothpaste", "hygiene"), "Beauty & Hygiene", "Personal Hygiene"),
         (("coffee", "tea", "cocoa"), "Beverages", "Tea, Coffee & Cocoa"),
-        (("beverage", "drink", "juice", "water", "soda", "soft drink"), "Beverages", "Water, Juices & Soft Drinks"),
         (("milk", "dairy", "cheese", "yogurt", "yoghurt", "curd", "butter"), "Dairy, Bakery & Eggs", "Milk & Dairy"),
         (("bread", "bakery", "cake"), "Dairy, Bakery & Eggs", "Bread & Bakery"),
         (("egg", "eggs"), "Dairy, Bakery & Eggs", "Eggs"),
@@ -173,11 +209,19 @@ def category_for(*values: object) -> tuple[str, str]:
         (("rice",), "Foodgrains, Oil & Masala", "Rice & Rice Products"),
         (("salt", "sugar"), "Foodgrains, Oil & Masala", "Salt & Sugar"),
         (("sauce", "spread", "condiment", "jam", "honey", "syrup"), "Gourmet & World Food", "Sauces, Spreads & Condiments"),
+        (("vegetable", "vegetables", "sabzi", "produce"), "Fruits & Vegetables", "Fresh Vegetables"),
+        (("fruit", "fruits"), "Fruits & Vegetables", "Fresh Fruits"),
+        (("beverage", "drink", "juice", "water", "soda", "soft drink"), "Beverages", "Water, Juices & Soft Drinks"),
         (("kitchen", "garden", "homeware"), "Kitchen, Garden & Pets", "Kitchen Essentials"),
     ]
-    for words, category, subcategory in checks:
-        if any(word in text for word in words):
-            return category, subcategory
+
+    # Source taxonomy is preferred; the product name is a fallback only.
+    for text in (taxonomy_text, all_text):
+        if not text:
+            continue
+        for words, category, subcategory in checks:
+            if any(word in text for word in words):
+                return category, subcategory
     return "Other Essentials", "Unclassified Packaged Goods"
 
 
@@ -224,11 +268,10 @@ def packsense_item(row: dict[str, str]) -> dict | None:
     amount = (row.get("product_quantity") or row.get("quantity_amount") or "").strip()
     unit = (row.get("product_quantity_unit") or row.get("quantity_unit") or "").strip()
     size = pack_size(amount, unit)
-    quantity = decimal_value(amount)
-    normalized_unit = unit_value(unit) if quantity is not None else None
+    net_quantity, normalized_unit = api_quantity(amount, unit)
     category, subcategory = category_for(
-        row.get("pnns_groups_1"), row.get("pnns_groups_2"),
-        row.get("categories_tags"), name,
+        name, row.get("pnns_groups_1"), row.get("pnns_groups_2"),
+        row.get("categories_tags"),
     )
     brand = clean(row.get("brands"))
     if brand:
@@ -239,7 +282,7 @@ def packsense_item(row: dict[str, str]) -> dict | None:
         "brand": brand[:100] or None,
         "barcode": code,
         "packSize": size,
-        "netQuantity": float(quantity) if quantity is not None and normalized_unit else None,
+        "netQuantity": net_quantity,
         "netQuantityUnit": normalized_unit,
         "variantGroupKey": None,
         "description": None,
@@ -277,9 +320,10 @@ def openmrp_items(products_file: Path, brands_file: Path, variants_file: Path) -
             if barcode and not valid_gtin(barcode):
                 continue
 
-            amount = decimal_value(variant.get("pack_size"))
-            unit = unit_value(variant.get("unit"))
             size = pack_size(variant.get("pack_size"), variant.get("unit"))
+            net_quantity, normalized_unit = api_quantity(
+                variant.get("pack_size"), variant.get("unit")
+            )
             mrp = None
             mrp_source = clean(variant.get("mrp_source")).lower() or None
             mrp_paise = decimal_value(variant.get("mrp_paise"))
@@ -288,7 +332,7 @@ def openmrp_items(products_file: Path, brands_file: Path, variants_file: Path) -
             else:
                 mrp_source = None
 
-            category, subcategory = category_for(product.get("category"), product.get("name"))
+            category, subcategory = category_for(product.get("name"), product.get("category"))
             brand = brands.get(clean(product.get("brand_id"))) or None
             product_id = clean(product.get("id"))
             variant_id = clean(variant.get("id"))
@@ -297,8 +341,8 @@ def openmrp_items(products_file: Path, brands_file: Path, variants_file: Path) -
                 "brand": brand[:100] if brand else None,
                 "barcode": barcode,
                 "packSize": size or clean(variant.get("label"))[:80] or None,
-                "netQuantity": float(amount) if amount is not None and unit else None,
-                "netQuantityUnit": unit,
+                "netQuantity": net_quantity,
+                "netQuantityUnit": normalized_unit,
                 "variantGroupKey": clean(product.get("group_key"))[:120] or None,
                 "description": clean(product.get("description"))[:1000] or None,
                 "category": category,
