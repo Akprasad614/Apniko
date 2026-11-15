@@ -1,6 +1,7 @@
 package com.localcart.service;
 
 import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.ProductRepository;
 import org.springframework.stereotype.Service;
@@ -96,6 +97,9 @@ public class ProductService {
             throw new BadRequestException("A product with the same brand, name and pack size already exists");
         }
         product.setIdentityKey(key);
+        if (product.getCatalogueReviewStatus() == null) {
+            product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.ACTIVE);
+        }
         return productRepository.save(product);
     }
 
