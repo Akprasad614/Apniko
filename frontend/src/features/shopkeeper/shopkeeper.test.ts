@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canAcceptShopkeeperOrderWithSavedFulfilment,
   canCancelShopkeeperOrder,
   canRejectShopkeeperOrder,
+  canSaveShopkeeperOrderFulfilment,
   formatInventoryMovement,
   formatShopkeeperStatus,
   nextShopkeeperOrderStatus,
@@ -18,6 +20,21 @@ describe('shopkeeper order workflow', () => {
     expect(nextShopkeeperOrderStatus('READY', 'PLATFORM_DELIVERY')).toBeNull()
     expect(nextShopkeeperOrderStatus('OUT_FOR_DELIVERY', 'PLATFORM_DELIVERY')).toBeNull()
     expect(nextShopkeeperOrderStatus('DELIVERED')).toBeNull()
+  })
+
+  it('requires a per-order fulfilment choice to be saved before acceptance', () => {
+    expect(canSaveShopkeeperOrderFulfilment('PLACED', 'SHOP_DELIVERY', null, true)).toBe(true)
+    expect(canAcceptShopkeeperOrderWithSavedFulfilment('PLACED', 'SHOP_DELIVERY', null, true)).toBe(false)
+    expect(canAcceptShopkeeperOrderWithSavedFulfilment('PLACED', 'SHOP_DELIVERY', 'SHOP_DELIVERY', true)).toBe(true)
+    expect(canAcceptShopkeeperOrderWithSavedFulfilment('PLACED', 'SHOP_DELIVERY', 'PLATFORM_DELIVERY', true)).toBe(false)
+    expect(canSaveShopkeeperOrderFulfilment('ACCEPTED', 'SHOP_DELIVERY', null, true)).toBe(false)
+  })
+
+  it('only allows delivery fulfilment when an order has a saved address', () => {
+    expect(canSaveShopkeeperOrderFulfilment('PLACED', 'SHOP_DELIVERY', null, false)).toBe(false)
+    expect(canSaveShopkeeperOrderFulfilment('PLACED', 'PLATFORM_DELIVERY', null, false)).toBe(false)
+    expect(canSaveShopkeeperOrderFulfilment('PLACED', 'CUSTOMER_PICKUP', null, false)).toBe(true)
+    expect(canAcceptShopkeeperOrderWithSavedFulfilment('PLACED', 'CUSTOMER_PICKUP', 'CUSTOMER_PICKUP', false)).toBe(true)
   })
 
   it('only offers rejection before the shop accepts an order', () => {

@@ -117,6 +117,32 @@ public class ShopkeeperOrderController {
                 );
     }
 
+    @PutMapping("/{orderId}/fulfilment")
+    public ResponseEntity<Order> saveOrderFulfilment(
+            @PathVariable Long orderId,
+            @RequestParam DeliveryMode deliveryMode) {
+
+        User shopkeeper = getCurrentShopkeeper();
+        if (shopkeeper == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Optional<Order> orderOptional = orderRepository.findById(orderId);
+        if (orderOptional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!isOwner(orderOptional.get(), shopkeeper)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return orderService.saveShopkeeperOrderFulfilment(
+                        orderId, deliveryMode, shopkeeper.getEmail()
+                )
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.badRequest().build());
+    }
+
     @PutMapping("/{orderId}/reject")
     public ResponseEntity<Order> rejectOrder(
             @PathVariable Long orderId,
