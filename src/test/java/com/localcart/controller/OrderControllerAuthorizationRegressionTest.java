@@ -8,6 +8,7 @@ import com.localcart.repository.OrderRepository;
 import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
 import com.localcart.service.OrderService;
+import com.localcart.service.CustomerAddressService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
