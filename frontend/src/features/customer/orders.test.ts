@@ -19,6 +19,8 @@ describe('customer order presentation', () => {
     expect(getOrderProgressIndex('PLACED')).toBe(0)
     expect(getOrderProgressIndex('READY')).toBe(3)
     expect(getOrderProgressIndex('DELIVERED')).toBe(5)
+    expect(getOrderProgressIndex('DELIVERED', 'CUSTOMER_PICKUP')).toBe(4)
+    expect(getOrderProgressIndex('OUT_FOR_DELIVERY', 'CUSTOMER_PICKUP')).toBe(-1)
     expect(getOrderProgressIndex('CANCELLED')).toBe(-1)
   })
 
