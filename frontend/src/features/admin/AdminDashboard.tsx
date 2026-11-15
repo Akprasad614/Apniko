@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/Button'
 import { Wordmark } from '../../components/Wordmark'
 import { ApiError, apiRequest } from '../../lib/api'
+import { CatalogueReviewQueue } from './CatalogueReviewQueue'
 import '../shared/operations.css'
 
 type StaffRole = 'SHOPKEEPER' | 'DELIVERY_PARTNER'
@@ -93,7 +94,6 @@ export function AdminDashboard() {
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [shops, setShops] = useState<AdminShop[]>([])
-  const [products, setProducts] = useState<AdminProduct[]>([])
   const [categories, setCategories] = useState<AdminCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -130,7 +130,6 @@ export function AdminDashboard() {
       apiRequest<AdminOverview>('/api/admin/analytics/overview', {}, token),
       apiRequest<AdminUser[]>('/api/admin/users', {}, token),
       apiRequest<AdminShop[]>('/api/admin/shops', {}, token),
-      apiRequest<AdminProduct[]>('/api/products', {}, token),
       apiRequest<AdminCategory[]>('/api/catalogue/categories', {}, token),
     ] as const)
     const failures: string[] = []
@@ -140,10 +139,8 @@ export function AdminDashboard() {
     else failures.push(messageFor(results[1].reason))
     if (results[2].status === 'fulfilled') setShops(results[2].value)
     else failures.push(messageFor(results[2].reason))
-    if (results[3].status === 'fulfilled') setProducts(results[3].value)
+    if (results[3].status === 'fulfilled') setCategories(results[3].value)
     else failures.push(messageFor(results[3].reason))
-    if (results[4].status === 'fulfilled') setCategories(results[4].value)
-    else failures.push(messageFor(results[4].reason))
     if (failures.length) setError(failures.join(' '))
     if (!quiet) setLoading(false)
   }, [token])
@@ -265,7 +262,6 @@ export function AdminDashboard() {
         },
         token,
       )
-      setProducts((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)))
       setProductName('')
       setProductCategory('')
       setProductSubcategory('')
@@ -436,8 +432,7 @@ export function AdminDashboard() {
                   <p className="operations-help">MRP is a sourced reference value, not the shop's selling price. Enter an MRP source only when an MRP is provided.</p>
                   <button className="operations-button" type="submit" disabled={busyKey === 'create-product' || !productName.trim() || !productCategory}>{busyKey === 'create-product' ? 'Adding…' : 'Add to catalogue'}</button>
                 </form>
-                <div className="operations-toolbar"><h3>Available products <span>{products.length}</span></h3></div>
-                {products.length ? <div className="operations-product-list">{products.map((product) => <article key={product.id}><div><strong>{product.name}</strong><small>{[product.brand, product.packSize, product.category, product.subcategory, product.barcode ? 'GTIN ' + product.barcode : null].filter(Boolean).join(' · ') || 'Uncategorised'}</small></div><span>#{product.id}</span></article>)}</div> : <div className="operations-state">The shared catalogue is empty. Add the first product above.</div>}
+                <CatalogueReviewQueue token={token} />
               </section>
             )}
           </>
