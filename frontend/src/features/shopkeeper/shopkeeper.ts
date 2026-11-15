@@ -119,6 +119,30 @@ export function nextShopkeeperOrderStatus(
   }
 }
 
+export function canSaveShopkeeperOrderFulfilment(
+  status: string,
+  selectedMode: ShopDeliveryMode | '',
+  savedMode: ShopDeliveryMode | null | undefined,
+  hasDeliveryAddress: boolean,
+): boolean {
+  return status === 'PLACED'
+    && selectedMode !== ''
+    && selectedMode !== savedMode
+    && (selectedMode === 'CUSTOMER_PICKUP' || hasDeliveryAddress)
+}
+
+export function canAcceptShopkeeperOrderWithSavedFulfilment(
+  status: string,
+  selectedMode: ShopDeliveryMode | '',
+  savedMode: ShopDeliveryMode | null | undefined,
+  hasDeliveryAddress: boolean,
+): boolean {
+  return status === 'PLACED'
+    && selectedMode !== ''
+    && selectedMode === savedMode
+    && (selectedMode === 'CUSTOMER_PICKUP' || hasDeliveryAddress)
+}
+
 export function canRejectShopkeeperOrder(status: string): boolean {
   return status === 'PLACED'
 }
