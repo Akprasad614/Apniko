@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from import_catalogue import (
+    api_quantity,
     category_for,
     load_packSense,
     pack_size,
@@ -21,6 +22,27 @@ class CatalogueImportTests(unittest.TestCase):
         self.assertEqual(pack_size("500.00", "grams"), "500 g")
         self.assertEqual(pack_size("1", "litre"), "1 l")
         self.assertIsNone(pack_size("500", "unknown"))
+
+    def test_api_quantity_respects_database_precision_and_preserves_pack_size(self):
+        self.assertEqual(api_quantity("250.0000", "g"), (250.0, "g"))
+        self.assertEqual(api_quantity("0.125", "kg"), (0.125, "kg"))
+        self.assertEqual(api_quantity("0.12345", "g"), (None, None))
+        self.assertEqual(pack_size("0.12345", "g"), "0.12345 g")
+        self.assertEqual(api_quantity("1000001", "g"), (None, None))
+
+    def test_specific_product_name_overrides_broad_taxonomy(self):
+        self.assertEqual(
+            category_for("Poha", "Beverages", "en:water"),
+            ("Foodgrains, Oil & Masala", "Rice & Rice Products"),
+        )
+        self.assertEqual(
+            category_for("Britannia Treat croissant mixed fruit", "Fruits and Vegetables"),
+            ("Dairy, Bakery & Eggs", "Bread & Bakery"),
+        )
+        self.assertEqual(
+            category_for("Kachi Ghani Mustard Oil", "Fruits and Vegetables"),
+            ("Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
+        )
 
     def test_india_retail_category_mapping(self):
         self.assertEqual(category_for("Beverages", "Tea - coffee"), ("Beverages", "Tea, Coffee & Cocoa"))
