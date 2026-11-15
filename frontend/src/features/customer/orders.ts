@@ -46,8 +46,14 @@ export function canCancelCustomerOrder(status: string): boolean {
   return status === 'PLACED'
 }
 
-export function getOrderProgressIndex(status: string): number {
-  return ORDER_PROGRESS.indexOf(status as OrderProgressStatus)
+export function getOrderProgress(deliveryMode: string): readonly OrderProgressStatus[] {
+  return deliveryMode === 'CUSTOMER_PICKUP'
+    ? ['PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERED']
+    : ORDER_PROGRESS
+}
+
+export function getOrderProgressIndex(status: string, deliveryMode = ''): number {
+  return getOrderProgress(deliveryMode).indexOf(status as OrderProgressStatus)
 }
 
 export function formatOrderStatus(status: string): string {
