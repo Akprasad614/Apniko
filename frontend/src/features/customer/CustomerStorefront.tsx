@@ -370,16 +370,25 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                           <span>{product.category?.slice(0, 1).toUpperCase() || 'L'}</span>
                         </div>
                         <div className="product-row__details">
-                          <span className="product-row__category">{product.category || 'Everyday essentials'}</span>
+                          <span className="product-row__category">
+                            {[product.category, product.subcategory].filter(Boolean).join(' · ') || 'Everyday essentials'}
+                          </span>
                           <h4>{product.productName}</h4>
                           <span className="product-row__stock">
-                            {product.stockQuantity > 0 && product.available
-                              ? `${product.stockQuantity} available`
-                              : 'Currently unavailable'}
+                            {[
+                              product.brand,
+                              product.packSize,
+                              product.stockQuantity > 0 && product.available
+                                ? `${product.stockQuantity} available`
+                                : 'Currently unavailable',
+                            ].filter(Boolean).join(' · ')}
                           </span>
                         </div>
                         <div className="product-row__buy">
                           <strong>{formatRupees(product.price)}</strong>
+                          {product.mrp !== null && product.mrp !== undefined && product.mrp > product.price && (
+                            <small>MRP {formatRupees(product.mrp)}</small>
+                          )}
                           <button
                             type="button"
                             disabled={!product.available || product.stockQuantity < 1 || busyProductId === product.productId}
