@@ -3,7 +3,6 @@ package com.localcart.service;
 import com.localcart.dto.CreateShopRequest;
 import com.localcart.dto.ShopResponse;
 import com.localcart.dto.UpdateShopRequest;
-import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.User;
@@ -102,23 +101,6 @@ public class ShopService {
         );
     }
 
-    public ShopResponse updateDeliveryMode(
-            Long shopId,
-            String email,
-            DeliveryMode deliveryMode) {
-
-        if (deliveryMode == null) {
-            throw new BadRequestException("Choose a delivery mode for this shop");
-        }
-
-        User owner = getShopkeeper(email);
-        Shop shop = getShop(shopId);
-        checkOwnership(shop, owner);
-        shop.setDeliveryMode(deliveryMode);
-
-        return toResponse(shopRepository.save(shop));
-    }
-
     public ShopResponse deactivateShop(
             Long shopId,
             String email) {
@@ -195,8 +177,7 @@ public class ShopService {
                 shop.getOwnerName(),
                 shop.getPhone(),
                 shop.getAddress(),
-                shop.isActive(),
-                shop.getDeliveryMode()
+                shop.isActive()
         );
     }
 }
