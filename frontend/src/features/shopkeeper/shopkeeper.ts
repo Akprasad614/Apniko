@@ -19,7 +19,6 @@ export interface ShopkeeperShop {
   phone?: string
   address?: string
   active: boolean
-  deliveryMode?: ShopDeliveryMode
 }
 
 export interface ShopkeeperProduct {
@@ -57,7 +56,7 @@ export interface ShopkeeperOrder {
   id: number
   totalAmount: number
   status: string
-  deliveryMode: string
+  deliveryMode: ShopDeliveryMode | null
   shop?: {
     id: number
     name: string
@@ -105,6 +104,13 @@ export function nextShopkeeperOrderStatus(
       return deliveryMode === 'SHOP_DELIVERY' ? 'DELIVERED' : null
     default: return null
   }
+}
+
+export function canAcceptShopkeeperOrder(
+  status: string,
+  deliveryMode?: ShopDeliveryMode | '',
+): boolean {
+  return status === 'PLACED' && Boolean(deliveryMode)
 }
 
 export function canRejectShopkeeperOrder(status: string): boolean {
