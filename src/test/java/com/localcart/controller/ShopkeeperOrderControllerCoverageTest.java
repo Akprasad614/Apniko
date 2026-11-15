@@ -111,10 +111,10 @@ class ShopkeeperOrderControllerCoverageTest {
         securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn("owner@example.com");
         when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
         when(orderRepository.findById(4L)).thenReturn(Optional.of(order));
-        when(orderService.updateShopkeeperOrderStatus(4L, OrderStatus.READY, "owner@example.com"))
+        when(orderService.updateShopkeeperOrderStatus(4L, OrderStatus.READY, "owner@example.com", null))
                 .thenReturn(Optional.empty());
 
-        assertEquals(400, controller.updateOrderStatus(4L, OrderStatus.READY)
+        assertEquals(400, controller.updateOrderStatus(4L, OrderStatus.READY, null)
                 .getStatusCode().value());
     }
 
@@ -125,7 +125,7 @@ class ShopkeeperOrderControllerCoverageTest {
         when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
         when(orderRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertEquals(404, controller.updateOrderStatus(5L, OrderStatus.ACCEPTED)
+        assertEquals(404, controller.updateOrderStatus(5L, OrderStatus.ACCEPTED, null)
                 .getStatusCode().value());
         verifyNoInteractions(orderService);
     }
