@@ -18,10 +18,6 @@ public class Shop {
 
     private String address;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "delivery_mode", length = 32)
-    private DeliveryMode deliveryMode = DeliveryMode.SHOP_DELIVERY;
-
     private boolean active;
 
     @ManyToOne
@@ -65,14 +61,6 @@ public class Shop {
 
     public void setAddress(String address) {
         this.address = address;
-    }
-
-    public DeliveryMode getDeliveryMode() {
-        return deliveryMode == null ? DeliveryMode.SHOP_DELIVERY : deliveryMode;
-    }
-
-    public void setDeliveryMode(DeliveryMode deliveryMode) {
-        this.deliveryMode = deliveryMode;
     }
 
     public boolean isActive() {
