@@ -2,6 +2,7 @@ package com.localcart.controller;
 
 import com.localcart.dto.CancelOrderRequest;
 import jakarta.validation.Valid;
+import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderStatus;
 import com.localcart.entity.Role;
@@ -79,7 +80,8 @@ public class ShopkeeperOrderController {
     @PutMapping("/{orderId}/status")
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
-            @RequestParam OrderStatus status) {
+            @RequestParam OrderStatus status,
+            @RequestParam(required = false) DeliveryMode deliveryMode) {
 
         User shopkeeper = getCurrentShopkeeper();
 
@@ -104,7 +106,8 @@ public class ShopkeeperOrderController {
                 orderService.updateShopkeeperOrderStatus(
                         orderId,
                         status,
-                        shopkeeper.getEmail()
+                        shopkeeper.getEmail(),
+                        deliveryMode
                 );
 
         return updatedOrder

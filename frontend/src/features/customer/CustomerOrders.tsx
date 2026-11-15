@@ -182,7 +182,9 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
                   <div>
                     <span className="customer-order__number">ORDER #{order.id}</span>
                     <h3>{order.shop?.name || 'Local shop'}</h3>
-                    <span className="customer-order__mode">{formatOrderStatus(order.deliveryMode)}</span>
+                    <span className="customer-order__mode">{order.deliveryMode
+                      ? formatOrderStatus(order.deliveryMode)
+                      : 'Fulfilment to be confirmed by the shop'}</span>
                   </div>
                   <div className="customer-order__amount">
                     <strong>{formatRupees(order.totalAmount)}</strong>

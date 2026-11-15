@@ -19,7 +19,6 @@ export interface ShopkeeperShop {
   phone?: string
   address?: string
   active: boolean
-  deliveryMode?: ShopDeliveryMode
 }
 
 export interface ShopkeeperProduct {
@@ -53,11 +52,24 @@ export interface ShopkeeperOrderItem {
   }
 }
 
+export interface ShopkeeperOrderAddress {
+  label?: string | null
+  recipientName?: string | null
+  phone?: string | null
+  addressLine1?: string | null
+  addressLine2?: string | null
+  landmark?: string | null
+  city?: string | null
+  state?: string | null
+  postalCode?: string | null
+}
+
 export interface ShopkeeperOrder {
   id: number
   totalAmount: number
   status: string
-  deliveryMode: string
+  deliveryMode?: ShopDeliveryMode | null
+  deliveryAddress?: ShopkeeperOrderAddress | null
   shop?: {
     id: number
     name: string
@@ -91,7 +103,7 @@ export interface InventoryMovement {
 
 export function nextShopkeeperOrderStatus(
   status: string,
-  deliveryMode?: string,
+  deliveryMode?: string | null,
 ): ShopkeeperOrderStatus | null {
   switch (status) {
     case 'PLACED': return 'ACCEPTED'

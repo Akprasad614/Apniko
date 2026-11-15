@@ -77,13 +77,74 @@ class OrderServiceWorkflowTest {
         when(orderRepository.save(order)).thenReturn(order);
 
         Optional<Order> result = orderService.updateShopkeeperOrderStatus(
-                100L, OrderStatus.ACCEPTED, shopkeeper.getEmail()
+                100L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.CUSTOMER_PICKUP
         );
 
         assertTrue(result.isPresent());
         assertEquals(OrderStatus.ACCEPTED, result.get().getStatus());
+        assertEquals(DeliveryMode.CUSTOMER_PICKUP, result.get().getDeliveryMode());
         verify(orderStatusHistoryRepository).save(any());
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperCanChooseDeliveryFulfilmentWhenAcceptingAnOrder() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        com.localcart.entity.OrderDeliveryAddress address = new com.localcart.entity.OrderDeliveryAddress();
+        address.setAddressLine1("12 Main Road");
+        address.setCity("Bengaluru");
+        order.setDeliveryAddress(address);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> accepted = orderService.updateShopkeeperOrderStatus(
+                123L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.PLATFORM_DELIVERY
+        );
+
+        assertTrue(accepted.isPresent());
+        assertEquals(OrderStatus.ACCEPTED, accepted.get().getStatus());
+        assertEquals(DeliveryMode.PLATFORM_DELIVERY, accepted.get().getDeliveryMode());
+        assertSame(address, accepted.get().getDeliveryAddress());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperCannotChooseDeliveryForAnOrderWithoutAnAddress() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(124L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.updateShopkeeperOrderStatus(
+                        124L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.SHOP_DELIVERY
+                )
+        );
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        assertNull(order.getDeliveryMode());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCannotAcceptAnOrderWithoutChoosingFulfilment() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(125L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.updateShopkeeperOrderStatus(125L, OrderStatus.ACCEPTED, shopkeeper.getEmail())
+        );
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test

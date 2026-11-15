@@ -115,14 +115,13 @@ public class OrderService {
                 customer,
                 shop,
                 request.getItems(),
-                shop.getDeliveryMode(),
                 deliveryAddress
         );
     }
 
     /**
-     * Compatibility overload for older service callers. The supplied mode is ignored:
-     * the selected shop's persisted fulfilment setting is authoritative.
+     * Compatibility overload for older service callers. Fulfilment is selected
+     * by the shopkeeper when the order is accepted.
      */
     @Transactional
     public Order checkoutCart(String email, Long shopId, DeliveryMode ignoredCustomerMode) {
@@ -130,7 +129,8 @@ public class OrderService {
     }
 
     /**
-     * Compatibility overload for older controller callers. The supplied mode is ignored.
+     * Compatibility overload for older controller callers. The supplied mode is ignored
+     * until the shopkeeper chooses fulfilment while accepting the order.
      */
     @Transactional
     public Order checkoutCart(
@@ -160,11 +160,6 @@ public class OrderService {
             throw new BadRequestException("Cart is empty");
         }
 
-        DeliveryMode shopDeliveryMode = shop.getDeliveryMode();
-        OrderDeliveryAddress orderAddress = shopDeliveryMode == DeliveryMode.CUSTOMER_PICKUP
-                ? null
-                : deliveryAddress;
-
         List<OrderItemRequest> items = cart.getItems().stream().map(item -> {
             OrderItemRequest request = new OrderItemRequest();
             request.setProductId(item.getProduct().getId());
@@ -172,7 +167,7 @@ public class OrderService {
             return request;
         }).toList();
 
-        Order order = buildOrder(customer, shop, items, shopDeliveryMode, orderAddress)
+        Order order = buildOrder(customer, shop, items, deliveryAddress)
                 .orElseThrow(() -> new BadRequestException("Unable to create order"));
 
         cart.getItems().clear();
@@ -184,19 +179,10 @@ public class OrderService {
             User customer,
             Shop shop,
             List<OrderItemRequest> items,
-            DeliveryMode deliveryMode,
             OrderDeliveryAddress deliveryAddress) {
 
         if (items == null || items.isEmpty()) {
             return Optional.empty();
-        }
-
-        if (deliveryMode != DeliveryMode.CUSTOMER_PICKUP && deliveryAddress == null) {
-            throw new BadRequestException("Select a saved delivery address before placing this order");
-        }
-
-        if (deliveryMode == DeliveryMode.CUSTOMER_PICKUP) {
-            deliveryAddress = null;
         }
 
         Order order = new Order();
@@ -204,7 +190,8 @@ public class OrderService {
         order.setShop(shop);
         order.setCustomer(customer);
         order.setStatus(OrderStatus.PLACED);
-        order.setDeliveryMode(deliveryMode);
+        // The customer may optionally save a delivery address, but fulfilment
+        // remains undecided until the shopkeeper accepts this individual order.
         order.setDeliveryAddress(deliveryAddress);
 
         order = orderRepository.save(order);
@@ -365,6 +352,15 @@ public class OrderService {
             Long orderId,
             OrderStatus newStatus,
             String email) {
+        return updateShopkeeperOrderStatus(orderId, newStatus, email, null);
+    }
+
+    @Transactional
+    public Optional<Order> updateShopkeeperOrderStatus(
+            Long orderId,
+            OrderStatus newStatus,
+            String email,
+            DeliveryMode selectedDeliveryMode) {
 
         User shopkeeper = getShopkeeper(email);
 
@@ -385,11 +381,33 @@ public class OrderService {
 
         OrderStatus currentStatus = order.getStatus();
 
+        if (currentStatus == OrderStatus.PLACED && newStatus == OrderStatus.ACCEPTED) {
+            if (selectedDeliveryMode == null) {
+                throw new BadRequestException("Choose a fulfilment method before accepting this order");
+            }
+            if (selectedDeliveryMode != DeliveryMode.CUSTOMER_PICKUP
+                    && order.getDeliveryAddress() == null) {
+                throw new BadRequestException(
+                        "This order has no delivery address. Choose Customer Pickup or ask the customer to add an address."
+                );
+            }
+
+            order.setDeliveryMode(selectedDeliveryMode);
+            if (selectedDeliveryMode == DeliveryMode.CUSTOMER_PICKUP) {
+                order.setDeliveryAddress(null);
+            }
+        } else if (selectedDeliveryMode != null) {
+            throw new BadRequestException("Fulfilment can only be selected when accepting a new order");
+        }
+
         if (!isValidShopkeeperStatusChange(order, currentStatus, newStatus)) {
             return Optional.empty();
         }
 
-        String historyNote = currentStatus == OrderStatus.READY
+        String historyNote = currentStatus == OrderStatus.PLACED
+                && newStatus == OrderStatus.ACCEPTED
+                ? "Order accepted with " + order.getDeliveryMode() + " fulfilment"
+                : currentStatus == OrderStatus.READY
                 && newStatus == OrderStatus.OUT_FOR_DELIVERY
                 ? "The shop has dispatched the order"
                 : currentStatus == OrderStatus.READY

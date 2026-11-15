@@ -1081,64 +1081,74 @@
 }
 
 
-.shopkeeper-fulfilment-panel {
-  grid-column: 1 / -1;
+
+
+.shopkeeper-order__accept-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.shopkeeper-order__fulfilment-select {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(250px, 350px);
-  align-items: center;
-  gap: 1.5rem;
-  margin-top: 1.4rem;
-  border: 1px solid var(--lc-line);
-  border-left: 3px solid var(--lc-forest);
-  padding: 1.1rem 1.2rem;
-  background: rgb(255 253 247 / 82%);
-}
-.shopkeeper-fulfilment-panel h3 {
-  margin: 0;
-  color: var(--lc-forest);
-  font-family: var(--lc-font-display);
-  font-size: 1.45rem;
-  font-weight: 500;
-  letter-spacing: -0.04em;
-}
-.shopkeeper-fulfilment-panel > div:first-child > p:last-child {
-  max-width: 560px;
-  margin: 0.4rem 0 0;
+  min-width: 190px;
+  gap: 0.28rem;
   color: var(--lc-muted);
-  font-size: 0.68rem;
-  line-height: 1.6;
-}
-.shopkeeper-fulfilment-panel__controls {
-  display: grid;
-  gap: 0.45rem;
-}
-.shopkeeper-fulfilment-panel__controls label {
-  color: var(--lc-muted);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 800;
 }
-.shopkeeper-fulfilment-panel__controls select {
-  width: 100%;
-  min-height: 42px;
+
+.shopkeeper-order__fulfilment-select select {
+  min-height: 39px;
+  max-width: 240px;
   border: 1px solid var(--lc-line);
   border-radius: var(--lc-radius-sm);
-  padding: 0.5rem 0.65rem;
+  padding: 0.45rem 0.6rem;
   color: var(--lc-forest);
   background: var(--lc-white);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 750;
 }
-.shopkeeper-fulfilment-panel__controls .shopkeeper-primary-button {
-  justify-self: start;
-  min-height: 36px;
+
+.shopkeeper-order__delivery-address {
+  margin-top: 0.75rem;
+  border-left: 2px solid var(--lc-forest);
+  padding: 0.55rem 0.7rem;
+  background: #f0f2e8;
+  font-size: 0.66rem;
 }
+
+.shopkeeper-order__delivery-address strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--lc-forest);
+}
+
+.shopkeeper-order__delivery-address p,
+.shopkeeper-order__address-note {
+  margin: 0.15rem 0;
+  color: var(--lc-muted);
+  line-height: 1.5;
+}
+
+.shopkeeper-order__address-note {
+  margin-top: 0.65rem;
+  font-size: 0.64rem;
+}
+
 @media (max-width: 760px) {
-  .shopkeeper-fulfilment-panel {
-    grid-template-columns: 1fr;
-    gap: 0.9rem;
-    padding: 0.9rem;
+  .shopkeeper-order__accept-controls {
+    width: 100%;
+    align-items: stretch;
   }
-  .shopkeeper-fulfilment-panel__controls .shopkeeper-primary-button {
+
+  .shopkeeper-order__fulfilment-select {
+    width: 100%;
+  }
+
+  .shopkeeper-order__fulfilment-select select {
+    max-width: none;
     width: 100%;
   }
 }

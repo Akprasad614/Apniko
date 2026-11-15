@@ -1,5 +1,3 @@
-export type ShopDeliveryMode = 'SHOP_DELIVERY' | 'PLATFORM_DELIVERY' | 'CUSTOMER_PICKUP'
-
 export interface MarketplaceShop {
   id: number
   name: string
@@ -7,7 +5,6 @@ export interface MarketplaceShop {
   phone: string
   address: string
   active: boolean
-  deliveryMode?: ShopDeliveryMode
 }
 
 export interface MarketplaceInventoryItem {
