@@ -356,6 +356,46 @@ public class OrderService {
     }
 
     @Transactional
+    public Optional<Order> saveShopkeeperOrderFulfilment(
+            Long orderId,
+            DeliveryMode selectedDeliveryMode,
+            String email) {
+
+        User shopkeeper = getShopkeeper(email);
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+
+        if (order == null) {
+            return Optional.empty();
+        }
+
+        if (order.getShop() == null
+                || order.getShop().getOwner() == null
+                || !order.getShop().getOwner().getId().equals(shopkeeper.getId())) {
+            throw new BadRequestException("You are not authorized to update this order");
+        }
+
+        if (order.getStatus() != OrderStatus.PLACED) {
+            throw new BadRequestException("Fulfilment can only be saved before the order is accepted");
+        }
+
+        if (selectedDeliveryMode == null) {
+            throw new BadRequestException("Choose a fulfilment method for this order");
+        }
+
+        if (selectedDeliveryMode != DeliveryMode.CUSTOMER_PICKUP
+                && !hasValidDeliveryAddress(order)) {
+            throw new BadRequestException(
+                    "This order has no delivery address. Choose Customer Pickup or ask the customer to add an address."
+            );
+        }
+
+        // Keep the address until acceptance so the shopkeeper can switch modes
+        // without losing the customer's saved address.
+        order.setDeliveryMode(selectedDeliveryMode);
+        return Optional.of(orderRepository.save(order));
+    }
+
+    @Transactional
     public Optional<Order> updateShopkeeperOrderStatus(
             Long orderId,
             OrderStatus newStatus,
@@ -382,18 +422,21 @@ public class OrderService {
         OrderStatus currentStatus = order.getStatus();
 
         if (currentStatus == OrderStatus.PLACED && newStatus == OrderStatus.ACCEPTED) {
-            if (selectedDeliveryMode == null) {
-                throw new BadRequestException("Choose a fulfilment method before accepting this order");
+            DeliveryMode deliveryModeToAccept = selectedDeliveryMode != null
+                    ? selectedDeliveryMode
+                    : order.getDeliveryMode();
+            if (deliveryModeToAccept == null) {
+                throw new BadRequestException("Save a fulfilment method before accepting this order");
             }
-            if (selectedDeliveryMode != DeliveryMode.CUSTOMER_PICKUP
-                    && order.getDeliveryAddress() == null) {
+            if (deliveryModeToAccept != DeliveryMode.CUSTOMER_PICKUP
+                    && !hasValidDeliveryAddress(order)) {
                 throw new BadRequestException(
                         "This order has no delivery address. Choose Customer Pickup or ask the customer to add an address."
                 );
             }
 
-            order.setDeliveryMode(selectedDeliveryMode);
-            if (selectedDeliveryMode == DeliveryMode.CUSTOMER_PICKUP) {
+            order.setDeliveryMode(deliveryModeToAccept);
+            if (deliveryModeToAccept == DeliveryMode.CUSTOMER_PICKUP) {
                 order.setDeliveryAddress(null);
             }
         } else if (selectedDeliveryMode != null) {
@@ -428,6 +471,13 @@ public class OrderService {
 
         order.setStatus(newStatus);
         return Optional.of(orderRepository.save(order));
+    }
+
+    private boolean hasValidDeliveryAddress(Order order) {
+        return order != null
+                && order.getDeliveryAddress() != null
+                && order.getDeliveryAddress().getAddressLine1() != null
+                && !order.getDeliveryAddress().getAddressLine1().isBlank();
     }
 
     private boolean isValidShopkeeperStatusChange(

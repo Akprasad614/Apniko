@@ -1,5 +1,6 @@
 package com.localcart.controller;
 
+import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderStatus;
 import com.localcart.entity.Role;
@@ -128,6 +129,30 @@ class ShopkeeperOrderControllerCoverageTest {
         assertEquals(404, controller.updateOrderStatus(5L, OrderStatus.ACCEPTED, null)
                 .getStatusCode().value());
         verifyNoInteractions(orderService);
+    }
+
+    @Test
+    void fulfilmentSaveEndpointDelegatesForAnOwnedOrder() {
+        User owner = user(12L, Role.SHOPKEEPER, true);
+        Order order = new Order();
+        order.setStatus(OrderStatus.PLACED);
+        Shop shop = mock(Shop.class);
+        when(shop.getOwner()).thenReturn(owner);
+        order.setShop(shop);
+        securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn("owner@example.com");
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
+        when(orderRepository.findById(8L)).thenReturn(Optional.of(order));
+        when(orderService.saveShopkeeperOrderFulfilment(
+                8L, DeliveryMode.SHOP_DELIVERY, "owner@example.com"
+        )).thenReturn(Optional.of(order));
+
+        var response = controller.saveOrderFulfilment(8L, DeliveryMode.SHOP_DELIVERY);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertSame(order, response.getBody());
+        verify(orderService).saveShopkeeperOrderFulfilment(
+                8L, DeliveryMode.SHOP_DELIVERY, "owner@example.com"
+        );
     }
 
     @Test

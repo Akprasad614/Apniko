@@ -113,6 +113,88 @@ class OrderServiceWorkflowTest {
     }
 
     @Test
+    void shopkeeperCanSaveFulfilmentForAnIndividualPlacedOrder() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        com.localcart.entity.OrderDeliveryAddress address = new com.localcart.entity.OrderDeliveryAddress();
+        address.setAddressLine1("12 Main Road");
+        address.setCity("Bengaluru");
+        order.setDeliveryAddress(address);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(126L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> saved = orderService.saveShopkeeperOrderFulfilment(
+                126L, DeliveryMode.SHOP_DELIVERY, shopkeeper.getEmail()
+        );
+
+        assertTrue(saved.isPresent());
+        assertEquals(OrderStatus.PLACED, saved.get().getStatus());
+        assertEquals(DeliveryMode.SHOP_DELIVERY, saved.get().getDeliveryMode());
+        assertSame(address, saved.get().getDeliveryAddress());
+        verify(orderRepository).save(order);
+        verify(orderStatusHistoryRepository, never()).save(any());
+    }
+
+    @Test
+    void shopkeeperCanAcceptAnOrderUsingItsPreviouslySavedFulfilment() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        com.localcart.entity.OrderDeliveryAddress address = new com.localcart.entity.OrderDeliveryAddress();
+        address.setAddressLine1("12 Main Road");
+        order.setDeliveryAddress(address);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(127L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> accepted = orderService.updateShopkeeperOrderStatus(
+                127L, OrderStatus.ACCEPTED, shopkeeper.getEmail()
+        );
+
+        assertTrue(accepted.isPresent());
+        assertEquals(OrderStatus.ACCEPTED, accepted.get().getStatus());
+        assertEquals(DeliveryMode.SHOP_DELIVERY, accepted.get().getDeliveryMode());
+        assertSame(address, accepted.get().getDeliveryAddress());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperCannotSaveDeliveryFulfilmentWithoutAnAddress() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(128L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () -> orderService.saveShopkeeperOrderFulfilment(
+                128L, DeliveryMode.PLATFORM_DELIVERY, shopkeeper.getEmail()
+        ));
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        assertNull(order.getDeliveryMode());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCannotChangeFulfilmentAfterAcceptance() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.ACCEPTED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(129L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () -> orderService.saveShopkeeperOrderFulfilment(
+                129L, DeliveryMode.CUSTOMER_PICKUP, shopkeeper.getEmail()
+        ));
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     void shopkeeperCannotChooseDeliveryForAnOrderWithoutAnAddress() {
         User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
         Order order = order(OrderStatus.PLACED, null);
