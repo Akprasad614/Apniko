@@ -47,3 +47,4 @@ frontend/.env.*
 ### Apniko catalogue source snapshots (downloaded, not committed) ###
 data/catalogue/source/
 data/catalogue/reports/
+.venv-catalogue/

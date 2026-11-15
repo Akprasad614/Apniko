@@ -10,8 +10,8 @@ import json
 import re
 import sys
 import time
-import urllib.error
-import urllib.request
+import requests
+from urllib.parse import urljoin, urlsplit
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -30,6 +30,64 @@ OPENMRP_API = "https://api.openmrp.in/v1/dump"
 OPENMRP_SOURCE_URL = "https://openmrp.in/downloads"
 OFFICIAL_MRP_SOURCES = {"pack", "brand", "gov", "off"}
 BATCH_SIZE_LIMIT = 500
+SOURCE_HOSTS = {"huggingface.co", "api.openmrp.in", "openmrp.in"}
+REDIRECT_STATUSES = {301, 302, 303, 307, 308}
+
+
+def validate_source_url(url: str) -> None:
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").lower()
+    allowed_host = (
+        host in SOURCE_HOSTS
+        or host.endswith(".hf.co")
+        or host.endswith(".openmrp.in")
+    )
+    if (
+        parsed.scheme.lower() != "https"
+        or not host
+        or not allowed_host
+        or parsed.username is not None
+        or parsed.password is not None
+        or (parsed.port is not None and parsed.port != 443)
+    ):
+        raise ValueError("Source requests must use HTTPS to a configured catalogue host")
+
+
+def safe_source_get(url: str, timeout: tuple[int, int] = (10, 60)):
+    current = url
+    for _ in range(6):
+        validate_source_url(current)
+        response = requests.get(
+            current,
+            headers={"User-Agent": "ApnikoCatalogueImporter/1.0"},
+            timeout=timeout,
+            stream=True,
+            allow_redirects=False,
+        )
+        if response.status_code in REDIRECT_STATUSES:
+            location = response.headers.get("Location")
+            response.close()
+            if not location:
+                raise ValueError("Catalogue source returned a redirect without a location")
+            current = urljoin(current, location)
+            continue
+        return response
+    raise ValueError("Catalogue source exceeded the allowed redirect limit")
+
+
+def validate_api_base_url(base_url: str) -> str:
+    parsed = urlsplit(base_url)
+    host = (parsed.hostname or "").lower()
+    local_http_hosts = {"localhost", "127.0.0.1", "::1"}
+    if (
+        parsed.scheme.lower() not in {"http", "https"}
+        or not host
+        or parsed.username is not None
+        or parsed.password is not None
+        or (parsed.scheme.lower() == "http" and host not in local_http_hosts)
+    ):
+        raise ValueError("Apniko API must use HTTPS, or HTTP on localhost only")
+    return base_url.rstrip("/")
 
 
 def valid_gtin(value: str | None) -> bool:
@@ -254,19 +312,23 @@ def openmrp_items(products_file: Path, brands_file: Path, variants_file: Path) -
 
 def download_file(url: str, destination: Path, expected_sha256: str | None = None) -> str:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "ApnikoCatalogueImporter/1.0 (catalogue-data-maintenance)"}
-    )
     digest = hashlib.sha256()
     temporary = destination.with_suffix(destination.suffix + ".part")
+    response = None
     try:
-        with urllib.request.urlopen(request, timeout=90) as response, temporary.open("wb") as output:
-            while chunk := response.read(1024 * 1024):
-                digest.update(chunk)
-                output.write(chunk)
+        response = safe_source_get(url, timeout=(10, 90))
+        response.raise_for_status()
+        with temporary.open("wb") as output:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    digest.update(chunk)
+                    output.write(chunk)
     except Exception:
         temporary.unlink(missing_ok=True)
         raise
+    finally:
+        if response is not None:
+            response.close()
     actual = digest.hexdigest()
     if expected_sha256 and actual.lower() != expected_sha256.lower():
         temporary.unlink(missing_ok=True)
@@ -289,12 +351,9 @@ def download_packsense(output_dir: Path) -> Path:
 
 
 def download_openmrp(output_dir: Path) -> dict[str, Path]:
-    manifest_request = urllib.request.Request(
-        f"{OPENMRP_API}/manifest",
-        headers={"User-Agent": "ApnikoCatalogueImporter/1.0"},
-    )
-    with urllib.request.urlopen(manifest_request, timeout=30) as response:
-        manifest = json.load(response)
+    with safe_source_get(f"{OPENMRP_API}/manifest", timeout=(10, 30)) as response:
+        response.raise_for_status()
+        manifest = response.json()
     manifest_path = output_dir / "openmrp-manifest.json"
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -346,23 +405,29 @@ def send_batch(base_url: str, token: str, source: str, batch: list[dict], timeou
 
     payload = {**metadata, "products": batch}
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    request = urllib.request.Request(
-        f"{base_url.rstrip('/')}/api/admin/catalogue/import",
+    api_root = validate_api_base_url(base_url)
+    response = requests.post(
+        f"{api_root}/api/admin/catalogue/import",
         data=body,
-        method="POST",
         headers={
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": "ApnikoCatalogueImporter/1.0",
         },
+        timeout=timeout,
+        allow_redirects=False,
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as error:
-        detail = error.read(2000).decode("utf-8", errors="replace")
-        raise RuntimeError(f"Catalogue API returned HTTP {error.code}: {detail}") from error
+        response.raise_for_status()
+    except requests.HTTPError as error:
+        detail = response.text[:2000]
+        raise RuntimeError(
+            f"Catalogue API returned HTTP {response.status_code}: {detail}"
+        ) from error
+    if 300 <= response.status_code < 400:
+        raise RuntimeError("Catalogue API redirects are not allowed for authenticated imports")
+    return response.json()
 
 
 def load_packSense(file_path: Path, limit: int | None = None) -> tuple[list[dict], dict]:

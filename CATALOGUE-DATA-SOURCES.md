@@ -76,11 +76,19 @@ The category list is seeded idempotently when the backend starts. The public cat
 
 ## Download and dry-run
 
-From the backend repository root:
+Create the small importer environment once from the backend repository root:
 
 ```bash
-python3 scripts/catalogue/import_catalogue.py download --source packsense
-python3 scripts/catalogue/import_catalogue.py import \
+python3 -m venv .venv-catalogue
+source .venv-catalogue/bin/activate
+python -m pip install -r scripts/catalogue/requirements.txt
+```
+
+The download client uses HTTPS-only requests, validates the permitted source hosts (including approved Hugging Face redirects), and refuses non-local HTTP API destinations. The importer uses the Python environment above for each command.
+
+```bash
+python scripts/catalogue/import_catalogue.py download --source packsense
+python scripts/catalogue/import_catalogue.py import \
   --source packsense \
   --file data/catalogue/source/packsense-india.csv \
   --limit 100
@@ -91,8 +99,8 @@ The PackSense downloader verifies both the pinned SHA-256 and the dataset's repo
 To download OpenMRP:
 
 ```bash
-python3 scripts/catalogue/import_catalogue.py download --source openmrp
-python3 scripts/catalogue/import_catalogue.py import \
+python scripts/catalogue/import_catalogue.py download --source openmrp
+python scripts/catalogue/import_catalogue.py import \
   --source openmrp \
   --products data/catalogue/source/products.csv \
   --brands data/catalogue/source/brands.csv \
@@ -109,7 +117,7 @@ python3 scripts/catalogue/import_catalogue.py import \
 
 ```bash
 export APNIKO_ADMIN_TOKEN='YOUR_ADMIN_JWT'
-python3 scripts/catalogue/import_catalogue.py import \
+python scripts/catalogue/import_catalogue.py import \
   --source packsense \
   --file data/catalogue/source/packsense-india.csv \
   --batch-size 250 \
