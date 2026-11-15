@@ -161,7 +161,7 @@ def category_for(product_name: object, *taxonomy_values: object) -> tuple[str, s
     """Prefer explicit product identity over broad taxonomy or flavour keywords."""
     name = clean(product_name).lower().replace("-", " ")
     name = re.sub(r"[^a-z0-9 ]+", " ", name)
-    name = re.sub(r"\\s+", " ", name).strip()
+    name = re.sub(r"\s+", " ", name).strip()
 
     # Product-name rules avoid broad taxonomy terms (for example, "fruit"
     # in a croissant flavour or "vegetable" in vegetable oil) winning first.
