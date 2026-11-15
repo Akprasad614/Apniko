@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { formatRupees } from './marketplace'
-import type { Basket, MarketplaceShop, ShopDeliveryMode } from './marketplace'
+import type { Basket, MarketplaceShop } from './marketplace'
 import type { CustomerAddress } from './CustomerAddresses'
 import './customer-shell.css'
 
@@ -113,11 +113,9 @@ export function CustomerCart() {
   const itemCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
   const hasRazorpay = paymentMethods.includes('RAZORPAY')
   const invalidItems = basket?.items.some((item) => !item.available || item.quantity > item.availableStock) ?? false
-  const deliveryMode: ShopDeliveryMode = selectedShop?.deliveryMode ?? 'SHOP_DELIVERY'
-  const needsAddress = deliveryMode !== 'CUSTOMER_PICKUP'
   const canCheckout = Boolean(
     basket?.items.length && !invalidItems && !busy && !loadingBasket
-    && !loadingCheckoutOptions && (!needsAddress || selectedAddress),
+    && !loadingCheckoutOptions,
   )
 
   useEffect(() => {
@@ -248,10 +246,6 @@ export function CustomerCart() {
 
   async function placeOrder() {
     if (selectedShopId === null || !basket?.items.length || busy) return
-    if (needsAddress && !selectedAddressId) {
-      setError('Select or add a delivery address before placing this order.')
-      return
-    }
     if (paymentMethod === 'RAZORPAY' && !hasRazorpay) {
       setError('Online payment is not configured on this server yet. Choose Cash on Delivery.')
       return
@@ -270,7 +264,7 @@ export function CustomerCart() {
         {
           method: 'POST',
           body: JSON.stringify({
-            addressId: needsAddress ? selectedAddressId : null,
+            addressId: selectedAddressId,
           }),
         },
         token,
@@ -345,7 +339,7 @@ export function CustomerCart() {
       <div className="customer-screen-heading">
         <p className="customer-eyebrow">YOUR SHOPPING BAG</p>
         <h1>Your <em>cart.</em></h1>
-        <p>Review your items, choose a delivery location and select how you would like to pay.</p>
+        <p>Review your items, add an optional delivery address and choose how you would like to pay.</p>
       </div>
       {error && <div className="customer-state customer-state--error" role="alert">{error}</div>}
       {notice && <div className="customer-state" role="status">{notice}</div>}
@@ -406,59 +400,51 @@ export function CustomerCart() {
           <div className="customer-cart-summary__line"><span>Delivery charges</span><span>Not configured</span></div>
           <div className="customer-cart-summary__total"><span>Basket total</span><strong>{formatRupees(basket?.totalAmount ?? 0)}</strong></div>
 
-          <div className="customer-checkout-fulfilment" aria-live="polite">
-            <span>Fulfilment arranged by the shop</span>
-            <strong>
-              {deliveryMode === 'PLATFORM_DELIVERY'
-                ? 'Apniko delivery'
-                : deliveryMode === 'CUSTOMER_PICKUP'
-                  ? 'Customer pickup'
-                  : 'Delivery by this shop'}
-            </strong>
-            <small>The shopkeeper has set how orders are handed over.</small>
-          </div>
-
-          {needsAddress && (
-            <section className="customer-checkout-section" aria-labelledby="checkout-address-title">
-              <div className="customer-checkout-section__heading">
-                <div><p className="customer-eyebrow">03 / DELIVERY LOCATION</p><h3 id="checkout-address-title">Where should we deliver?</h3></div>
-                <Link to="/customer/account/addresses?returnTo=cart">+ Add address</Link>
+          <section className="customer-checkout-section" aria-labelledby="checkout-address-title">
+            <div className="customer-checkout-section__heading">
+              <div>
+                <p className="customer-eyebrow">03 / DELIVERY ADDRESS</p>
+                <h3 id="checkout-address-title">Where can we deliver?</h3>
               </div>
-              {loadingCheckoutOptions ? (
-                <p className="customer-checkout-muted">Loading saved addresses…</p>
-              ) : addresses.length === 0 ? (
-                <div className="customer-checkout-empty">
-                  <strong>No delivery address saved.</strong>
-                  <p>Add your location to continue. Use device location or enter it manually.</p>
-                  <Link to="/customer/account/addresses?returnTo=cart" className="customer-checkout-add-link">Add delivery address →</Link>
-                </div>
-              ) : (
-                <>
-                  <label className="customer-cart-delivery">
-                    <span>Select delivery address</span>
-                    <select value={selectedAddressId ?? ''} onChange={(event) => selectAddress(event.target.value)} required>
-                      <option value="">Choose a saved address</option>
-                      {addresses.map((address) => (
-                        <option key={address.id} value={address.id}>{address.label} · {address.addressLine1}, {address.city}</option>
-                      ))}
-                    </select>
-                  </label>
-                  {selectedAddress && (
-                    <div className="customer-checkout-address-card">
-                      <div><strong>{selectedAddress.label}</strong>{selectedAddress.defaultAddress && <span>Default</span>}</div>
-                      <p>{selectedAddress.recipientName} · {selectedAddress.phone}</p>
-                      <p>{addressLabel(selectedAddress)}</p>
-                      <Link to="/customer/account/addresses?returnTo=cart">Change or edit address</Link>
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
-          )}
+              <Link to="/customer/account/addresses?returnTo=cart">+ Add address</Link>
+            </div>
+            <p className="customer-checkout-muted">
+              The shopkeeper chooses the fulfilment method when accepting each order. Add an address to make delivery available; without one, the shop can only accept it for customer pickup.
+            </p>
+            {loadingCheckoutOptions ? (
+              <p className="customer-checkout-muted">Loading saved addresses…</p>
+            ) : addresses.length === 0 ? (
+              <div className="customer-checkout-empty">
+                <strong>No delivery address saved.</strong>
+                <p>You can still place this order for pickup. Add an address to allow the shop to choose shop delivery or Apniko delivery.</p>
+                <Link to="/customer/account/addresses?returnTo=cart" className="customer-checkout-add-link">Add delivery address →</Link>
+              </div>
+            ) : (
+              <>
+                <label className="customer-cart-delivery">
+                  <span>Optional delivery address</span>
+                  <select value={selectedAddressId ?? ''} onChange={(event) => selectAddress(event.target.value)}>
+                    <option value="">No address — customer pickup only</option>
+                    {addresses.map((address) => (
+                      <option key={address.id} value={address.id}>{address.label} · {address.addressLine1}, {address.city}</option>
+                    ))}
+                  </select>
+                </label>
+                {selectedAddress && (
+                  <div className="customer-checkout-address-card">
+                    <div><strong>{selectedAddress.label}</strong>{selectedAddress.defaultAddress && <span>Default</span>}</div>
+                    <p>{selectedAddress.recipientName} · {selectedAddress.phone}</p>
+                    <p>{addressLabel(selectedAddress)}</p>
+                    <Link to="/customer/account/addresses?returnTo=cart">Change or edit address</Link>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
 
           <section className="customer-checkout-section" aria-labelledby="checkout-payment-title">
             <div className="customer-checkout-section__heading">
-              <div><p className="customer-eyebrow">{needsAddress ? '04' : '03'} / PAYMENT</p><h3 id="checkout-payment-title">How would you like to pay?</h3></div>
+              <div><p className="customer-eyebrow">04 / PAYMENT</p><h3 id="checkout-payment-title">How would you like to pay?</h3></div>
               <Link to="/customer/account/payment-methods">Payment details</Link>
             </div>
             <div className="customer-payment-options">
@@ -475,12 +461,10 @@ export function CustomerCart() {
             </div>
           </section>
 
-          <p className="customer-cart-phase-note">The total currently includes item prices only. Delivery charges are not configured in this build. Your selected address is copied onto the order.</p>
+          <p className="customer-cart-phase-note">The total currently includes item prices only. Delivery charges are not configured in this build. The shopkeeper will choose how to fulfil this order before accepting it.</p>
           <button className="customer-cart-checkout" type="button" disabled={!canCheckout} onClick={() => void placeOrder()}>
             {busy ? 'Processing…' : paymentMethod === 'RAZORPAY' ? 'Continue to secure payment' : 'Place order'} <span aria-hidden="true">→</span>
           </button>
-          {!loadingCheckoutOptions && needsAddress && !addresses.length && <p className="customer-checkout-required-note">A delivery address is required before checkout.</p>}
-          {!loadingCheckoutOptions && needsAddress && addresses.length > 0 && !selectedAddress && <p className="customer-checkout-required-note">Select a delivery address to place this order.</p>}
         </aside>
       </div>
     </section>
