@@ -6,6 +6,7 @@ import com.localcart.dto.CartResponse;
 import com.localcart.dto.UpdateCartItemRequest;
 import com.localcart.entity.Cart;
 import com.localcart.entity.CartItem;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
@@ -86,6 +87,12 @@ public class CartService {
                                 new ResourceNotFoundException(
                                         "Product is not available in this shop"
                                 ));
+
+        if (!isCustomerVisible(inventory)) {
+            throw new BadRequestException(
+                    "Product is awaiting catalogue review or has been hidden"
+            );
+        }
 
         if (!inventory.isAvailable()
                 || inventory.getStockQuantity() <= 0) {
@@ -174,6 +181,12 @@ public class CartService {
                                 new ResourceNotFoundException(
                                         "Product is not available in this shop"
                                 ));
+
+        if (!isCustomerVisible(inventory)) {
+            throw new BadRequestException(
+                    "Product is awaiting catalogue review or has been hidden"
+            );
+        }
 
         if (!inventory.isAvailable()) {
             throw new BadRequestException(
@@ -311,6 +324,12 @@ public class CartService {
         return response;
     }
 
+    private boolean isCustomerVisible(ShopInventory inventory) {
+        ProductCatalogueReviewStatus status =
+                inventory.getProduct().getCatalogueReviewStatus();
+        return status == null || status == ProductCatalogueReviewStatus.ACTIVE;
+    }
+
     private CartResponse toResponse(Cart cart) {
 
         CartResponse response = new CartResponse();
@@ -355,14 +374,16 @@ public class CartService {
                     item.getQuantity()
             );
 
-            double lineTotal =
-                    inventory.getPrice()
-                            * item.getQuantity();
+            boolean customerVisible = isCustomerVisible(inventory);
+            double lineTotal = customerVisible
+                    ? inventory.getPrice() * item.getQuantity()
+                    : 0;
 
             itemResponse.setLineTotal(lineTotal);
 
             itemResponse.setAvailable(
-                    inventory.isAvailable()
+                    customerVisible
+                            && inventory.isAvailable()
                             && inventory.getStockQuantity() > 0
             );
 
