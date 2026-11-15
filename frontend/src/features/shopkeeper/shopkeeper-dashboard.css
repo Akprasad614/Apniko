@@ -520,6 +520,30 @@
   cursor: wait;
 }
 
+.shopkeeper-order__accept-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.shopkeeper-order__fulfilment-label {
+  color: var(--lc-muted);
+  font-size: 0.61rem;
+  font-weight: 800;
+}
+
+.shopkeeper-order__fulfilment-select {
+  min-width: 180px;
+  min-height: 39px;
+  border: 1px solid var(--lc-line);
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+  color: var(--lc-forest);
+  background: var(--lc-white);
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
 .shopkeeper-danger-button {
   min-height: 34px;
   border: 1px solid #d9b8af;
@@ -1002,6 +1026,17 @@
 
   .shopkeeper-order__actions > div {
     justify-content: flex-start;
+    width: 100%;
+  }
+
+  .shopkeeper-order__accept-controls {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .shopkeeper-order__fulfilment-select {
+    flex: 1 1 180px;
+    min-width: 0;
   }
 
   .shopkeeper-inventory-tools {
