@@ -172,43 +172,82 @@ def packsense_quantity(row: dict[str, str]) -> tuple[str, str]:
     return "", ""
 
 
-def category_for(product_name: object, *taxonomy_values: object) -> tuple[str, str]:
-    """Prefer explicit product identity over broad taxonomy or flavour keywords."""
-    name = clean(product_name).lower().replace("-", " ")
-    name = re.sub(r"[^a-z0-9 ]+", " ", name)
-    name = re.sub(r"\s+", " ", name).strip()
+def category_for(
+    product_name: object,
+    *taxonomy_values: object,
+    brand_hint: object = None,
+) -> tuple[str, str]:
+    """Map known Indian retail products using names, brand descriptors and source taxonomy."""
+    def normalized_text(value: object) -> str:
+        text = clean(value).lower().replace("-", " ")
+        text = re.sub(r"[^a-z0-9 ]+", " ", text)
+        return re.sub(r"\s+", " ", text).strip()
 
-    # Product-name rules avoid broad taxonomy terms (for example, "fruit"
-    # in a croissant flavour or "vegetable" in vegetable oil) winning first.
+    name = normalized_text(product_name)
+    brand = normalized_text(brand_hint)
+
+    # Clear product identities take priority over broad source taxonomy tags.
     name_checks = [
-        (("poha", "flattened rice", "beaten rice", "rice flakes"), "Foodgrains, Oil & Masala", "Rice & Rice Products"),
+        (("poha", "flattened rice", "beaten rice", "rice flakes"),
+         "Foodgrains, Oil & Masala", "Rice & Rice Products"),
+        (("hair oil", "massage oil", "hair serum", "hair mask", "shampoo", "conditioner"),
+         "Beauty & Hygiene", "Hair Care"),
+        (("retinol", "skin care", "skincare", "face serum", "face wash",
+          "facial cleanser", "moisturizer", "moisturiser", "sunscreen"),
+         "Beauty & Hygiene", "Skin Care"),
+        (("toothpaste", "toothbrush", "mouthwash", "oral care"),
+         "Beauty & Hygiene", "Oral Care"),
+        (("body wash", "bathing soap", "body lotion", "bath and body"),
+         "Beauty & Hygiene", "Bath & Body"),
         (("mustard oil", "sunflower oil", "groundnut oil", "rice bran oil",
           "coconut oil", "olive oil", "soybean oil", "edible oil", "cooking oil",
           "vegetable oil", "palmolein", "kachi ghani", "ghee"),
          "Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
-        (("croissant", "pastry", "rusk", "bun", "pav", "bread", "bakery", "cake"),
+        (("croissant", "pastry", "rusk", "bun", "pav", "bread", "bakery", "cake",
+          "tortilla", "wrap", "roti", "chapati", "paratha", "naan", "pita", "flatbread"),
          "Dairy, Bakery & Eggs", "Bread & Bakery"),
-        (("hair oil", "massage oil"), "Beauty & Hygiene", "Hair Care"),
+        (("chutney", "pickle", "achar", "achaar", "schezwan sauce", "relish"),
+         "Gourmet & World Food", "Sauces, Spreads & Condiments"),
+        (("energy bar", "protein bar", "cereal bar", "granola bar"),
+         "Snacks & Branded Foods", "Breakfast & Cereals"),
     ]
     for words, category, subcategory in name_checks:
         if any(word in name for word in words):
             return category, subcategory
 
+    # Some source product names are abbreviated (for example, "15g Blueberry"),
+    # while the brand field contains the retail identity (for example, "Greek Yogurt").
+    brand_checks = [
+        (("yogurt", "yoghurt", "curd", "paneer", "cheese"),
+         "Dairy, Bakery & Eggs", "Curd, Paneer & Cheese"),
+        (("hair care", "shampoo", "conditioner"),
+         "Beauty & Hygiene", "Hair Care"),
+        (("skin care", "skincare", "serum", "sunscreen"),
+         "Beauty & Hygiene", "Skin Care"),
+    ]
+    for words, category, subcategory in brand_checks:
+        if any(word in brand for word in words):
+            return category, subcategory
+
     taxonomy_text = " ".join(
-        clean(value).lower().replace("-", " ") for value in taxonomy_values
+        normalized_text(value) for value in taxonomy_values if clean(value)
     )
-    taxonomy_text = re.sub(r"[^a-z0-9 ]+", " ", taxonomy_text)
-    all_text = f"{taxonomy_text} {name}".strip()
+    all_text = f"{taxonomy_text} {name} {brand}".strip()
 
     checks = [
         (("baby", "diaper", "nappy", "infant"), "Baby Care", "Diapers & Wipes"),
         (("pet food", "dog food", "cat food", "pet care"), "Kitchen, Garden & Pets", "Pet Food & Supplies"),
         (("leafy", "spinach", "lettuce", "methi", "greens"), "Fruits & Vegetables", "Leafy Greens"),
         (("laundry", "detergent", "dishwash", "cleaner", "cleaning", "household"), "Cleaning & Household", "Home & Surface Cleaning"),
-        (("shampoo", "skin care", "skincare", "cosmetic", "oral care", "toothpaste", "hygiene"), "Beauty & Hygiene", "Personal Hygiene"),
+        (("hair care", "shampoo", "conditioner", "hair oil"), "Beauty & Hygiene", "Hair Care"),
+        (("skin care", "skincare", "cosmetic", "retinol", "serum", "sunscreen"), "Beauty & Hygiene", "Skin Care"),
+        (("oral care", "toothpaste", "toothbrush", "mouthwash"), "Beauty & Hygiene", "Oral Care"),
+        (("bath and body", "body wash", "bathing soap", "body lotion"), "Beauty & Hygiene", "Bath & Body"),
+        (("sanitary", "deodorant", "personal hygiene", "hygiene"), "Beauty & Hygiene", "Personal Hygiene"),
         (("coffee", "tea", "cocoa"), "Beverages", "Tea, Coffee & Cocoa"),
-        (("milk", "dairy", "cheese", "yogurt", "yoghurt", "curd", "butter"), "Dairy, Bakery & Eggs", "Milk & Dairy"),
-        (("bread", "bakery", "cake"), "Dairy, Bakery & Eggs", "Bread & Bakery"),
+        (("paneer", "cheese", "yogurt", "yoghurt", "curd"), "Dairy, Bakery & Eggs", "Curd, Paneer & Cheese"),
+        (("milk", "dairy", "butter"), "Dairy, Bakery & Eggs", "Milk & Dairy"),
+        (("bread", "bakery", "cake", "tortilla", "wrap", "roti", "chapati"), "Dairy, Bakery & Eggs", "Bread & Bakery"),
         (("egg", "eggs"), "Dairy, Bakery & Eggs", "Eggs"),
         (("fish", "seafood"), "Eggs, Meat & Fish", "Fish & Seafood"),
         (("meat", "poultry", "chicken"), "Eggs, Meat & Fish", "Poultry & Meat"),
@@ -216,21 +255,21 @@ def category_for(product_name: object, *taxonomy_values: object) -> tuple[str, s
         (("chips", "crisps", "namkeen", "salty snack"), "Snacks & Branded Foods", "Chips & Namkeen"),
         (("biscuit", "cookie"), "Snacks & Branded Foods", "Biscuits & Cookies"),
         (("noodle", "instant food"), "Snacks & Branded Foods", "Instant Foods & Noodles"),
-        (("breakfast", "cereal"), "Snacks & Branded Foods", "Breakfast & Cereals"),
+        (("energy bar", "protein bar", "cereal bar", "granola bar", "breakfast", "cereal"), "Snacks & Branded Foods", "Breakfast & Cereals"),
         (("oil", "ghee"), "Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
         (("spice", "masala"), "Foodgrains, Oil & Masala", "Spices & Masalas"),
         (("pulse", "lentil", "dal"), "Foodgrains, Oil & Masala", "Pulses & Lentils"),
         (("atta", "flour"), "Foodgrains, Oil & Masala", "Atta & Flours"),
         (("rice",), "Foodgrains, Oil & Masala", "Rice & Rice Products"),
         (("salt", "sugar"), "Foodgrains, Oil & Masala", "Salt & Sugar"),
-        (("sauce", "spread", "condiment", "jam", "honey", "syrup"), "Gourmet & World Food", "Sauces, Spreads & Condiments"),
+        (("sauce", "spread", "condiment", "chutney", "pickle", "achar", "achaar", "jam", "honey", "syrup", "relish"), "Gourmet & World Food", "Sauces, Spreads & Condiments"),
         (("vegetable", "vegetables", "sabzi", "produce"), "Fruits & Vegetables", "Fresh Vegetables"),
         (("fruit", "fruits"), "Fruits & Vegetables", "Fresh Fruits"),
         (("beverage", "drink", "juice", "water", "soda", "soft drink"), "Beverages", "Water, Juices & Soft Drinks"),
         (("kitchen", "garden", "homeware"), "Kitchen, Garden & Pets", "Kitchen Essentials"),
     ]
 
-    # Source taxonomy is preferred; the product name is a fallback only.
+    # Source taxonomy remains stronger than broad name/brand fallbacks.
     for text in (taxonomy_text, all_text):
         if not text:
             continue
@@ -283,13 +322,13 @@ def packsense_item(row: dict[str, str]) -> dict | None:
     amount, unit = packsense_quantity(row)
     size = pack_size(amount, unit)
     net_quantity, normalized_unit = api_quantity(amount, unit)
-    category, subcategory = category_for(
-        name, row.get("pnns_groups_1"), row.get("pnns_groups_2"),
-        row.get("categories_tags"),
-    )
     brand = clean(row.get("brands"))
     if brand:
         brand = brand.split(",")[0].strip()
+    category, subcategory = category_for(
+        name, row.get("pnns_groups_1"), row.get("pnns_groups_2"),
+        row.get("categories_tags"), brand_hint=brand,
+    )
 
     return {
         "name": name[:120],
@@ -346,8 +385,10 @@ def openmrp_items(products_file: Path, brands_file: Path, variants_file: Path) -
             else:
                 mrp_source = None
 
-            category, subcategory = category_for(product.get("name"), product.get("category"))
             brand = brands.get(clean(product.get("brand_id"))) or None
+            category, subcategory = category_for(
+                product.get("name"), product.get("category"), brand_hint=brand
+            )
             product_id = clean(product.get("id"))
             variant_id = clean(variant.get("id"))
             yield {
