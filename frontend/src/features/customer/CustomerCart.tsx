@@ -3,11 +3,10 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { formatRupees } from './marketplace'
-import type { Basket, MarketplaceShop } from './marketplace'
+import type { Basket, MarketplaceShop, ShopDeliveryMode } from './marketplace'
 import type { CustomerAddress } from './CustomerAddresses'
 import './customer-shell.css'
 
-type DeliveryMode = 'SHOP_DELIVERY' | 'PLATFORM_DELIVERY' | 'CUSTOMER_PICKUP'
 type PaymentMethod = 'COD' | 'RAZORPAY'
 interface PaymentStart {
   id: number
@@ -95,7 +94,6 @@ export function CustomerCart() {
   const [addresses, setAddresses] = useState<CustomerAddress[]>([])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(['COD'])
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
-  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('SHOP_DELIVERY')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD')
   const [loadingShops, setLoadingShops] = useState(true)
   const [loadingBasket, setLoadingBasket] = useState(false)
@@ -115,6 +113,7 @@ export function CustomerCart() {
   const itemCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
   const hasRazorpay = paymentMethods.includes('RAZORPAY')
   const invalidItems = basket?.items.some((item) => !item.available || item.quantity > item.availableStock) ?? false
+  const deliveryMode: ShopDeliveryMode = selectedShop?.deliveryMode ?? 'SHOP_DELIVERY'
   const needsAddress = deliveryMode !== 'CUSTOMER_PICKUP'
   const canCheckout = Boolean(
     basket?.items.length && !invalidItems && !busy && !loadingBasket
@@ -271,7 +270,6 @@ export function CustomerCart() {
         {
           method: 'POST',
           body: JSON.stringify({
-            deliveryMode,
             addressId: needsAddress ? selectedAddressId : null,
           }),
         },
@@ -408,14 +406,17 @@ export function CustomerCart() {
           <div className="customer-cart-summary__line"><span>Delivery charges</span><span>Not configured</span></div>
           <div className="customer-cart-summary__total"><span>Basket total</span><strong>{formatRupees(basket?.totalAmount ?? 0)}</strong></div>
 
-          <label className="customer-cart-delivery">
-            <span>How would you like to receive it?</span>
-            <select value={deliveryMode} onChange={(event) => setDeliveryMode(event.target.value as DeliveryMode)}>
-              <option value="SHOP_DELIVERY">Delivery by this shop</option>
-              <option value="PLATFORM_DELIVERY">Apniko delivery</option>
-              <option value="CUSTOMER_PICKUP">I'll collect it</option>
-            </select>
-          </label>
+          <div className="customer-checkout-fulfilment" aria-live="polite">
+            <span>Fulfilment arranged by the shop</span>
+            <strong>
+              {deliveryMode === 'PLATFORM_DELIVERY'
+                ? 'Apniko delivery'
+                : deliveryMode === 'CUSTOMER_PICKUP'
+                  ? 'Customer pickup'
+                  : 'Delivery by this shop'}
+            </strong>
+            <small>The shopkeeper has set how orders are handed over.</small>
+          </div>
 
           {needsAddress && (
             <section className="customer-checkout-section" aria-labelledby="checkout-address-title">
