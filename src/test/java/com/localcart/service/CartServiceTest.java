@@ -92,6 +92,24 @@ class CartServiceTest {
     }
 
     @Test
+    void addToCartRejectsProductsAwaitingCatalogueReview() {
+        arrangeActiveCustomerAndShop();
+        Product product = product(101L, "Whey Protein", "Other Essentials");
+        when(product.getCatalogueReviewStatus())
+                .thenReturn(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+        ShopInventory inventory = inventory(product, 100.0, 5, true);
+        when(inventoryRepository.findByShopIdAndProductId(1L, 101L))
+                .thenReturn(Optional.of(inventory));
+
+        assertThrows(BadRequestException.class,
+                () -> cartService.addToCart(
+                        "customer@example.com", 1L, addRequest(101L, 1)));
+
+        verify(cartRepository, never()).save(any(Cart.class));
+        verify(cartItemRepository, never()).save(any(CartItem.class));
+    }
+
+    @Test
     void addToCartRejectsQuantityAboveAvailableStock() {
         arrangeActiveCustomerAndShop();
         Product product = product(101L, "Rice", "Staples");
