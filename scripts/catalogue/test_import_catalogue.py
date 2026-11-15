@@ -83,6 +83,32 @@ class CatalogueImportTests(unittest.TestCase):
             ("Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
         )
 
+    def test_india_retail_category_mapping_for_observed_unclassified_products(self):
+        self.assertEqual(
+            category_for("(Suhana) SCHEZWAN CHUTNEY"),
+            ("Gourmet & World Food", "Sauces, Spreads & Condiments"),
+        )
+        self.assertEqual(
+            category_for("10 inch Tortilla Wrap"),
+            ("Dairy, Bakery & Eggs", "Bread & Bakery"),
+        )
+        self.assertEqual(
+            category_for("15g Blueberry", brand_hint="Epigamia Greek Yogurt"),
+            ("Dairy, Bakery & Eggs", "Curd, Paneer & Cheese"),
+        )
+        self.assertEqual(
+            category_for("0.3% Retinol Serum"),
+            ("Beauty & Hygiene", "Skin Care"),
+        )
+        self.assertEqual(
+            category_for("Smoothing Hair Conditioner"),
+            ("Beauty & Hygiene", "Hair Care"),
+        )
+        self.assertEqual(
+            category_for("20g Protein Bar Cranberry Blast"),
+            ("Snacks & Branded Foods", "Breakfast & Cereals"),
+        )
+
     def test_india_retail_category_mapping(self):
         self.assertEqual(category_for("Beverages", "Tea - coffee"), ("Beverages", "Tea, Coffee & Cocoa"))
         self.assertEqual(category_for("Dairy", "Milk"), ("Dairy, Bakery & Eggs", "Milk & Dairy"))
