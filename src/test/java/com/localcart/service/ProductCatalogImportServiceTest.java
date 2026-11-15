@@ -50,7 +50,6 @@ class ProductCatalogImportServiceTest {
     void importsNewProductAndKeepsSourceProvenance() {
         mockCategory();
         when(productRepository.findByBarcode("4006381333931")).thenReturn(Optional.empty());
-        when(productRepository.findByIdentityKey(anyString())).thenReturn(Optional.empty());
         when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
                 "PackSense India / Open Food Facts", "4006381333931"))
                 .thenReturn(Optional.empty());
