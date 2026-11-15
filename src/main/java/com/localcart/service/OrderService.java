@@ -76,26 +76,26 @@ public class OrderService {
     // =========================================================
 
     @Transactional
+    public Optional<Order> createOrder(CreateOrderRequest request) {
+        return createOrder(request, null);
+    }
+
+    @Transactional
     public Optional<Order> createOrder(
-            CreateOrderRequest request) {
+            CreateOrderRequest request,
+            OrderDeliveryAddress deliveryAddress) {
 
-        Optional<Shop> shopOptional =
-                shopRepository.findById(request.getShopId());
-
+        Optional<Shop> shopOptional = shopRepository.findById(request.getShopId());
         if (shopOptional.isEmpty()) {
             return Optional.empty();
         }
 
-        String email =
-                SecurityUtils.getCurrentUserEmail();
-
+        String email = SecurityUtils.getCurrentUserEmail();
         if (email == null) {
             return Optional.empty();
         }
 
-        Optional<User> customerOptional =
-                userRepository.findByEmail(email);
-
+        Optional<User> customerOptional = userRepository.findByEmail(email);
         if (customerOptional.isEmpty()) {
             return Optional.empty();
         }
@@ -103,9 +103,7 @@ public class OrderService {
         Shop shop = shopOptional.get();
         User customer = customerOptional.get();
 
-        if (!shop.isActive()
-                || !customer.isActive()) {
-
+        if (!shop.isActive() || !customer.isActive()) {
             return Optional.empty();
         }
 
@@ -117,21 +115,36 @@ public class OrderService {
                 customer,
                 shop,
                 request.getItems(),
-                request.getDeliveryMode(),
-                null
+                shop.getDeliveryMode(),
+                deliveryAddress
         );
     }
 
+    /**
+     * Compatibility overload for older service callers. The supplied mode is ignored:
+     * the selected shop's persisted fulfilment setting is authoritative.
+     */
     @Transactional
-    public Order checkoutCart(String email, Long shopId, DeliveryMode deliveryMode) {
-        return checkoutCart(email, shopId, deliveryMode, null);
+    public Order checkoutCart(String email, Long shopId, DeliveryMode ignoredCustomerMode) {
+        return checkoutCart(email, shopId, (OrderDeliveryAddress) null);
+    }
+
+    /**
+     * Compatibility overload for older controller callers. The supplied mode is ignored.
+     */
+    @Transactional
+    public Order checkoutCart(
+            String email,
+            Long shopId,
+            DeliveryMode ignoredCustomerMode,
+            OrderDeliveryAddress deliveryAddress) {
+        return checkoutCart(email, shopId, deliveryAddress);
     }
 
     @Transactional
     public Order checkoutCart(
             String email,
             Long shopId,
-            DeliveryMode deliveryMode,
             OrderDeliveryAddress deliveryAddress) {
 
         User customer = getCustomer(email);
@@ -147,9 +160,10 @@ public class OrderService {
             throw new BadRequestException("Cart is empty");
         }
 
-        if (deliveryMode != DeliveryMode.CUSTOMER_PICKUP && deliveryAddress == null) {
-            throw new BadRequestException("Select a saved delivery address before placing this order");
-        }
+        DeliveryMode shopDeliveryMode = shop.getDeliveryMode();
+        OrderDeliveryAddress orderAddress = shopDeliveryMode == DeliveryMode.CUSTOMER_PICKUP
+                ? null
+                : deliveryAddress;
 
         List<OrderItemRequest> items = cart.getItems().stream().map(item -> {
             OrderItemRequest request = new OrderItemRequest();
@@ -158,7 +172,7 @@ public class OrderService {
             return request;
         }).toList();
 
-        Order order = buildOrder(customer, shop, items, deliveryMode, deliveryAddress)
+        Order order = buildOrder(customer, shop, items, shopDeliveryMode, orderAddress)
                 .orElseThrow(() -> new BadRequestException("Unable to create order"));
 
         cart.getItems().clear();
@@ -175,6 +189,14 @@ public class OrderService {
 
         if (items == null || items.isEmpty()) {
             return Optional.empty();
+        }
+
+        if (deliveryMode != DeliveryMode.CUSTOMER_PICKUP && deliveryAddress == null) {
+            throw new BadRequestException("Select a saved delivery address before placing this order");
+        }
+
+        if (deliveryMode == DeliveryMode.CUSTOMER_PICKUP) {
+            deliveryAddress = null;
         }
 
         Order order = new Order();
