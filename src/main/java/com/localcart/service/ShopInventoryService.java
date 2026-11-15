@@ -254,6 +254,11 @@ public class ShopInventoryService {
         response.setProductId(inventory.getProduct().getId());
         response.setProductName(inventory.getProduct().getName());
         response.setCategory(inventory.getProduct().getCategory());
+        response.setSubcategory(inventory.getProduct().getSubcategory());
+        response.setBrand(inventory.getProduct().getBrand());
+        response.setBarcode(inventory.getProduct().getBarcode());
+        response.setPackSize(inventory.getProduct().getPackSize());
+        response.setMrp(inventory.getProduct().getMrp());
         response.setPrice(inventory.getPrice());
         response.setStockQuantity(inventory.getStockQuantity());
         response.setAvailable(inventory.isAvailable());
