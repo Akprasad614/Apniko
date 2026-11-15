@@ -2,6 +2,7 @@ package com.localcart.controller;
 
 import com.localcart.entity.Order;
 import com.localcart.entity.OrderStatus;
+import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.User;
@@ -111,11 +112,13 @@ class ShopkeeperOrderControllerCoverageTest {
         securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn("owner@example.com");
         when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
         when(orderRepository.findById(4L)).thenReturn(Optional.of(order));
-        when(orderService.updateShopkeeperOrderStatus(4L, OrderStatus.READY, "owner@example.com"))
-                .thenReturn(Optional.empty());
+        when(orderService.updateShopkeeperOrderStatus(
+                4L, OrderStatus.ACCEPTED, "owner@example.com", DeliveryMode.PLATFORM_DELIVERY
+        )).thenReturn(Optional.empty());
 
-        assertEquals(400, controller.updateOrderStatus(4L, OrderStatus.READY)
-                .getStatusCode().value());
+        assertEquals(400, controller.updateOrderStatus(
+                4L, OrderStatus.ACCEPTED, DeliveryMode.PLATFORM_DELIVERY
+        ).getStatusCode().value());
     }
 
     @Test
@@ -125,7 +128,7 @@ class ShopkeeperOrderControllerCoverageTest {
         when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
         when(orderRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertEquals(404, controller.updateOrderStatus(5L, OrderStatus.ACCEPTED)
+        assertEquals(404, controller.updateOrderStatus(5L, OrderStatus.ACCEPTED, null)
                 .getStatusCode().value());
         verifyNoInteractions(orderService);
     }
