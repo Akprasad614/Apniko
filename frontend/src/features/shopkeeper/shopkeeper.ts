@@ -103,7 +103,7 @@ export interface InventoryMovement {
 
 export function nextShopkeeperOrderStatus(
   status: string,
-  deliveryMode?: string,
+  deliveryMode?: string | null,
 ): ShopkeeperOrderStatus | null {
   switch (status) {
     case 'PLACED': return 'ACCEPTED'
