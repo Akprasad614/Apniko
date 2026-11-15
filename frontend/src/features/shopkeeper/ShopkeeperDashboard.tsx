@@ -618,7 +618,11 @@ export function ShopkeeperDashboard() {
                       return (
                         <article className="shopkeeper-order" key={order.id}>
                           <div className="shopkeeper-order__top">
-                            <div><span className="shopkeeper-order__number">ORDER #{order.id}</span><h3>{order.items?.length ?? 0} items from {order.shop?.name || selectedShop.name}</h3><small>{formatShopkeeperStatus(order.deliveryMode)}</small></div>
+                            <div><span className="shopkeeper-order__number">ORDER #{order.id}</span><h3>{order.items?.length ?? 0} items from {order.shop?.name || selectedShop.name}</h3><small>{order.deliveryMode
+                              ? formatShopkeeperStatus(order.deliveryMode)
+                              : order.status === 'PLACED'
+                                ? 'Fulfilment selected when accepting'
+                                : 'Fulfilment not recorded'}</small></div>
                             <div className="shopkeeper-order__summary"><strong>{formatShopkeeperRupees(order.totalAmount)}</strong><span className={`shopkeeper-order__status shopkeeper-order__status--${order.status.toLowerCase()}`}>{formatShopkeeperStatus(order.status)}</span></div>
                           </div>
                           <div className="shopkeeper-order__items">
