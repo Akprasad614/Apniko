@@ -1,11 +1,11 @@
 package com.localcart.dto;
 
 import com.localcart.entity.DeliveryMode;
-import jakarta.validation.constraints.NotNull;
 
 public class CheckoutRequest {
 
-    @NotNull
+    // Optional for compatibility with older clients. The shop's saved
+    // fulfilment setting is authoritative during checkout.
     private DeliveryMode deliveryMode;
 
     private Long addressId;

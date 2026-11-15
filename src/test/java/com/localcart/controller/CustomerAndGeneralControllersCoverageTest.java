@@ -6,7 +6,6 @@ import com.localcart.dto.CreateShopRequest;
 import com.localcart.dto.InitiatePaymentRequest;
 import com.localcart.dto.UpdateCartItemRequest;
 import com.localcart.dto.VerifyPaymentRequest;
-import com.localcart.entity.DeliveryMode;
 import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
@@ -21,6 +20,7 @@ import com.localcart.service.OrderService;
 import com.localcart.service.PaymentService;
 import com.localcart.service.ShopService;
 import com.localcart.service.ShopkeeperAiInsightsService;
+import jakarta.validation.Validation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -136,7 +136,6 @@ class CustomerAndGeneralControllersCoverageTest {
         AddToCartRequest add = new AddToCartRequest();
         UpdateCartItemRequest update = new UpdateCartItemRequest();
         CheckoutRequest checkout = new CheckoutRequest();
-        checkout.setDeliveryMode(DeliveryMode.PLATFORM_DELIVERY);
         checkout.setAddressId(55L);
         when(customerAddressService.getDeliveryAddressSnapshot("customer@example.com", 55L))
                 .thenReturn(new OrderDeliveryAddress());
@@ -154,6 +153,15 @@ class CustomerAndGeneralControllersCoverageTest {
         verify(customerAddressService).getDeliveryAddressSnapshot("customer@example.com", 55L);
         verify(orderService).checkoutCart(eq("customer@example.com"), eq(1L),
                 any(OrderDeliveryAddress.class));
+    }
+
+    @Test
+    void checkoutRequestDoesNotRequireCustomerSelectedDeliveryMode() {
+        CheckoutRequest request = new CheckoutRequest();
+        request.setAddressId(55L);
+
+        var validator = Validation.buildDefaultValidatorFactory().getValidator();
+        assertTrue(validator.validate(request).isEmpty());
     }
 
     @Test
