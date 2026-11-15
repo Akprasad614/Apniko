@@ -19,6 +19,7 @@ import type {
   ShopkeeperOrderHistory,
   ShopkeeperProduct,
   ShopkeeperShop,
+  ShopDeliveryMode,
 } from './shopkeeper'
 import './shopkeeper-dashboard.css'
 
@@ -62,6 +63,7 @@ export function ShopkeeperDashboard() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busyKey, setBusyKey] = useState('')
+  const [deliveryModeDraft, setDeliveryModeDraft] = useState<ShopDeliveryMode>('SHOP_DELIVERY')
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null)
   const [historyByOrder, setHistoryByOrder] = useState<Record<number, ShopkeeperOrderHistory[]>>({})
   const [historyLoadingId, setHistoryLoadingId] = useState<number | null>(null)
@@ -88,6 +90,10 @@ export function ShopkeeperDashboard() {
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
     [shops, selectedShopId],
   )
+
+  useEffect(() => {
+    setDeliveryModeDraft(selectedShop?.deliveryMode ?? 'SHOP_DELIVERY')
+  }, [selectedShop?.id, selectedShop?.deliveryMode])
 
   const selectedShopOrders = useMemo(
     () => orders.filter((order) => order.shop?.id === selectedShopId),
@@ -397,6 +403,31 @@ export function ShopkeeperDashboard() {
     }
   }
 
+  async function saveDeliveryMode() {
+    if (!selectedShop || busyKey === 'delivery-mode') return
+    setBusyKey('delivery-mode')
+    setError('')
+    setNotice('')
+    try {
+      const updated = await apiRequest<ShopkeeperShop>(
+        `/api/shopkeeper/shops/${selectedShop.id}/delivery-mode`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ deliveryMode: deliveryModeDraft }),
+        },
+        token,
+      )
+      setShops((current) => current.map((shop) => shop.id === selectedShop.id
+        ? { ...shop, deliveryMode: updated.deliveryMode ?? deliveryModeDraft }
+        : shop))
+      setNotice('Customer fulfilment updated for ' + selectedShop.name + '.')
+    } catch (saveError) {
+      setError(messageFor(saveError))
+    } finally {
+      setBusyKey('')
+    }
+  }
+
   async function openMovements(item: ShopkeeperInventoryItem) {
     setMovementItem(item)
     setMovementLoading(true)
@@ -540,6 +571,33 @@ export function ShopkeeperDashboard() {
                       ))
                     ) : <p className="shopkeeper-muted">Your current stock levels look healthy.</p>}
                   </section>
+                <section className="shopkeeper-fulfilment-panel" aria-labelledby="shopkeeper-fulfilment-title">
+                  <div>
+                    <p className="shopkeeper-eyebrow">SHOP SETTINGS</p>
+                    <h3 id="shopkeeper-fulfilment-title">How will customers receive their orders?</h3>
+                    <p>Choose the fulfilment method for this shop. Customers will see the arrangement, not a choice.</p>
+                  </div>
+                  <div className="shopkeeper-fulfilment-panel__controls">
+                    <label htmlFor="shopkeeper-delivery-mode">Fulfilment method</label>
+                    <select
+                      id="shopkeeper-delivery-mode"
+                      value={deliveryModeDraft}
+                      onChange={(event) => setDeliveryModeDraft(event.target.value as ShopDeliveryMode)}
+                    >
+                      <option value="SHOP_DELIVERY">Delivery by this shop</option>
+                      <option value="PLATFORM_DELIVERY">Apniko delivery partner</option>
+                      <option value="CUSTOMER_PICKUP">Customer pickup</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="shopkeeper-primary-button"
+                      disabled={busyKey === 'delivery-mode' || deliveryModeDraft === (selectedShop.deliveryMode ?? 'SHOP_DELIVERY')}
+                      onClick={() => void saveDeliveryMode()}
+                    >
+                      {busyKey === 'delivery-mode' ? 'Saving…' : 'Save fulfilment setting'}
+                    </button>
+                  </div>
+                </section>
                 </div>
               </section>
             )}
