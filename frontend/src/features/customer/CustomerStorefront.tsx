@@ -18,6 +18,22 @@ import './customer-storefront.css'
 
 const PAGE_SIZE = 24
 
+function categorySymbol(category: string): string {
+  const value = category.toLowerCase()
+  if (value.includes('fruit') || value.includes('vegetable')) return '🥬'
+  if (value.includes('dairy') || value.includes('bakery') || value.includes('egg')) return '🥛'
+  if (value.includes('foodgrain') || value.includes('oil') || value.includes('masala')) return '🌾'
+  if (value.includes('snack') || value.includes('branded')) return '🍪'
+  if (value.includes('beverage')) return '🥤'
+  if (value.includes('cleaning') || value.includes('household')) return '🧹'
+  if (value.includes('beauty') || value.includes('hygiene')) return '🧴'
+  if (value.includes('baby')) return '🍼'
+  if (value.includes('gourmet') || value.includes('world')) return '🍝'
+  if (value.includes('pet') || value.includes('garden')) return '🐾'
+  if (value.includes('meat') || value.includes('fish')) return '🐟'
+  return '🛒'
+}
+
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Your session has expired. Sign in again to continue.'
@@ -249,20 +265,22 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     <div className="customer-storefront">
       <div className={`customer-wrap customer-main customer-main--${view}`}>
         {view === 'home' && (
-        <section className="customer-intro" aria-labelledby="customer-title">
-          <div>
-            <p className="customer-eyebrow"><span /> YOUR NEIGHBOURHOOD GROCERY STORE</p>
-            <h1 id="customer-title">Everyday groceries,<br /><em>closer to home.</em></h1>
-            <p className="customer-intro__copy">
-              Browse genuine products, check your local shop's prices and availability, and build your basket in a few taps.
-            </p>
-          </div>
-          <div className="customer-intro__aside">
-            <span className="customer-intro__aside-mark" aria-hidden="true">✳</span>
-            <p>One familiar catalogue. Stock and prices from your selected shop.</p>
-            <span>LOCAL SHOPS · REAL AVAILABILITY</span>
-          </div>
-        </section>
+          <section className="customer-intro customer-grocery-hero" aria-labelledby="customer-title">
+            <div className="customer-grocery-hero__copy">
+              <p className="customer-eyebrow"><span /> YOUR EVERYDAY GROCERY RUN</p>
+              <h1 id="customer-title">Good food.<br /><em>Closer to home.</em></h1>
+              <p className="customer-intro__copy">
+                Shop the products your neighbourhood store actually has in stock, at the price it sets today.
+              </p>
+            </div>
+            <div className="customer-grocery-hero__note">
+              <span aria-hidden="true">✳</span>
+              <div>
+                <strong>Local shelves, one basket.</strong>
+                <p>Choose a shop to see its products, live stock and local prices.</p>
+              </div>
+            </div>
+          </section>
         )}
 
         {view === 'categories' && (
@@ -296,25 +314,26 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
               <p>There aren't any active shops listed on Apniko yet. Check back when a local shop joins.</p>
             </div>
           ) : (
-            <div className="shop-ribbon" aria-label="Choose a shop">
-              {shops.map((shop, index) => (
-                <button
-                  className={`shop-choice${selectedShopId === shop.id ? ' is-selected' : ''}`}
-                  key={shop.id}
-                  type="button"
-                  aria-pressed={selectedShopId === shop.id}
-                  onClick={() => {
-                    setSelectedShopId(shop.id)
+            <label className="customer-store-select">
+              <span>Delivering from</span>
+              <select
+                value={selectedShopId ?? ''}
+                onChange={(event) => {
+                  const nextShopId = Number(event.target.value)
+                  if (Number.isSafeInteger(nextShopId) && nextShopId > 0) {
+                    setSelectedShopId(nextShopId)
                     setNotice('')
-                  }}
-                >
-                  <span className="shop-choice__index">SHOP {String(index + 1).padStart(2, '0')}</span>
-                  <strong>{shop.name}</strong>
-                  <span className="shop-choice__address">{shop.address || 'Address not listed'}</span>
-                  <span className="shop-choice__select">{selectedShopId === shop.id ? 'Selected ✓' : 'View this shop ↗'}</span>
-                </button>
-              ))}
-            </div>
+                  }
+                }}
+                aria-label="Choose your neighbourhood shop"
+              >
+                {shops.map((shop) => (
+                  <option value={shop.id} key={shop.id}>
+                    {shop.name}{shop.address ? ` — ${shop.address}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
         </section>
 
@@ -395,7 +414,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                         aria-pressed={activeCategory === category}
                         onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
                       >
-                        <span className="customer-category-card__symbol" aria-hidden="true">▦</span>
+                        <span className="customer-category-card__symbol" aria-hidden="true">{categorySymbol(category)}</span>
                         <strong>{category}</strong>
                         <span>Explore products <span aria-hidden="true">→</span></span>
                       </button>
@@ -407,6 +426,31 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                       </div>
                     )}
                   </div>
+                )}
+                {view === 'home' && categories.length > 0 && (
+                  <section className="customer-category-preview" aria-labelledby="customer-category-preview-title">
+                    <div className="customer-catalogue-section-heading">
+                      <div>
+                        <p className="customer-eyebrow">BROWSE THE SHELVES</p>
+                        <h3 id="customer-category-preview-title">Shop by category</h3>
+                      </div>
+                      <Link to="/customer/categories">See all categories <span aria-hidden="true">→</span></Link>
+                    </div>
+                    <div className="customer-category-grid customer-category-grid--home" aria-label="Available product categories">
+                      {categories.slice(0, 8).map((category) => (
+                        <button
+                          className={`customer-category-card${activeCategory === category ? ' is-selected' : ''}`}
+                          key={category}
+                          type="button"
+                          aria-pressed={activeCategory === category}
+                          onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
+                        >
+                          <span className="customer-category-card__symbol" aria-hidden="true">{categorySymbol(category)}</span>
+                          <strong>{category}</strong>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
                 )}
                 <div className="category-row" aria-label="Filter by category">
                   <button
@@ -471,10 +515,10 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                             )}
                           </div>
                           <div className="catalogue-product-card__body">
-                            <p className="catalogue-product-card__brand">{product.brand || product.category || 'Grocery essential'}</p>
+                            <p className="catalogue-product-card__brand">{product.brand || 'Brand not listed'}</p>
                             <h4>{product.productName}</h4>
                             <p className="catalogue-product-card__pack">
-                              {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Standard pack'}
+                              {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Pack details not listed'}
                             </p>
                             {product.stockQuantity > 0 && product.stockQuantity <= 5 && product.available && (
                               <p className="catalogue-product-card__stock">Only {product.stockQuantity} left at this shop</p>
