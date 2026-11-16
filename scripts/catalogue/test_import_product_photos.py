@@ -86,9 +86,9 @@ class ProductPhotoImporterTests(unittest.TestCase):
             apply=False,
         )
         output = StringIO()
-        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}), \\
-             patch("import_product_photos.time.sleep"), redirect_stdout(output):
-            result = run(args, session=session)
+        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
+            with patch("import_product_photos.time.sleep"), redirect_stdout(output):
+                result = run(args, session=session)
 
         self.assertEqual(result, 0)
         self.assertIn("SKIP 00000604: no Open Facts product record", output.getvalue())
