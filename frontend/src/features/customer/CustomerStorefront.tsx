@@ -215,6 +215,34 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     }
   }
 
+  async function setProductQuantity(product: MarketplaceInventoryItem, quantity: number) {
+    if (selectedShopId === null || busyProductId !== null) return
+    setBusyProductId(product.productId)
+    setBasketError('')
+    setNotice('')
+    try {
+      const updated = quantity <= 0
+        ? await apiRequest<Basket>(
+          `/api/customer/cart/${selectedShopId}/items/${product.productId}`,
+          { method: 'DELETE' },
+          token,
+        )
+        : await apiRequest<Basket>(
+          `/api/customer/cart/${selectedShopId}/items/${product.productId}`,
+          { method: 'PUT', body: JSON.stringify({ quantity }) },
+          token,
+        )
+      setBasket(updated)
+      setNotice(quantity <= 0
+        ? `${product.productName} removed from your basket.`
+        : `${product.productName} quantity updated.`)
+    } catch (error) {
+      setBasketError(messageFor(error))
+    } finally {
+      setBusyProductId(null)
+    }
+  }
+
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
 
   return (
@@ -414,49 +442,72 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                   </div>
                 ) : (
                   <div className="product-list catalogue-product-grid">
-                    {products.map((product) => (
-                      <article className="catalogue-product-card" key={product.id}>
-                        <div className="catalogue-product-card__media">
-                          <ApprovedProductImage
-                            variant="card"
-                            imageUrl={product.imageUrl}
-                            productName={product.productName}
-                            sourceName={product.imageSourceName}
-                            sourceUrl={product.imageSourceUrl}
-                            license={product.imageLicense}
-                            attribution={product.imageAttribution}
-                          />
-                          {(!product.available || product.stockQuantity < 1) && (
-                            <span className="catalogue-product-card__unavailable">Out of stock</span>
-                          )}
-                        </div>
-                        <div className="catalogue-product-card__body">
-                          <p className="catalogue-product-card__brand">{product.brand || product.category || 'Grocery essential'}</p>
-                          <h4>{product.productName}</h4>
-                          <p className="catalogue-product-card__pack">
-                            {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Standard pack'}
-                          </p>
-                          {product.stockQuantity > 0 && product.stockQuantity <= 5 && product.available && (
-                            <p className="catalogue-product-card__stock">Only {product.stockQuantity} left at this shop</p>
-                          )}
-                          <div className="catalogue-product-card__purchase">
-                            <div className="catalogue-product-card__price">
-                              <strong>{formatRupees(product.price)}</strong>
-                              {product.mrp !== null && product.mrp !== undefined && product.mrp > product.price && (
-                                <del>{formatRupees(product.mrp)}</del>
+                    {products.map((product) => {
+                      const basketItem = basket?.items.find((item) => item.productId === product.productId)
+                      const busy = busyProductId === product.productId
+                      const hasDiscountedMrp = product.mrp !== null
+                        && product.mrp !== undefined
+                        && product.mrp > product.price
+                      const discountPercent = hasDiscountedMrp
+                        ? Math.round(((product.mrp! - product.price) / product.mrp!) * 100)
+                        : 0
+                      return (
+                        <article className="catalogue-product-card" key={product.id}>
+                          <div className="catalogue-product-card__media">
+                            <ApprovedProductImage
+                              variant="card"
+                              imageUrl={product.imageUrl}
+                              productName={product.productName}
+                              sourceName={product.imageSourceName}
+                              sourceUrl={product.imageSourceUrl}
+                              license={product.imageLicense}
+                              attribution={product.imageAttribution}
+                            />
+                            {hasDiscountedMrp && discountPercent > 0 && (
+                              <span className="catalogue-product-card__discount">{discountPercent}% OFF</span>
+                            )}
+                            {(!product.available || product.stockQuantity < 1) && (
+                              <span className="catalogue-product-card__unavailable">Out of stock</span>
+                            )}
+                          </div>
+                          <div className="catalogue-product-card__body">
+                            <p className="catalogue-product-card__brand">{product.brand || product.category || 'Grocery essential'}</p>
+                            <h4>{product.productName}</h4>
+                            <p className="catalogue-product-card__pack">
+                              {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Standard pack'}
+                            </p>
+                            {product.stockQuantity > 0 && product.stockQuantity <= 5 && product.available && (
+                              <p className="catalogue-product-card__stock">Only {product.stockQuantity} left at this shop</p>
+                            )}
+                            <div className="catalogue-product-card__purchase">
+                              <div className="catalogue-product-card__price">
+                                <strong>{formatRupees(product.price)}</strong>
+                                {hasDiscountedMrp && <del>{formatRupees(product.mrp as number)}</del>}
+                              </div>
+                              {basketItem ? (
+                                <div className="catalogue-product-card__quantity" aria-label={`Quantity of ${product.productName} in basket`}>
+                                  <button type="button" aria-label={`Remove one ${product.productName}`}
+                                    disabled={busy}
+                                    onClick={() => void setProductQuantity(product, basketItem.quantity - 1)}>−</button>
+                                  <strong aria-live="polite">{basketItem.quantity}</strong>
+                                  <button type="button" aria-label={`Add one ${product.productName}`}
+                                    disabled={busy || !product.available || basketItem.quantity >= product.stockQuantity}
+                                    onClick={() => void setProductQuantity(product, basketItem.quantity + 1)}>+</button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={!product.available || product.stockQuantity < 1 || busy}
+                                  onClick={() => void addProduct(product)}
+                                >
+                                  {busy ? 'Adding…' : 'ADD'}
+                                </button>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              disabled={!product.available || product.stockQuantity < 1 || busyProductId === product.productId}
-                              onClick={() => void addProduct(product)}
-                            >
-                              {busyProductId === product.productId ? 'Adding…' : 'ADD'}
-                            </button>
                           </div>
-                        </div>
-                      </article>
-                    ))}
+                        </article>
+                      )
+                    })}
                   </div>
                 )}
 
