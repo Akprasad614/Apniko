@@ -1157,3 +1157,52 @@
 .customer-category-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media(max-width:390px){.shop-ribbon{grid-template-columns:1fr}}
+
+.market-price-filter {
+  display: flex;
+  align-items: end;
+  gap: .4rem;
+}
+.market-price-filter label {
+  display: grid;
+  min-width: 76px;
+  gap: .25rem;
+  color: var(--lc-muted);
+  font-size: .58rem;
+  font-weight: 800;
+}
+.market-price-filter label input {
+  width: 100%;
+  min-height: 39px;
+  border: 1px solid #dedfd7;
+  border-radius: 8px;
+  padding: .4rem .5rem;
+  color: var(--lc-ink);
+  background: #fff;
+  font-size: .68rem;
+}
+.market-price-filter button {
+  min-height: 39px;
+  border: 1px solid var(--lc-forest);
+  border-radius: 8px;
+  padding: .4rem .65rem;
+  color: #fff;
+  background: var(--lc-forest);
+  font-size: .62rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.market-price-filter .market-price-filter__clear {
+  border-color: var(--lc-line);
+  color: var(--lc-muted);
+  background: #fff;
+}
+@media(max-width:760px) {
+  .market-price-filter {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .market-price-filter button {
+    width: 100%;
+  }
+}
