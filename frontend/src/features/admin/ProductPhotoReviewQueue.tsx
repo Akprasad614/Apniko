@@ -9,6 +9,10 @@ interface ProductPhotoReviewItem {
   barcode: string | null
   packSize: string | null
   sourceProductName: string | null
+  sourceProductBrand: string | null
+  sourcePackSize: string | null
+  candidateAuthorizationReference: string | null
+  authorizationReference: string | null
   candidateImageUrl: string | null
   candidateSourceName: string | null
   candidateSourceUrl: string | null
@@ -139,9 +143,14 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
                   </p>
                   <dl>
                     <div><dt>Source product name</dt><dd>{item.sourceProductName || 'Not supplied'}</dd></div>
+                    <div><dt>Source brand</dt><dd>{item.sourceProductBrand || 'Not supplied'}</dd></div>
+                    <div><dt>Source pack size</dt><dd>{item.sourcePackSize || 'Not supplied'}</dd></div>
                     <div><dt>Source</dt><dd>{item.candidateSourceName || 'Not recorded'}</dd></div>
                     <div><dt>Licence</dt><dd>{item.candidateLicense || 'Not recorded'}</dd></div>
                     <div><dt>Attribution</dt><dd>{item.candidateAttribution || 'Not recorded'}</dd></div>
+                    {(item.candidateAuthorizationReference || item.authorizationReference) && (
+                      <div><dt>Permission evidence</dt><dd>{item.candidateAuthorizationReference || item.authorizationReference}</dd></div>
+                    )}
                   </dl>
                   {item.candidateSourceUrl && (
                     <a href={item.candidateSourceUrl} target="_blank" rel="noreferrer">Open source product record ↗</a>
