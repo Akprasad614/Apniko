@@ -61,8 +61,11 @@ def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | N
         "sourceUrl": f"https://{source_host}/product/{barcode}",
         "sourceName": source_name,
         "sourceProductName": str(product.get("product_name") or local_product.get("name") or "").strip(),
+        "sourceProductBrand": str(product.get("brands") or "").split(",")[0].strip() or None,
+        "sourcePackSize": str(product.get("quantity") or "").strip() or None,
         "license": LICENSE,
         "attribution": attribution[:500],
+        "authorizationReference": None,
         "matchedBarcode": barcode,
     }
 
@@ -124,7 +127,7 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
         inspected += 1
         response = client.get(
             API_URL.format(barcode=barcode),
-            params={"fields": "code,product_name,selected_images,photographers_tags", "product_type": "all"},
+            params={"fields": "code,product_name,brands,quantity,selected_images,photographers_tags", "product_type": "all"},
             headers={"User-Agent": user_agent, "Accept": "application/json"},
             timeout=(5, 25),
         )
