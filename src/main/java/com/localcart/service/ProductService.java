@@ -116,14 +116,16 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponse> getCatalogueProducts() {
-        return productRepository.findAllWithPhoto().stream()
+        return productRepository.findAllVisibleWithPhoto(ProductCatalogueReviewStatus.ACTIVE).stream()
                 .map(ProductResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public Optional<ProductResponse> getCatalogueProductById(Long id) {
-        return productRepository.findById(id).map(ProductResponse::from);
+        return productRepository.findById(id)
+                .filter(Product::isVisibleToCustomers)
+                .map(ProductResponse::from);
     }
 
     private String identityKey(Product product) {
