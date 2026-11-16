@@ -38,9 +38,12 @@ export function ApprovedProductImage({
         />
       ) : (
         <div className="approved-product-image__empty" role="img"
-          aria-label={productName + ': photo not available'}>
-          <span aria-hidden="true">◇</span>
-          <small>{failed ? 'Photo unavailable' : 'Photo not available'}</small>
+          aria-label={productName + ': verified product photo not yet available'}>
+          <span className="approved-product-image__empty-mark" aria-hidden="true">▧</span>
+          <strong>{failed ? 'Photo could not load' : 'Photo not yet available'}</strong>
+          {variant === 'card' && (
+            <small>Apniko displays verified product photographs only.</small>
+          )}
         </div>
       )}
       {imageUrl && !failed && credit && (
