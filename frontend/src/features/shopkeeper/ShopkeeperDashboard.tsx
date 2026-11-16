@@ -855,7 +855,12 @@ export function ShopkeeperDashboard() {
                                 </span>
                                 <span className="shopkeeper-catalogue-choice__copy">
                                   <strong>{product.name}</strong>
-                                  <small>{[product.brand, product.packSize, product.category].filter(Boolean).join(' · ') || 'Catalogue product'}</small>
+                                  <small>{[
+                                    product.brand,
+                                    product.packSize,
+                                    product.category,
+                                    product.mrp ? 'MRP ' + formatShopkeeperRupees(product.mrp) : null,
+                                  ].filter(Boolean).join(' · ') || 'Catalogue product'}</small>
                                 </span>
                                 <span className="shopkeeper-catalogue-choice__select">{newProductId === String(product.id) ? 'Selected' : 'Select'}</span>
                               </button>
