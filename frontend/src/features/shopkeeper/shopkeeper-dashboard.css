@@ -1334,3 +1334,16 @@
   .shopkeeper-form-grid--listing { grid-template-columns: 1fr; }
   .shopkeeper-product-cell { min-width: 190px; }
 }
+
+.shopkeeper-catalogue-search > div {
+  display: flex;
+  align-items: stretch;
+  gap: .45rem;
+}
+.shopkeeper-catalogue-search > div input {
+  width: 100%;
+  min-width: 0;
+}
+.shopkeeper-catalogue-search > div button {
+  flex: 0 0 auto;
+}
