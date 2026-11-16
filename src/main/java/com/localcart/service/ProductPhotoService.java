@@ -37,7 +37,7 @@ public class ProductPhotoService {
 
     private static final String AUTHORIZED_BRAND_SOURCE = "Brand / supplier authorised catalogue";
 
-    @Value("${apniko.catalogue.photo-authorized-image-hosts:}")
+    @Value("${APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS:${apniko.catalogue.photo-authorized-image-hosts:}}")
     private String authorizedImageHosts = "";
 
     private final ProductRepository productRepository;
