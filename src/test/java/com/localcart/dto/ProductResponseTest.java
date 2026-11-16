@@ -1,0 +1,65 @@
+package com.localcart.dto;
+
+import com.localcart.entity.Product;
+import com.localcart.entity.ProductImageReviewStatus;
+import com.localcart.entity.ProductPhoto;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+class ProductResponseTest {
+
+    @Test
+    void includesOnlyApprovedProductPhotoInShopkeeperCatalogueResponse() {
+        Product product = new Product();
+        product.setName("Aashirvaad Atta");
+        product.setBrand("Aashirvaad");
+        product.setCategory("Foodgrains, Oil & Masala");
+        product.setPackSize("5 kg");
+
+        ProductPhoto photo = new ProductPhoto();
+        photo.setApprovedImageUrl("https://cdn.example.test/aashirvaad-atta-5kg.jpg");
+        photo.setSourceName("Manufacturer-authorised catalogue");
+        photo.setReviewStatus(ProductImageReviewStatus.APPROVED);
+        product.setPhoto(photo);
+
+        ProductResponse response = ProductResponse.from(product);
+
+        assertEquals("Aashirvaad Atta", response.getName());
+        assertEquals("Aashirvaad", response.getBrand());
+        assertEquals("5 kg", response.getPackSize());
+        assertEquals("https://cdn.example.test/aashirvaad-atta-5kg.jpg", response.getImageUrl());
+    }
+
+    @Test
+    void doesNotExposePendingCandidatePhotoInShopkeeperCatalogueResponse() {
+        Product product = new Product();
+        product.setName("Aashirvaad Atta");
+
+        ProductPhoto photo = new ProductPhoto();
+        photo.setCandidateImageUrl("https://cdn.example.test/pending.jpg");
+        photo.setReviewStatus(ProductImageReviewStatus.PENDING);
+        product.setPhoto(photo);
+
+        ProductResponse response = ProductResponse.from(product);
+
+        assertNull(response.getImageUrl());
+        assertNull(response.getImageSourceName());
+    }
+
+    @Test
+    void doesNotExposeRejectedCandidatePhotoInShopkeeperCatalogueResponse() {
+        Product product = new Product();
+        product.setName("Aashirvaad Atta");
+
+        ProductPhoto photo = new ProductPhoto();
+        photo.setCandidateImageUrl("https://cdn.example.test/rejected.jpg");
+        photo.setReviewStatus(ProductImageReviewStatus.REJECTED);
+        product.setPhoto(photo);
+
+        ProductResponse response = ProductResponse.from(product);
+
+        assertNull(response.getImageUrl());
+    }
+}
