@@ -26,6 +26,11 @@ import type {
 import './shopkeeper-dashboard.css'
 
 type DashboardTab = 'overview' | 'orders' | 'inventory'
+interface CatalogueProductPage {
+  content: ShopkeeperProduct[]
+  number: number
+  last: boolean
+}
 type OrderFilter = 'ALL' | 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED'
 
 function messageFor(error: unknown): string {
@@ -62,6 +67,8 @@ export function ShopkeeperDashboard() {
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [loadingInventory, setLoadingInventory] = useState(false)
   const [catalogueLoading, setCatalogueLoading] = useState(false)
+  const [cataloguePage, setCataloguePage] = useState(0)
+  const [catalogueHasMore, setCatalogueHasMore] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busyKey, setBusyKey] = useState('')
@@ -188,23 +195,51 @@ export function ShopkeeperDashboard() {
     void loadInventory(selectedShopId)
   }, [loadInventory, selectedShopId])
 
-  async function openAddInventory() {
-    setShowAddInventory(true)
-    setCatalogueSearch('')
-    setError('')
-    if (catalogue.length || catalogueLoading) return
+  async function loadCataloguePage(page: number, append: boolean, query: string) {
+    if (selectedShopId === null) return
     setCatalogueLoading(true)
+    setError('')
     try {
-      const result = await apiRequest<ShopkeeperProduct[]>('/api/products', {}, token)
-      setCatalogue(result)
-      const existingIds = new Set(inventory.map((item) => item.productId))
-      const firstAvailable = result.find((product) => !existingIds.has(product.id))
-      if (firstAvailable) setNewProductId(String(firstAvailable.id))
+      const params = new URLSearchParams({
+        page: String(page),
+        size: '24',
+      })
+      if (query.trim()) params.set('q', query.trim())
+      const result = await apiRequest<CatalogueProductPage>(
+        `/api/shopkeeper/shops/${selectedShopId}/catalogue?${params.toString()}`,
+        {},
+        token,
+      )
+      setCatalogue((current) => {
+        if (!append) return result.content
+        const byId = new Map(current.map((product) => [product.id, product]))
+        result.content.forEach((product) => byId.set(product.id, product))
+        return [...byId.values()]
+      })
+      setCataloguePage(result.number)
+      setCatalogueHasMore(!result.last)
+      if (!append && !newProductId && result.content.length) {
+        setNewProductId(String(result.content[0].id))
+      }
     } catch (loadError) {
       setError(messageFor(loadError))
+      if (!append) setCatalogue([])
     } finally {
       setCatalogueLoading(false)
     }
+  }
+
+  async function searchAddableCatalogue(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    await loadCataloguePage(0, false, catalogueSearch)
+  }
+
+  async function openAddInventory() {
+    setShowAddInventory(true)
+    setCatalogueSearch('')
+    setNewProductId('')
+    setError('')
+    await loadCataloguePage(0, false, '')
   }
 
   async function saveOrderFulfilment(
@@ -484,13 +519,7 @@ export function ShopkeeperDashboard() {
   }
 
   const existingProductIds = new Set(inventory.map((item) => item.productId))
-  const catalogueTerm = catalogueSearch.trim().toLowerCase()
-  const addableProducts = catalogue
-    .filter((product) => !existingProductIds.has(product.id))
-    .filter((product) => !catalogueTerm || [
-      product.name, product.brand, product.category, product.subcategory,
-      product.packSize, product.barcode,
-    ].some((value) => value?.toLowerCase().includes(catalogueTerm)))
+  const addableProducts = catalogue.filter((product) => !existingProductIds.has(product.id))
   const greeting = session?.name.trim().split(/\s+/)[0] || 'there'
 
   return (
@@ -797,12 +826,17 @@ export function ShopkeeperDashboard() {
                     <div className="shopkeeper-form-panel__heading"><div><p className="shopkeeper-eyebrow">ADD TO THIS SHOP</p><h3>Put a product on the shelf</h3></div><button type="button" onClick={() => setShowAddInventory(false)} aria-label="Close add product form">×</button></div>
                     {catalogueLoading ? <p role="status">Loading the product catalogue…</p> : (
                       <>
-                        <label className="shopkeeper-catalogue-search">
-                          Find a product in the shared catalogue
-                          <input type="search" value={catalogueSearch}
-                            onChange={(event) => setCatalogueSearch(event.target.value)}
-                            placeholder="Search product, brand, pack size or barcode…" />
-                        </label>
+                        <form className="shopkeeper-catalogue-search" onSubmit={(event) => void searchAddableCatalogue(event)}>
+                          <label htmlFor="shopkeeper-catalogue-search-input">Find a product in the shared catalogue</label>
+                          <div>
+                            <input id="shopkeeper-catalogue-search-input" type="search" value={catalogueSearch}
+                              onChange={(event) => setCatalogueSearch(event.target.value)}
+                              placeholder="Search product, brand, pack size or barcode…" />
+                            <button className="shopkeeper-primary-button" type="submit" disabled={catalogueLoading}>
+                              {catalogueLoading ? 'Searching…' : 'Search'}
+                            </button>
+                          </div>
+                        </form>
                         {addableProducts.length ? (
                           <div className="shopkeeper-catalogue-picker" aria-label="Select a catalogue product">
                             {addableProducts.slice(0, 48).map((product) => (
@@ -825,13 +859,16 @@ export function ShopkeeperDashboard() {
                           </div>
                         ) : (
                           <p className="shopkeeper-muted">
-                            {catalogue.length && !catalogueSearch
-                              ? 'Every catalogue product is already listed in this shop.'
-                              : 'No unlisted products match that search. Try a brand, category or pack size.'}
+                            {catalogueSearch
+                              ? 'No unlisted products match that search. Try a brand, category or pack size.'
+                              : 'Every catalogue product is already listed in this shop.'}
                           </p>
                         )}
-                        {addableProducts.length > 48 && (
-                          <p className="shopkeeper-form-help">Showing the first 48 matches. Refine your search to find a specific product.</p>
+                        {catalogueHasMore && (
+                          <button type="button" className="shopkeeper-text-button" disabled={catalogueLoading}
+                            onClick={() => void loadCataloguePage(cataloguePage + 1, true, catalogueSearch)}>
+                            {catalogueLoading ? 'Loading…' : 'Load more catalogue products'}
+                          </button>
                         )}
                         <div className="shopkeeper-form-grid shopkeeper-form-grid--listing">
                           <label>Price for this shop (₹)<input type="number" min="0" step="0.01" required value={newPrice} onChange={(event) => setNewPrice(event.target.value)} placeholder="e.g. 48" /></label>
