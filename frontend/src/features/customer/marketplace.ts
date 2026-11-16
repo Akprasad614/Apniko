@@ -63,6 +63,8 @@ export interface MarketplaceSearchOptions {
   shopId?: number | null
   sortBy?: 'name' | 'price' | 'shop'
   direction?: 'asc' | 'desc'
+  minPrice?: number
+  maxPrice?: number
   page?: number
   size?: number
 }
@@ -77,6 +79,8 @@ export function buildMarketplaceSearchPath(options: MarketplaceSearchOptions = {
   if (options.shopId !== undefined && options.shopId !== null) {
     params.set('shopId', String(options.shopId))
   }
+  if (options.minPrice !== undefined) params.set('minPrice', String(options.minPrice))
+  if (options.maxPrice !== undefined) params.set('maxPrice', String(options.maxPrice))
 
   params.set('page', String(options.page ?? 0))
   params.set('size', String(options.size ?? 24))
