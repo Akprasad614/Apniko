@@ -36,7 +36,7 @@ def safe_image_url(value: str | None, barcode: str) -> bool:
 
 
 def normalize_identity_value(value: object) -> str:
-    return re.sub(r"\\s+", " ", str(value or "").strip()).casefold()
+    return re.sub(r"\s+", " ", str(value or "").strip()).casefold()
 
 
 def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | None:
