@@ -219,8 +219,8 @@ export function ShopkeeperDashboard() {
       })
       setCataloguePage(result.number)
       setCatalogueHasMore(!result.last)
-      if (!append && !newProductId && result.content.length) {
-        setNewProductId(String(result.content[0].id))
+      if (!append && result.content.length) {
+        setNewProductId(String(result.content[0]?.id))
       }
     } catch (loadError) {
       setError(messageFor(loadError))
