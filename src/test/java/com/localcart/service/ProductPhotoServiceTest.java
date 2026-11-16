@@ -65,6 +65,27 @@ class ProductPhotoServiceTest {
     }
 
     @Test
+    void openFactsImageRequiresExactBrandAndPackSize() {
+        Product product = product();
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
+        ProductPhotoCandidateRequest wrongBrand = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                "Different Brand", "1 kg", "CC BY-SA",
+                "Open Food Facts contributors", null, BARCODE);
+        ProductPhotoCandidateRequest wrongPack = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                "Test Brand", "500 g", "CC BY-SA",
+                "Open Food Facts contributors", null, BARCODE);
+
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, wrongBrand));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, wrongPack));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
+    }
+
+    @Test
     void manufacturerAuthorisedImageRequiresPermissionReferenceAndTrustedHost() {
         Product product = product();
         product.setBrand("Brand Example");
