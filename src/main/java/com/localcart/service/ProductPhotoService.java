@@ -87,11 +87,21 @@ public class ProductPhotoService {
         String license = request.license().trim()
                 .replace('-', ' ').replace('_', ' ').replaceAll("\\s+", " ");
 
+        if (sourceUri.getQuery() != null || sourceUri.getFragment() != null) {
+            throw new BadRequestException("Source product URL must not contain a query string or fragment");
+        }
+
         if (AUTHORIZED_BRAND_SOURCE.equals(requestedSource)) {
             if (!"MANUFACTURER AUTHORIZED".equalsIgnoreCase(license)) {
                 throw new BadRequestException("Brand/supplier photos require the MANUFACTURER_AUTHORIZED permission record");
             }
             requiredText(request.authorizationReference(), 500, "Manufacturer/supplier permission reference");
+            String sourceBrand = requiredText(request.sourceProductBrand(), 100, "Source product brand");
+            String sourcePack = requiredText(request.sourcePackSize(), 80, "Source pack size");
+            if (!sameNormalizedText(sourceBrand, product.getBrand())
+                    || !sameNormalizedText(sourcePack, product.getPackSize())) {
+                throw new BadRequestException("Supplier brand and pack size must exactly match the Apniko catalogue product");
+            }
             if (!isAuthorizedImageHost(imageUri.getHost(), sourceHost)
                     || imageUri.getQuery() != null || imageUri.getFragment() != null) {
                 throw new BadRequestException("Brand/supplier image must use the product source domain or a configured authorised image host");
@@ -214,6 +224,12 @@ public class ProductPhotoService {
             throw new BadRequestException(label + " must not exceed " + maxLength + " characters");
         }
         return text;
+    }
+
+    private boolean sameNormalizedText(String left, String right) {
+        if (left == null || right == null) return false;
+        return left.trim().replaceAll("\\s+", " ")
+                .equalsIgnoreCase(right.trim().replaceAll("\\s+", " "));
     }
 
     private boolean isAuthorizedImageHost(String imageHost, String sourceHost) {
