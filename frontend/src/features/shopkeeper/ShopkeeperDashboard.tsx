@@ -199,6 +199,7 @@ export function ShopkeeperDashboard() {
     if (selectedShopId === null) return
     setCatalogueLoading(true)
     setError('')
+    if (!append) setNewProductId('')
     try {
       const params = new URLSearchParams({
         page: String(page),
