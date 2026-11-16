@@ -67,6 +67,7 @@ class ProductPhotoServiceTest {
     @Test
     void manufacturerAuthorisedImageRequiresPermissionReferenceAndTrustedHost() {
         Product product = product();
+        product.setBrand("Brand Example");
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
         when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
         when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
@@ -97,6 +98,7 @@ class ProductPhotoServiceTest {
     @Test
     void manufacturerAuthorisedImageRejectsMissingPermissionOrUnapprovedImageHost() {
         Product product = product();
+        product.setBrand("Brand Example");
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
         ProductPhotoCandidateRequest missingPermission = new ProductPhotoCandidateRequest(
