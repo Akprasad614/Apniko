@@ -1,8 +1,6 @@
 package com.localcart.dto;
 
 import com.localcart.entity.Product;
-import com.localcart.entity.ProductImageReviewStatus;
-
 import java.math.BigDecimal;
 
 /**
@@ -43,9 +41,7 @@ public class ProductResponse {
         response.mrp = product.getMrp();
 
         var photo = product.getPhoto();
-        if (photo != null
-                && photo.getReviewStatus() == ProductImageReviewStatus.APPROVED
-                && photo.getApprovedImageUrl() != null) {
+        if (photo != null && photo.getApprovedImageUrl() != null) {
             response.imageUrl = photo.getApprovedImageUrl();
             response.imageSourceName = photo.getSourceName();
         }
