@@ -33,6 +33,22 @@ class ProductResponseTest {
     }
 
     @Test
+    void keepsPreviouslyApprovedPhotoVisibleWhileReplacementIsPending() {
+        Product product = new Product();
+        product.setName("Aashirvaad Atta");
+
+        ProductPhoto photo = new ProductPhoto();
+        photo.setApprovedImageUrl("https://cdn.example.test/approved-old-pack.jpg");
+        photo.setCandidateImageUrl("https://cdn.example.test/pending-new-pack.jpg");
+        photo.setReviewStatus(ProductImageReviewStatus.PENDING);
+        product.setPhoto(photo);
+
+        ProductResponse response = ProductResponse.from(product);
+
+        assertEquals("https://cdn.example.test/approved-old-pack.jpg", response.getImageUrl());
+    }
+
+    @Test
     void doesNotExposePendingCandidatePhotoInShopkeeperCatalogueResponse() {
         Product product = new Product();
         product.setName("Aashirvaad Atta");
