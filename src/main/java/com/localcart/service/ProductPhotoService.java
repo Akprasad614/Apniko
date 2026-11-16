@@ -164,6 +164,7 @@ public class ProductPhotoService {
             photo.setSourceUrl(photo.getCandidateSourceUrl());
             photo.setLicense(photo.getCandidateLicense());
             photo.setAttribution(photo.getCandidateAttribution());
+            photo.setAuthorizationReference(photo.getCandidateAuthorizationReference());
             photo.setReviewStatus(ProductImageReviewStatus.APPROVED);
             photo.setReviewReason(null);
         } else {
@@ -232,7 +233,7 @@ public class ProductPhotoService {
                 product.getId(), product.getName(), product.getBrand(), product.getBarcode(),
                 product.getPackSize(), photo.getCandidateProductName(), photo.getCandidateProductBrand(),
                 photo.getCandidatePackSize(), photo.getCandidateAuthorizationReference(),
-                photo.getCandidateImageUrl(), photo.getCandidateSourceName(), photo.getCandidateSourceUrl(),
+                photo.getAuthorizationReference(), photo.getCandidateImageUrl(), photo.getCandidateSourceName(), photo.getCandidateSourceUrl(),
                 photo.getCandidateLicense(),
                 photo.getCandidateAttribution(), photo.getApprovedImageUrl(), photo.getReviewStatus(),
                 photo.getSubmittedAt(), photo.getReviewedAt(), photo.getReviewedBy(), photo.getReviewReason());
