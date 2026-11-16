@@ -16,8 +16,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByBarcode(String barcode);
     Optional<Product> findByIdentityKey(String identityKey);
 
-    @Query("SELECT product FROM Product product LEFT JOIN FETCH product.photo")
-    List<Product> findAllWithPhoto();
+    @Query("""
+            SELECT product
+            FROM Product product
+            LEFT JOIN FETCH product.photo
+            WHERE product.catalogueReviewStatus IS NULL
+               OR product.catalogueReviewStatus = :visibleStatus
+            """)
+    List<Product> findAllVisibleWithPhoto(
+            @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus
+    );
     @Query("""
             SELECT product
             FROM Product product
