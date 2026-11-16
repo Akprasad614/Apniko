@@ -201,16 +201,16 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         {view === 'home' && (
         <section className="customer-intro" aria-labelledby="customer-title">
           <div>
-            <p className="customer-eyebrow"><span /> THE LOCAL SHELF</p>
-            <h1 id="customer-title">Good things are<br /><em>closer than you think.</em></h1>
+            <p className="customer-eyebrow"><span /> YOUR NEIGHBOURHOOD GROCERY STORE</p>
+            <h1 id="customer-title">Everyday groceries,<br /><em>closer to home.</em></h1>
             <p className="customer-intro__copy">
-              Browse the shops on Apniko, see what they have in stock, and put together a basket from the store you choose.
+              Browse genuine products, check your local shop's prices and availability, and build your basket in a few taps.
             </p>
           </div>
           <div className="customer-intro__aside">
             <span className="customer-intro__aside-mark" aria-hidden="true">✳</span>
-            <p>Every basket starts with a local shop.</p>
-            <span>CHOOSE A SHOP · FIND YOUR USUALS</span>
+            <p>One familiar catalogue. Stock and prices from your selected shop.</p>
+            <span>LOCAL SHOPS · REAL AVAILABILITY</span>
           </div>
         </section>
         )}
@@ -228,8 +228,8 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         <section className="shop-section" aria-labelledby="shop-section-title">
           <div className="customer-section-heading">
             <div>
-              <p className="customer-eyebrow">01 / PICK YOUR SHOP</p>
-              <h2 id="shop-section-title">The shops on your shelf</h2>
+              <p className="customer-eyebrow">SHOP LOCAL</p>
+              <h2 id="shop-section-title">Choose your store</h2>
             </div>
             <span className="customer-section-heading__count">
               {loadingShops ? 'Loading shops' : `${shops.length} ${shops.length === 1 ? 'shop' : 'shops'}`}
@@ -272,7 +272,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
           <section className="marketplace-section" aria-labelledby="marketplace-title">
             <div className="marketplace-heading">
               <div>
-                <p className="customer-eyebrow">02 / FROM THE COUNTER OF</p>
+                <p className="customer-eyebrow">SHOPPING FROM</p>
                 <h2 id="marketplace-title">{selectedShop.name}</h2>
                 <p className="marketplace-heading__address">{selectedShop.address || 'Local shop'}</p>
               </div>
@@ -318,7 +318,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                         aria-pressed={activeCategory === category}
                         onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
                       >
-                        <span className="customer-category-card__symbol" aria-hidden="true">{category.slice(0, 1).toUpperCase()}</span>
+                        <span className="customer-category-card__symbol" aria-hidden="true">▦</span>
                         <strong>{category}</strong>
                         <span>Explore products <span aria-hidden="true">→</span></span>
                       </button>
@@ -364,44 +364,47 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                     <p>Try another search or category, or choose a different shop.</p>
                   </div>
                 ) : (
-                  <div className="product-list">
+                  <div className="product-list catalogue-product-grid">
                     {products.map((product) => (
-                      <article className="product-row" key={product.id}>
-                        <ApprovedProductImage
-                          imageUrl={product.imageUrl}
-                          productName={product.productName}
-                          sourceName={product.imageSourceName}
-                          sourceUrl={product.imageSourceUrl}
-                          license={product.imageLicense}
-                          attribution={product.imageAttribution}
-                        />
-                        <div className="product-row__details">
-                          <span className="product-row__category">
-                            {[product.category, product.subcategory].filter(Boolean).join(' · ') || 'Everyday essentials'}
-                          </span>
-                          <h4>{product.productName}</h4>
-                          <span className="product-row__stock">
-                            {[
-                              product.brand,
-                              product.packSize,
-                              product.stockQuantity > 0 && product.available
-                                ? `${product.stockQuantity} available`
-                                : 'Currently unavailable',
-                            ].filter(Boolean).join(' · ')}
-                          </span>
-                        </div>
-                        <div className="product-row__buy">
-                          <strong>{formatRupees(product.price)}</strong>
-                          {product.mrp !== null && product.mrp !== undefined && product.mrp > product.price && (
-                            <small>MRP {formatRupees(product.mrp)}</small>
+                      <article className="catalogue-product-card" key={product.id}>
+                        <div className="catalogue-product-card__media">
+                          <ApprovedProductImage
+                            variant="card"
+                            imageUrl={product.imageUrl}
+                            productName={product.productName}
+                            sourceName={product.imageSourceName}
+                            sourceUrl={product.imageSourceUrl}
+                            license={product.imageLicense}
+                            attribution={product.imageAttribution}
+                          />
+                          {(!product.available || product.stockQuantity < 1) && (
+                            <span className="catalogue-product-card__unavailable">Out of stock</span>
                           )}
-                          <button
-                            type="button"
-                            disabled={!product.available || product.stockQuantity < 1 || busyProductId === product.productId}
-                            onClick={() => void addProduct(product)}
-                          >
-                            {busyProductId === product.productId ? 'Adding…' : 'Add +'}
-                          </button>
+                        </div>
+                        <div className="catalogue-product-card__body">
+                          <p className="catalogue-product-card__brand">{product.brand || product.category || 'Grocery essential'}</p>
+                          <h4>{product.productName}</h4>
+                          <p className="catalogue-product-card__pack">
+                            {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Standard pack'}
+                          </p>
+                          {product.stockQuantity > 0 && product.stockQuantity <= 5 && product.available && (
+                            <p className="catalogue-product-card__stock">Only {product.stockQuantity} left at this shop</p>
+                          )}
+                          <div className="catalogue-product-card__purchase">
+                            <div className="catalogue-product-card__price">
+                              <strong>{formatRupees(product.price)}</strong>
+                              {product.mrp !== null && product.mrp !== undefined && product.mrp > product.price && (
+                                <del>{formatRupees(product.mrp)}</del>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              disabled={!product.available || product.stockQuantity < 1 || busyProductId === product.productId}
+                              onClick={() => void addProduct(product)}
+                            >
+                              {busyProductId === product.productId ? 'Adding…' : 'ADD'}
+                            </button>
+                          </div>
                         </div>
                       </article>
                     ))}
