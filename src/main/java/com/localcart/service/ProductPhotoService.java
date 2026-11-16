@@ -11,6 +11,7 @@ import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.ProductPhotoRepository;
 import com.localcart.repository.ProductRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,11 @@ public class ProductPhotoService {
             "world.openpetfoodfacts.org", "Open Pet Food Facts",
             "world.openproductsfacts.org", "Open Products Facts"
     );
+
+    private static final String AUTHORIZED_BRAND_SOURCE = "Brand / supplier authorised catalogue";
+
+    @Value("${apniko.catalogue.photo-authorized-image-hosts:}")
+    private String authorizedImageHosts = "";
 
     private final ProductRepository productRepository;
     private final ProductPhotoRepository photoRepository;
@@ -74,25 +80,40 @@ public class ProductPhotoService {
         }
 
         URI sourceUri = parseHttpsUri(request.sourceUrl(), "Source page");
-        String sourceName = SOURCES.get(sourceUri.getHost().toLowerCase(Locale.ROOT));
-        if (sourceName == null || !sourceName.equals(request.sourceName().trim())
-                || !("/product/" + barcode).equals(sourceUri.getPath())
-                || sourceUri.getQuery() != null || sourceUri.getFragment() != null) {
-            throw new BadRequestException("Use the canonical Open Facts product page for the exact barcode");
-        }
-
+        String requestedSource = request.sourceName().trim();
+        String sourceHost = sourceUri.getHost().toLowerCase(Locale.ROOT);
+        String sourceName = SOURCES.get(sourceHost);
         URI imageUri = parseHttpsUri(request.imageUrl(), "Image");
-        String imageHost = "images." + sourceUri.getHost().substring("world.".length());
-        String imageDigits = imageUri.getPath().replaceAll("[^0-9]", "");
-        if (!imageHost.equalsIgnoreCase(imageUri.getHost())
-                || !imageUri.getPath().contains("/images/products/")
-                || !imageDigits.startsWith(barcode)
-                || imageUri.getQuery() != null || imageUri.getFragment() != null) {
-            throw new BadRequestException("Image must be hosted by the matching Open Facts image server and barcode");
-        }
-        String license = request.license().trim().replace('-', ' ').replaceAll("\\s+", " ");
-        if (!"CC BY SA".equalsIgnoreCase(license)) {
-            throw new BadRequestException("Only CC BY-SA product images can be added from this source");
+        String license = request.license().trim()
+                .replace('-', ' ').replace('_', ' ').replaceAll("\\s+", " ");
+
+        if (AUTHORIZED_BRAND_SOURCE.equals(requestedSource)) {
+            if (!"MANUFACTURER AUTHORIZED".equalsIgnoreCase(license)) {
+                throw new BadRequestException("Brand/supplier photos require the MANUFACTURER_AUTHORIZED permission record");
+            }
+            requiredText(request.authorizationReference(), 500, "Manufacturer/supplier permission reference");
+            if (!isAuthorizedImageHost(imageUri.getHost(), sourceHost)
+                    || imageUri.getQuery() != null || imageUri.getFragment() != null) {
+                throw new BadRequestException("Brand/supplier image must use the product source domain or a configured authorised image host");
+            }
+            sourceName = AUTHORIZED_BRAND_SOURCE;
+        } else {
+            if (sourceName == null || !sourceName.equals(requestedSource)
+                    || !("/product/" + barcode).equals(sourceUri.getPath())
+                    || sourceUri.getQuery() != null || sourceUri.getFragment() != null) {
+                throw new BadRequestException("Use the canonical Open Facts product page for the exact barcode");
+            }
+            String imageHost = "images." + sourceHost.substring("world.".length());
+            String imageDigits = imageUri.getPath().replaceAll("[^0-9]", "");
+            if (!imageHost.equalsIgnoreCase(imageUri.getHost())
+                    || !imageUri.getPath().contains("/images/products/")
+                    || !imageDigits.startsWith(barcode)
+                    || imageUri.getQuery() != null || imageUri.getFragment() != null) {
+                throw new BadRequestException("Image must be hosted by the matching Open Facts image server and barcode");
+            }
+            if (!"CC BY SA".equalsIgnoreCase(license)) {
+                throw new BadRequestException("Open Facts product images must use the CC BY-SA licence");
+            }
         }
 
         ProductPhoto photo = photoRepository.findByProductId(productId).orElseGet(ProductPhoto::new);
@@ -107,6 +128,9 @@ public class ProductPhotoService {
         photo.setCandidateLicense("CC BY-SA");
         photo.setCandidateAttribution(requiredText(request.attribution(), 500, "Attribution"));
         photo.setCandidateProductName(requiredText(request.sourceProductName(), 200, "Source product name"));
+        photo.setCandidateProductBrand(optionalText(request.sourceProductBrand(), 100, "Source product brand"));
+        photo.setCandidatePackSize(optionalText(request.sourcePackSize(), 80, "Source pack size"));
+        photo.setCandidateAuthorizationReference(optionalText(request.authorizationReference(), 500, "Permission reference"));
         photo.setCandidateBarcode(barcode);
         photo.setReviewStatus(ProductImageReviewStatus.PENDING);
         photo.setSubmittedAt(Instant.now());
@@ -181,12 +205,34 @@ public class ProductPhotoService {
         return text;
     }
 
+    private String optionalText(String value, int maxLength, String label) {
+        if (value == null || value.isBlank()) return null;
+        String text = value.trim();
+        if (text.length() > maxLength) {
+            throw new BadRequestException(label + " must not exceed " + maxLength + " characters");
+        }
+        return text;
+    }
+
+    private boolean isAuthorizedImageHost(String imageHost, String sourceHost) {
+        String image = imageHost == null ? "" : imageHost.toLowerCase(Locale.ROOT);
+        String source = sourceHost == null ? "" : sourceHost.toLowerCase(Locale.ROOT);
+        if (image.equals(source) || image.endsWith("." + source)) return true;
+        if (authorizedImageHosts == null || authorizedImageHosts.isBlank()) return false;
+        for (String allowed : authorizedImageHosts.split(",")) {
+            if (image.equals(allowed.trim().toLowerCase(Locale.ROOT))) return true;
+        }
+        return false;
+    }
+
     private ProductPhotoReviewResponse toResponse(ProductPhoto photo) {
         Product product = photo.getProduct();
         return new ProductPhotoReviewResponse(
                 product.getId(), product.getName(), product.getBrand(), product.getBarcode(),
-                product.getPackSize(), photo.getCandidateProductName(), photo.getCandidateImageUrl(),
-                photo.getCandidateSourceName(), photo.getCandidateSourceUrl(), photo.getCandidateLicense(),
+                product.getPackSize(), photo.getCandidateProductName(), photo.getCandidateProductBrand(),
+                photo.getCandidatePackSize(), photo.getCandidateAuthorizationReference(),
+                photo.getCandidateImageUrl(), photo.getCandidateSourceName(), photo.getCandidateSourceUrl(),
+                photo.getCandidateLicense(),
                 photo.getCandidateAttribution(), photo.getApprovedImageUrl(), photo.getReviewStatus(),
                 photo.getSubmittedAt(), photo.getReviewedAt(), photo.getReviewedBy(), photo.getReviewReason());
     }
