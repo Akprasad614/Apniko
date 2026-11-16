@@ -79,6 +79,34 @@ python scripts/catalogue/import_product_photos.py --limit 10 --apply
 
 Submission only creates a pending review item. It does not approve or publish the image.
 
+## Manufacturer / supplier CSV intake
+
+A supplier may provide an authorised image manifest using the template:
+
+`scripts/catalogue/templates/authorized_product_photos.example.csv`
+
+The CSV must include barcode, source product name, source brand, source pack size, HTTPS image URL, HTTPS source product URL, permission reference and attribution. Brand and pack size must match the corresponding Apniko product exactly after case/whitespace normalization. The script skips unmatched barcodes and mismatched variants rather than guessing.
+
+For images hosted on an authorised CDN separate from the brand site, set a comma-separated exact-host allowlist:
+
+```bash
+export APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS="images.brand.example,cdn.supplier.example"
+```
+
+Preview the CSV without submitting anything:
+
+```bash
+python scripts/catalogue/import_authorized_product_photos.py --file /path/to/authorised-photo-feed.csv
+```
+
+Only after verifying the written permission grant and dry-run rows, submit candidates for admin review:
+
+```bash
+python scripts/catalogue/import_authorized_product_photos.py --file /path/to/authorised-photo-feed.csv --apply
+```
+
+The importer does not download or rehost the image bytes. The server validates the HTTPS source/image hosts, exact GTIN and permission reference. Submission creates pending review records; it does not approve or publish images. Keep confidential supplier contracts outside the repository and record only an internal permission reference.
+
 ## Admin review workflow
 
 1. Run a dry-run for products with a verified GTIN.
