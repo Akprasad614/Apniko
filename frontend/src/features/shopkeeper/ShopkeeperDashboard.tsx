@@ -914,34 +914,74 @@ export function ShopkeeperDashboard() {
                 )}
 
                 {loadingInventory ? <div className="shopkeeper-empty" role="status">Loading stock records…</div> : visibleInventory.length ? (
-                  <div className="shopkeeper-inventory-table-wrap">
-                    <table className="shopkeeper-inventory-table">
-                      <thead><tr><th>Product</th><th>Price</th><th>On hand</th><th>Listing</th><th>Low-stock level</th><th>Actions</th></tr></thead>
-                      <tbody>
-                        {visibleInventory.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              <div className="shopkeeper-product-cell">
-                                <span className="shopkeeper-product-cell__image">
-                                  {item.imageUrl
-                                    ? <img src={item.imageUrl} alt="" loading="lazy" />
-                                    : <span aria-hidden="true">◇</span>}
-                                </span>
-                                <span className="shopkeeper-product-cell__copy">
-                                  <strong>{item.productName}</strong>
-                                  <small>{[item.brand, item.packSize, item.category].filter(Boolean).join(' · ') || 'Everyday essentials'}</small>
-                                </span>
+                  <div className="shopkeeper-inventory-grid">
+                    {visibleInventory.map((item) => {
+                      const isVisible = item.available && item.stockQuantity > 0
+                      const isLow = item.lowStock || item.stockQuantity <= item.lowStockThreshold
+                      return (
+                        <article className="shopkeeper-inventory-card" key={item.id}>
+                          <div className="shopkeeper-inventory-card__media">
+                            {item.imageUrl
+                              ? <img src={item.imageUrl} alt={item.productName} loading="lazy" />
+                              : (
+                                <div className="shopkeeper-inventory-card__photo-placeholder" role="img"
+                                  aria-label={'Verified product photo not yet available for ' + item.productName}>
+                                  <span aria-hidden="true">▧</span>
+                                  <small>Photo not yet available</small>
+                                </div>
+                              )}
+                            <span className={'shopkeeper-inventory-card__listing' + (isVisible ? ' is-visible' : '')}>
+                              {isVisible ? 'Listed for customers' : 'Not listed'}
+                            </span>
+                          </div>
+                          <div className="shopkeeper-inventory-card__body">
+                            <p className="shopkeeper-inventory-card__brand">{item.brand || 'Brand not listed'}</p>
+                            <h3>{item.productName}</h3>
+                            <p className="shopkeeper-inventory-card__pack">
+                              {[item.packSize, item.category].filter(Boolean).join(' · ') || 'Pack details not listed'}
+                            </p>
+                            <div className="shopkeeper-inventory-card__metrics">
+                              <div>
+                                <small>Shop price</small>
+                                <strong>{formatShopkeeperRupees(item.price)}</strong>
                               </div>
-                            </td>
-                            <td>{formatShopkeeperRupees(item.price)}</td>
-                            <td><strong>{item.stockQuantity}</strong>{(item.lowStock || item.stockQuantity <= item.lowStockThreshold) && <span className="shopkeeper-low-stock">Low</span>}</td>
-                            <td><span className={item.available && item.stockQuantity > 0 ? 'shopkeeper-listing shopkeeper-listing--live' : 'shopkeeper-listing'}>{item.available && item.stockQuantity > 0 ? 'Visible' : 'Hidden'}</span></td>
-                            <td><input className="shopkeeper-threshold-input" type="number" min="0" step="1" aria-label={`Low stock threshold for ${item.productName}`} value={item.lowStockThreshold} onChange={(event) => { const value = event.target.value; setInventory((current) => current.map((entry) => entry.id === item.id ? { ...entry, lowStockThreshold: Number(value) } : entry)) }} onBlur={(event) => void updateThreshold(item, event.target.value)} /></td>
-                            <td><div className="shopkeeper-row-actions"><button type="button" onClick={() => startEditing(item)}>Edit</button><button type="button" onClick={() => { setRestockItem(item); setRestockQuantity(''); setRestockNote('') }}>Restock</button><button type="button" onClick={() => void openMovements(item)}>History</button></div></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              <div>
+                                <small>On hand</small>
+                                <strong>{item.stockQuantity}<small> units</small></strong>
+                                {isLow && <span className="shopkeeper-low-stock">Low stock</span>}
+                              </div>
+                            </div>
+                            <label className="shopkeeper-inventory-card__threshold">
+                              Low-stock alert at
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                aria-label={'Low stock threshold for ' + item.productName}
+                                value={item.lowStockThreshold}
+                                onChange={(event) => {
+                                  const value = event.target.value
+                                  setInventory((current) => current.map((entry) => entry.id === item.id
+                                    ? { ...entry, lowStockThreshold: Number(value) }
+                                    : entry))
+                                }}
+                                onBlur={(event) => void updateThreshold(item, event.target.value)}
+                              />
+                              <span>units</span>
+                            </label>
+                            <div className="shopkeeper-inventory-card__actions">
+                              <button type="button" onClick={() => startEditing(item)}>Edit listing</button>
+                              <button type="button" onClick={() => {
+                                setRestockItem(item)
+                                setRestockQuantity('')
+                                setRestockNote('')
+                              }}>Restock</button>
+                              <button type="button" onClick={() => void openMovements(item)}>History</button>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="shopkeeper-empty"><h3>{inventory.length ? 'No matching products' : 'Your shelf is empty'}</h3><p>{inventory.length ? 'Try a different search or switch off the low-stock filter.' : 'Add products from the shared catalogue to start managing your shelf.'}</p></div>
