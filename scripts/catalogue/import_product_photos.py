@@ -35,6 +35,10 @@ def safe_image_url(value: str | None, barcode: str) -> bool:
     return True
 
 
+def normalize_identity_value(value: object) -> str:
+    return re.sub(r"\\s+", " ", str(value or "").strip()).casefold()
+
+
 def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | None:
     barcode = str(local_product.get("barcode") or "").strip()
     product = payload.get("product") or {}
@@ -43,6 +47,19 @@ def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | N
     source_host = urlparse(api_url).hostname
     source_name = SOURCES.get(source_host or "")
     if not source_name:
+        return None
+
+    source_brand = str(product.get("brands") or "").split(",")[0].strip()
+    source_pack_size = str(product.get("quantity") or "").strip()
+    local_brand = str(local_product.get("brand") or "").strip()
+    local_pack_size = str(local_product.get("packSize") or "").strip()
+    # A GTIN match alone can still point to incomplete or inconsistent community data.
+    # Do not offer a candidate if the source's brand or pack size is absent or different.
+    if (not source_brand or not source_pack_size
+            or not normalize_identity_value(local_brand)
+            or not normalize_identity_value(local_pack_size)
+            or normalize_identity_value(source_brand) != normalize_identity_value(local_brand)
+            or normalize_identity_value(source_pack_size) != normalize_identity_value(local_pack_size)):
         return None
 
     front = (product.get("selected_images") or {}).get("front") or {}
@@ -61,8 +78,8 @@ def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | N
         "sourceUrl": f"https://{source_host}/product/{barcode}",
         "sourceName": source_name,
         "sourceProductName": str(product.get("product_name") or local_product.get("name") or "").strip(),
-        "sourceProductBrand": str(product.get("brands") or "").split(",")[0].strip() or None,
-        "sourcePackSize": str(product.get("quantity") or "").strip() or None,
+        "sourceProductBrand": source_brand,
+        "sourcePackSize": source_pack_size,
         "license": LICENSE,
         "attribution": attribution[:500],
         "authorizationReference": None,
