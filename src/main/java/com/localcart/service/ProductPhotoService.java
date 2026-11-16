@@ -125,7 +125,8 @@ public class ProductPhotoService {
         photo.setCandidateImageUrl(imageUri.toString());
         photo.setCandidateSourceName(sourceName);
         photo.setCandidateSourceUrl(sourceUri.toString());
-        photo.setCandidateLicense("CC BY-SA");
+        photo.setCandidateLicense(license.equalsIgnoreCase("MANUFACTURER AUTHORIZED")
+                ? "MANUFACTURER_AUTHORIZED" : "CC BY-SA");
         photo.setCandidateAttribution(requiredText(request.attribution(), 500, "Attribution"));
         photo.setCandidateProductName(requiredText(request.sourceProductName(), 200, "Source product name"));
         photo.setCandidateProductBrand(optionalText(request.sourceProductBrand(), 100, "Source product brand"));
