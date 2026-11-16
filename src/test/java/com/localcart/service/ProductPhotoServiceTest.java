@@ -136,8 +136,7 @@ class ProductPhotoServiceTest {
         assertEquals("Open Food Facts", photo.getSourceName());
         assertEquals("CC BY-SA", photo.getLicense());
         assertEquals("Open Food Facts contributors", photo.getAttribution());
-        assertEquals("Supplier agreement BR-2026-014", result.authorizationReference() == null
-                ? "Supplier agreement BR-2026-014" : result.authorizationReference());
+        assertNull(result.authorizationReference());
         assertNull(photo.getCandidateImageUrl());
     }
 
