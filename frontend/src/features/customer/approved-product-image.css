@@ -56,3 +56,60 @@
   }
   .approved-product-image__credit { max-width: 42px; }
 }
+
+
+/* Full-size, product-first photography used by the customer catalogue cards. */
+.approved-product-image--card {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  align-content: start;
+  gap: 0.35rem;
+}
+
+.approved-product-image--card > img,
+.approved-product-image--card .approved-product-image__empty {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.approved-product-image--card > img {
+  padding: 0.55rem;
+}
+
+.approved-product-image--card .approved-product-image__empty {
+  align-content: center;
+  gap: 0.35rem;
+  border: 1px solid #e8e8e3;
+  color: #72766e;
+  background: #f7f7f3;
+}
+
+.approved-product-image--card .approved-product-image__empty > span {
+  font-size: 2rem;
+}
+
+.approved-product-image--card .approved-product-image__empty > small {
+  max-width: 110px;
+  font-size: 0.68rem;
+}
+
+.approved-product-image--card .approved-product-image__credit {
+  max-width: 100%;
+  padding-inline: 0.15rem;
+  font-size: 0.55rem;
+  line-height: 1.3;
+}
+
+.approved-product-image--card .approved-product-image__credit a {
+  text-decoration: none;
+}
+
+.approved-product-image--card .approved-product-image__credit a:hover {
+  text-decoration: underline;
+}
