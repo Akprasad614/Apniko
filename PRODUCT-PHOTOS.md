@@ -1,54 +1,102 @@
-# Phase 3 — authentic product photographs
+# Phase 3 — authentic product photography
 
-## What customers see
+## Product presentation standard
 
-A product photograph appears in the customer marketplace only after it has been approved by an administrator. Missing or broken images use a neutral photo-unavailable state. Apniko does not invent packaging, fill gaps with generic stock photography or use generated product imagery.
+Apniko uses product-specific, square, front-facing images with a clean neutral background. Packaged products must show the actual brand, variant and pack size. Loose fruits and vegetables use accurate produce imagery, not invented packaging. Customer product cards are the primary presentation; the same approved image is reused in shopkeeper catalogue selection and inventory.
 
-## Matching and source
+This is an original Apniko design standard informed by familiar grocery-shopping patterns. Do not reproduce retailer-owned product images, catalogues, descriptions, logos or proprietary interface assets without a written licence.
 
-The first importer uses the Open Facts API v3 product lookup with the catalogue's existing GTIN. The source barcode must match exactly. A product-name-only match is never enough. The importer reads the selected front image from the API's selected image variants and requires the corresponding Open Facts image host and product barcode in the image path.
+## Approved source order
 
-Open Facts records are community contributed. A barcode match does not prove that the pack name, variant, size or photograph is correct, so an administrator must compare those details before approval.
+1. Manufacturer, brand or authorised distributor feeds with written permission covering Apniko's intended display and commercial use.
+2. Images supplied by a participating supplier or shopkeeper with a documented usage grant.
+3. Open datasets whose specific image licence permits the intended use, with attribution and share-alike conditions observed.
+4. No image, rather than an unrelated, unlicensed, guessed or low-quality image.
 
-## Copyright and attribution
+Public availability of an image URL is not proof of permission. Product database rights and image copyrights/licences are separate.
 
-The source image licence, attribution and source product page are stored with the approved photograph and shown in the customer UI. Open Food Facts describes product images as CC BY-SA and notes that the images may contain additional copyrighted elements. The stored licence is provenance, not a guarantee that all visible package artwork is cleared for every commercial use. Verify the actual image and current source terms before approval and production use.
+## Matching and review
 
-Retailer product images from BigBasket, Instamart, Flipkart Minutes, Amazon and JioMart are not copied or scraped. Their interfaces may be used as layout inspiration only.
+For an Open Facts candidate, the source GTIN must match the Apniko GTIN exactly, the image must come from the matching source image host, and the image path must identify the same barcode.
 
-## Dry-run importer
+For any source, the reviewer compares the Apniko product with the source image and record:
 
-Install the catalogue script dependencies in the same environment used for Phase 2:
+- Product name
+- Brand
+- Variant / flavour / formulation
+- Pack size / net quantity
+- Exact front photograph
+- Source, licence or permission type, attribution and source page
 
-    python3 -m venv .venv-catalogue
-    source .venv-catalogue/bin/activate
-    python -m pip install -r scripts/catalogue/requirements.txt
+A barcode match alone is not enough to approve a photograph. Loose produce should not be treated as a branded packaged product.
 
-Set the Apniko URL and an administrator JWT:
+## Manufacturer / supplier authorised images
 
-    export APNIKO_API_URL="http://localhost:8080"
-    export APNIKO_ADMIN_TOKEN="YOUR_ADMIN_JWT"
+The admin-only photo candidate API supports a source named `Brand / supplier authorised catalogue`. Such a candidate must:
+
+- Provide the exact Apniko product GTIN
+- Provide a source product page on the supplier/brand domain
+- Provide source product name, brand and pack size
+- Use the permission classification `MANUFACTURER_AUTHORIZED`
+- Include a permission reference (for example, a supplier agreement or brand image-use grant reference)
+- Use HTTPS and an image host matching the source domain or an explicitly configured image host
+- Pass administrator review before appearing in either customer or shopkeeper catalogues
+
+For a separate authorised image CDN, configure exact hostnames (comma-separated, no wildcard) through the environment variable `APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS` or Spring property `apniko.catalogue.photo-authorized-image-hosts`. Keep the written permission itself in your controlled supplier records; do not store confidential contracts in a public repository.
+
+## Open Facts dry-run importer
+
+The first automated lookup uses Open Facts API v3. It is a secondary source, not the primary target for a BigBasket-quality catalogue. Open Facts is community contributed, and records can be incomplete or incorrect. Open Food Facts describes product images as CC BY-SA and notes that images may contain additional copyrighted elements. Verify the current terms and actual image before production use.
+
+Install the catalogue script dependencies:
+
+```bash
+python3 -m venv .venv-catalogue
+source .venv-catalogue/bin/activate
+python -m pip install -r scripts/catalogue/requirements.txt
+```
+
+Set the Apniko API URL and an administrator JWT:
+
+```bash
+export APNIKO_API_URL="http://localhost:8080"
+export APNIKO_ADMIN_TOKEN="YOUR_ADMIN_JWT"
+```
 
 Preview candidates without changing Apniko:
 
-    python scripts/catalogue/import_product_photos.py --limit 10
+```bash
+python scripts/catalogue/import_product_photos.py --limit 10
+```
 
-Only after reviewing the proposed matches, submit them to the admin queue:
+An Open Facts 404 is treated as an unavailable source record and skipped. A 429/503 stops the run. Other errors remain visible. The script waits at least four seconds between lookups, uses a descriptive User-Agent and caps each run at 100 products.
 
-    python scripts/catalogue/import_product_photos.py --limit 10 --apply
+Only after checking each candidate's product name, brand, pack size and visible packaging may it be submitted:
 
-The importer waits at least four seconds between source lookups, stays within the published 15 product-read requests/minute limit, uses a descriptive User-Agent, skips source HTTP 404 responses as products not found, stops on 429/503, and caps each run at 100 products. Other request failures remain visible so they are not mistaken for missing products. Do not run multiple importers concurrently.
+```bash
+python scripts/catalogue/import_product_photos.py --limit 10 --apply
+```
+
+Submission only creates a pending review item. It does not approve or publish the image.
 
 ## Admin review workflow
 
-1. Run a dry-run for barcode-backed products.
-2. Submit candidates with --apply.
+1. Run a dry-run for products with a verified GTIN.
+2. Submit only candidates whose source image is worth a human review.
 3. Open Admin → Product catalogue → Product photo review.
-4. Compare the Apniko name, brand, GTIN and pack size against the source record and actual photo.
-5. Approve only an exact pack match with source attribution and licence. Reject uncertain matches with a reason.
+4. Compare the Apniko name, brand, GTIN and pack size with the source name, brand, pack size and actual photograph.
+5. Approve only an exact product/variant/pack match with valid licence or permission evidence. Reject uncertain matches with a reason.
 
-A pending image is never exposed to customers. Rejecting a replacement retains the previous approved photo. Products without a GTIN are skipped rather than guessed.
+Pending and rejected candidates never appear in customer or shopkeeper catalogue projections. Rejecting a replacement preserves the previous approved photograph. The approved image is reused by customer cards, shopkeeper product selection and shop inventory.
 
-## Scope boundaries
+## Release reporting
 
-This phase adds an authentic photo lookup, attribution, moderation and marketplace display. It does not change prices, stock, catalogue identity, fulfilment or orders. No image files are committed to the repository.
+Report the code/test state separately from content rollout. Track:
+
+- Catalogue products imported and quality-approved
+- Products with approved photographs
+- Manufacturer / supplier feeds and permission grants actually received
+- Candidates awaiting manual review
+- Products with no acceptable photograph yet
+
+Do not mark catalogue photography complete merely because an importer, endpoint or UI has been implemented. Actual supplier-authorised coverage requires real supplier data and permission.
