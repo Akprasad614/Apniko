@@ -71,6 +71,8 @@ python scripts/catalogue/import_product_photos.py --limit 10
 
 An Open Facts 404 is treated as an unavailable source record and skipped. A 429/503 stops the run. Other errors remain visible. The script waits at least four seconds between lookups, uses a descriptive User-Agent and caps each run at 100 products.
 
+The importer only presents a candidate when the exact GTIN, brand and pack-size value all match the Apniko product. Missing or mismatched brand/pack data is skipped. The backend independently enforces the same brand and pack-size match before a candidate can enter the review queue. This is intentionally strict: a barcode match alone must not attach a different variant's photograph.
+
 Only after checking each candidate's product name, brand, pack size and visible packaging may it be submitted:
 
 ```bash
