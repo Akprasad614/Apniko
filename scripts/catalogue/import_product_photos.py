@@ -39,15 +39,20 @@ def normalize_identity_value(value: object) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip()).casefold()
 
 
-def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | None:
+def explain_candidate(
+    local_product: dict, payload: dict, api_url: str
+) -> tuple[dict | None, str | None]:
     barcode = str(local_product.get("barcode") or "").strip()
     product = payload.get("product") or {}
-    if not barcode or str(product.get("code") or "").strip() != barcode:
-        return None
+    if not barcode:
+        return None, "Apniko product has no barcode"
+    if str(product.get("code") or "").strip() != barcode:
+        return None, "source GTIN does not exactly match the Apniko barcode"
+
     source_host = urlparse(api_url).hostname
     source_name = SOURCES.get(source_host or "")
     if not source_name:
-        return None
+        return None, "source catalogue is not allowlisted"
 
     source_brand = str(product.get("brands") or "").split(",")[0].strip()
     source_pack_size = str(product.get("quantity") or "").strip()
@@ -55,18 +60,26 @@ def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | N
     local_pack_size = str(local_product.get("packSize") or "").strip()
     # A GTIN match alone can still point to incomplete or inconsistent community data.
     # Do not offer a candidate if the source's brand or pack size is absent or different.
-    if (not source_brand or not source_pack_size
-            or not normalize_identity_value(local_brand)
-            or not normalize_identity_value(local_pack_size)
-            or normalize_identity_value(source_brand) != normalize_identity_value(local_brand)
-            or normalize_identity_value(source_pack_size) != normalize_identity_value(local_pack_size)):
-        return None
+    if not source_brand:
+        return None, "source record has no brand"
+    if not local_brand:
+        return None, "Apniko catalogue product has no brand to compare"
+    if normalize_identity_value(source_brand) != normalize_identity_value(local_brand):
+        return None, f"brand mismatch (Apniko: {local_brand}; source: {source_brand})"
+    if not source_pack_size:
+        return None, "source record has no pack size"
+    if not local_pack_size:
+        return None, "Apniko catalogue product has no pack size to compare"
+    if normalize_identity_value(source_pack_size) != normalize_identity_value(local_pack_size):
+        return None, f"pack-size mismatch (Apniko: {local_pack_size}; source: {source_pack_size})"
 
     front = (product.get("selected_images") or {}).get("front") or {}
     variants = front.get("display") or front.get("small") or {}
     image_url = variants.get("en") or next(iter(variants.values()), None)
+    if not image_url:
+        return None, "source record has no front photograph"
     if not safe_image_url(image_url, barcode):
-        return None
+        return None, "front photograph URL is not on the matching allowlisted image host"
 
     photographers = product.get("photographers_tags") or []
     photographer_names = ", ".join(str(name) for name in photographers[:8] if str(name).strip())
@@ -84,7 +97,12 @@ def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | N
         "attribution": attribution[:500],
         "authorizationReference": None,
         "matchedBarcode": barcode,
-    }
+    }, None
+
+
+def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | None:
+    candidate, _reason = explain_candidate(local_product, payload, api_url)
+    return candidate
 
 
 def parser() -> argparse.ArgumentParser:
@@ -157,12 +175,18 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
             print("Open Facts rate limit/service unavailable; stop and retry later.", file=sys.stderr)
             return 3
         response.raise_for_status()
-        candidate = find_candidate(item, response.json(), response.url)
+        candidate, skip_reason = explain_candidate(item, response.json(), response.url)
         if not candidate:
-            print(f"SKIP {barcode}: no exact-barcode front photograph")
+            print(f"SKIP {barcode}: {skip_reason}")
             continue
         candidates += 1
-        print(f"CANDIDATE {barcode}: {candidate['sourceProductName']} — {candidate['imageUrl']}")
+        local_name = str(item.get("name") or "(name not listed)")
+        local_brand = str(item.get("brand") or "(brand not listed)")
+        local_pack = str(item.get("packSize") or "(pack size not listed)")
+        print(f"CANDIDATE product #{item.get('productId')} · GTIN {barcode}")
+        print(f"  Apniko : {local_name} · {local_brand} · {local_pack}")
+        print(f"  Source : {candidate['sourceProductName']} · {candidate['sourceProductBrand']} · {candidate['sourcePackSize']}")
+        print(f"  Image  : {candidate['imageUrl']}")
         if args.apply:
             saved = client.post(
                 base + f"/api/admin/catalogue/products/{item['productId']}/photo-candidate",
