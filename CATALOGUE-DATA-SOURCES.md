@@ -135,3 +135,14 @@ Keep source files and import reports out of public issue trackers if the source 
 - Rejected rows must be reviewed at source; do not weaken validation just to increase the row count.
 - Imported MRP is informational and can be stale. A shopkeeper's current selling price remains independent.
 - The Phase 3 product image system must separately record image attribution and image licence; this importer intentionally does not transfer image URLs.
+
+
+## Grocery catalogue experience and supplier feeds
+
+The customer catalogue should be product-first, mobile-first and image-led. The same master product identities and approved photographs are used by customer shopping cards and shopkeeper catalogue/inventory screens. See `CATALOGUE-EXPERIENCE-STANDARD.md` for the complete Phase 2 and Phase 3 release standard.
+
+The existing PackSense snapshot is a product-data source only; it contains no photographs. OpenMRP is another product-data source. Neither source should be represented as a complete, current, manufacturer-authorised Indian grocery catalogue. Keep community-contributed and imported records subject to quality review.
+
+For a BigBasket-like breadth of branded products and pack variants, prefer feeds provided by manufacturers, brands and authorised distributors. The partner must confirm that it has the right to supply product records and grant Apniko the required database and image display rights. Record the source, licence/permission and attribution before import. The new Phase 3 photo pipeline records manufacturer/supplier permission references separately from open-data licences.
+
+BigBasket's, Instamart's and Flipkart Minutes' retailer listings, descriptions, prices, product images, logos and underlying catalogues are not Apniko import sources. Their shopping patterns may inform an independently designed experience. A dataset mirrored on Kaggle is not automatically reusable: verify the actual dataset licence and provenance before import. Retailer prices and availability are never used as a substitute for shop-specific prices and inventory.
