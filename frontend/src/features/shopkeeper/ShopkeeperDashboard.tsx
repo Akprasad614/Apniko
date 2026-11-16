@@ -229,11 +229,6 @@ export function ShopkeeperDashboard() {
     }
   }
 
-  async function searchAddableCatalogue(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    await loadCataloguePage(0, false, catalogueSearch)
-  }
-
   async function openAddInventory() {
     setShowAddInventory(true)
     setCatalogueSearch('')
@@ -826,17 +821,25 @@ export function ShopkeeperDashboard() {
                     <div className="shopkeeper-form-panel__heading"><div><p className="shopkeeper-eyebrow">ADD TO THIS SHOP</p><h3>Put a product on the shelf</h3></div><button type="button" onClick={() => setShowAddInventory(false)} aria-label="Close add product form">×</button></div>
                     {catalogueLoading ? <p role="status">Loading the product catalogue…</p> : (
                       <>
-                        <form className="shopkeeper-catalogue-search" onSubmit={(event) => void searchAddableCatalogue(event)}>
+                        <div className="shopkeeper-catalogue-search">
                           <label htmlFor="shopkeeper-catalogue-search-input">Find a product in the shared catalogue</label>
                           <div>
                             <input id="shopkeeper-catalogue-search-input" type="search" value={catalogueSearch}
                               onChange={(event) => setCatalogueSearch(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault()
+                                  void loadCataloguePage(0, false, catalogueSearch)
+                                }
+                              }}
                               placeholder="Search product, brand, pack size or barcode…" />
-                            <button className="shopkeeper-primary-button" type="submit" disabled={catalogueLoading}>
+                            <button type="button" className="shopkeeper-primary-button"
+                              disabled={catalogueLoading}
+                              onClick={() => void loadCataloguePage(0, false, catalogueSearch)}>
                               {catalogueLoading ? 'Searching…' : 'Search'}
                             </button>
                           </div>
-                        </form>
+                        </div>
                         {addableProducts.length ? (
                           <div className="shopkeeper-catalogue-picker" aria-label="Select a catalogue product">
                             {addableProducts.slice(0, 48).map((product) => (
