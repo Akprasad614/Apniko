@@ -40,7 +40,10 @@ class ProductPhotoImporterTests(unittest.TestCase):
         self.assertIsNone(find_candidate(item, payload, API_URL))
 
     def test_candidate_keeps_source_licence_attribution_and_exact_gtin(self):
-        item = {"barcode": BARCODE, "name": "Grocery"}
+        item = {
+            "barcode": BARCODE, "name": "Grocery",
+            "brand": "Sample Brand", "packSize": "1 kg",
+        }
         payload = {"product": {
             "code": BARCODE,
             "product_name": "Grocery pack",
@@ -58,17 +61,43 @@ class ProductPhotoImporterTests(unittest.TestCase):
         self.assertIn("verified-contributor", candidate["attribution"])
         self.assertEqual(candidate["sourceUrl"], "https://world.openfoodfacts.org/product/" + BARCODE)
 
+    def test_candidate_requires_exact_brand_and_pack_size(self):
+        item = {
+            "barcode": BARCODE, "name": "Grocery",
+            "brand": "Sample Brand", "packSize": "1 kg",
+        }
+        for source_brand, source_pack in (
+            ("Different Brand", "1 kg"),
+            ("Sample Brand", "500 g"),
+            ("", "1 kg"),
+            ("Sample Brand", ""),
+        ):
+            payload = {"product": {
+                "code": BARCODE,
+                "brands": source_brand,
+                "quantity": source_pack,
+                "selected_images": {"front": {"display": {"en": IMAGE}}},
+            }}
+            self.assertIsNone(find_candidate(item, payload, API_URL))
+
     def test_absent_front_image_is_skipped_not_guessed(self):
-        item = {"barcode": BARCODE, "name": "Grocery"}
+        item = {
+            "barcode": BARCODE, "name": "Grocery",
+            "brand": "Sample Brand", "packSize": "1 kg",
+        }
         self.assertIsNone(find_candidate(
-            item, {"product": {"code": BARCODE, "selected_images": {}}}, API_URL))
+            item, {"product": {
+                "code": BARCODE, "brands": "Sample Brand", "quantity": "1 kg",
+                "selected_images": {},
+            }}, API_URL))
 
     def test_unknown_open_facts_barcode_is_skipped_and_batch_continues(self):
         missing_barcode = "00000604"
         targets = FakeResponse(200, {
             "content": [
                 {"productId": 1, "barcode": missing_barcode, "name": "Unknown product"},
-                {"productId": 2, "barcode": BARCODE, "name": "Grocery"},
+                {"productId": 2, "barcode": BARCODE, "name": "Grocery",
+                 "brand": "Sample Brand", "packSize": "1 kg"},
             ],
             "last": True,
         }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
@@ -78,6 +107,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         found = FakeResponse(200, {"product": {
             "code": BARCODE,
             "product_name": "Grocery pack",
+            "brands": "Sample Brand",
+            "quantity": "1 kg",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
         }}, API_URL)
 
