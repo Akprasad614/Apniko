@@ -37,7 +37,7 @@ Only after reviewing the proposed matches, submit them to the admin queue:
 
     python scripts/catalogue/import_product_photos.py --limit 10 --apply
 
-The importer waits at least four seconds between source lookups, stays within the published 15 product-read requests/minute limit, uses a descriptive User-Agent, stops on 429/503, and caps each run at 100 products. Do not run multiple importers concurrently.
+The importer waits at least four seconds between source lookups, stays within the published 15 product-read requests/minute limit, uses a descriptive User-Agent, skips source HTTP 404 responses as products not found, stops on 429/503, and caps each run at 100 products. Other request failures remain visible so they are not mistaken for missing products. Do not run multiple importers concurrently.
 
 ## Admin review workflow
 
