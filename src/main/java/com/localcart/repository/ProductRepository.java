@@ -10,10 +10,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByBarcode(String barcode);
     Optional<Product> findByIdentityKey(String identityKey);
+
+    @Query("SELECT product FROM Product product LEFT JOIN FETCH product.photo")
+    List<Product> findAllWithPhoto();
     @Query("""
             SELECT product
             FROM Product product
