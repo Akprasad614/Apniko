@@ -9,6 +9,7 @@ interface ApprovedProductImageProps {
   sourceUrl?: string | null
   license?: string | null
   attribution?: string | null
+  variant?: 'thumbnail' | 'card'
 }
 
 export function ApprovedProductImage({
@@ -18,6 +19,7 @@ export function ApprovedProductImage({
   sourceUrl,
   license,
   attribution,
+  variant = 'thumbnail',
 }: ApprovedProductImageProps) {
   const [failed, setFailed] = useState(false)
   const credit = attribution?.trim() || productPhotoCredit(sourceName, license)
@@ -25,7 +27,7 @@ export function ApprovedProductImage({
   useEffect(() => setFailed(false), [imageUrl])
 
   return (
-    <div className="approved-product-image">
+    <div className={`approved-product-image approved-product-image--${variant}`}>
       {imageUrl && !failed ? (
         <img
           src={imageUrl}
