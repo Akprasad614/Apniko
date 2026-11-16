@@ -35,6 +35,52 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Pageable pageable
     );
 
+    @Query(value = """
+            SELECT product
+            FROM Product product
+            LEFT JOIN FETCH product.photo
+            WHERE (product.catalogueReviewStatus IS NULL
+                   OR product.catalogueReviewStatus = :visibleStatus)
+              AND NOT EXISTS (
+                  SELECT inventory.id
+                  FROM ShopInventory inventory
+                  WHERE inventory.shop.id = :shopId
+                    AND inventory.product.id = product.id
+              )
+              AND (:searchTerm IS NULL
+                   OR LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.brand, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR COALESCE(product.barcode, '') LIKE CONCAT('%', :searchTerm, '%')
+                   OR LOWER(COALESCE(product.category, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.subcategory, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.packSize, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+            """,
+            countQuery = """
+            SELECT COUNT(product)
+            FROM Product product
+            WHERE (product.catalogueReviewStatus IS NULL
+                   OR product.catalogueReviewStatus = :visibleStatus)
+              AND NOT EXISTS (
+                  SELECT inventory.id
+                  FROM ShopInventory inventory
+                  WHERE inventory.shop.id = :shopId
+                    AND inventory.product.id = product.id
+              )
+              AND (:searchTerm IS NULL
+                   OR LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.brand, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR COALESCE(product.barcode, '') LIKE CONCAT('%', :searchTerm, '%')
+                   OR LOWER(COALESCE(product.category, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.subcategory, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.packSize, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+            """)
+    Page<Product> findAddableProductsForShop(
+            @Param("shopId") Long shopId,
+            @Param("searchTerm") String searchTerm,
+            @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus,
+            Pageable pageable
+    );
+
     @Query("""
             SELECT product
             FROM Product product
