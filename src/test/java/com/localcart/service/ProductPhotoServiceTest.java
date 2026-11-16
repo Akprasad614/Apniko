@@ -86,6 +86,44 @@ class ProductPhotoServiceTest {
     }
 
     @Test
+    void openFactsCandidateAcceptsEquivalentBrandAndPackSizeFormatting() {
+        Product product = product();
+        product.setBrand("Nestle");
+        product.setPackSize("1 g");
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
+        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
+
+        ProductPhotoCandidateRequest equivalent = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                "Nestlé", "1000 mg", "CC BY-SA",
+                "Open Food Facts contributors", null, BARCODE);
+
+        var result = service.submitCandidate(10L, equivalent);
+
+        assertEquals(ProductImageReviewStatus.PENDING, result.status());
+        assertEquals("Nestlé", result.sourceProductBrand());
+        assertEquals("1000 mg", result.sourcePackSize());
+        verify(photoRepository).save(any(ProductPhoto.class));
+    }
+
+    @Test
+    void openFactsCandidateStillRejectsMultipackTotalThatDiffersFromCatalogue() {
+        Product product = product();
+        product.setPackSize("100 g");
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
+        ProductPhotoCandidateRequest wrongPack = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                "Test Brand", "2 x 100gm", "CC BY-SA",
+                "Open Food Facts contributors", null, BARCODE);
+
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, wrongPack));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
+    }
+
+    @Test
     void manufacturerAuthorisedImageRequiresPermissionReferenceAndTrustedHost() {
         Product product = product();
         product.setBrand("Brand Example");

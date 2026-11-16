@@ -7,6 +7,8 @@ import os
 import re
 import sys
 import time
+import unicodedata
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlparse
 
 import requests
@@ -35,8 +37,75 @@ def safe_image_url(value: str | None, barcode: str) -> bool:
     return True
 
 
-def normalize_identity_value(value: object) -> str:
-    return re.sub(r"\s+", " ", str(value or "").strip()).casefold()
+PACK_SIZE_PATTERN = re.compile(
+    r"(?:(?P<count>\d+(?:[.,]\d+)?)\s*[x×]\s*)?"
+    r"(?P<amount>\d+(?:[.,]\d+)?)\s*"
+    r"(?P<unit>milligrams?|mg|micrograms?|mcg|kilograms?|kg|grams?|gm|g|"
+    r"milliliters?|millilitres?|ml|liters?|litres?|l|pieces?|pcs|counts?|ct)\b",
+    re.IGNORECASE,
+)
+
+PACK_SIZE_UNITS = {
+    "mg": ("mass", Decimal("0.001")), "milligram": ("mass", Decimal("0.001")),
+    "milligrams": ("mass", Decimal("0.001")), "mcg": ("mass", Decimal("0.000001")),
+    "microgram": ("mass", Decimal("0.000001")), "micrograms": ("mass", Decimal("0.000001")),
+    "g": ("mass", Decimal("1")), "gm": ("mass", Decimal("1")),
+    "gram": ("mass", Decimal("1")), "grams": ("mass", Decimal("1")),
+    "kg": ("mass", Decimal("1000")), "kilogram": ("mass", Decimal("1000")),
+    "kilograms": ("mass", Decimal("1000")),
+    "ml": ("volume", Decimal("1")), "milliliter": ("volume", Decimal("1")),
+    "milliliters": ("volume", Decimal("1")), "millilitre": ("volume", Decimal("1")),
+    "millilitres": ("volume", Decimal("1")),
+    "l": ("volume", Decimal("1000")), "liter": ("volume", Decimal("1000")),
+    "liters": ("volume", Decimal("1000")), "litre": ("volume", Decimal("1000")),
+    "litres": ("volume", Decimal("1000")),
+    "pcs": ("count", Decimal("1")), "piece": ("count", Decimal("1")),
+    "pieces": ("count", Decimal("1")), "count": ("count", Decimal("1")),
+    "counts": ("count", Decimal("1")), "ct": ("count", Decimal("1")),
+}
+
+
+def normalize_brand(value: object) -> str:
+    decomposed = unicodedata.normalize("NFKD", str(value or ""))
+    without_marks = "".join(
+        character for character in decomposed
+        if not unicodedata.combining(character)
+    )
+    return "".join(character for character in without_marks.casefold() if character.isalnum())
+
+
+def normalize_pack_size(value: object) -> tuple[str, Decimal] | None:
+    match = PACK_SIZE_PATTERN.search(str(value or ""))
+    if not match:
+        return None
+    unit = re.sub(r"[^a-z]", "", match.group("unit").casefold())
+    unit_details = PACK_SIZE_UNITS.get(unit)
+    if unit_details is None:
+        return None
+    try:
+        amount = Decimal(match.group("amount").replace(",", "."))
+        if match.group("count"):
+            amount *= Decimal(match.group("count").replace(",", "."))
+    except InvalidOperation:
+        return None
+    dimension, factor = unit_details
+    return dimension, (amount * factor).normalize()
+
+
+def same_brand(left: object, right: object) -> bool:
+    normalized_left = normalize_brand(left)
+    normalized_right = normalize_brand(right)
+    return bool(normalized_left and normalized_right and normalized_left == normalized_right)
+
+
+def same_pack_size(left: object, right: object) -> bool:
+    normalized_left = normalize_pack_size(left)
+    normalized_right = normalize_pack_size(right)
+    if normalized_left is not None or normalized_right is not None:
+        return normalized_left is not None and normalized_left == normalized_right
+    exact_left = re.sub(r"\s+", " ", str(left or "").strip()).casefold()
+    exact_right = re.sub(r"\s+", " ", str(right or "").strip()).casefold()
+    return bool(exact_left and exact_right and exact_left == exact_right)
 
 
 def explain_candidate(
@@ -64,13 +133,13 @@ def explain_candidate(
         return None, "source record has no brand"
     if not local_brand:
         return None, "Apniko catalogue product has no brand to compare"
-    if normalize_identity_value(source_brand) != normalize_identity_value(local_brand):
+    if not same_brand(source_brand, local_brand):
         return None, f"brand mismatch (Apniko: {local_brand}; source: {source_brand})"
     if not source_pack_size:
         return None, "source record has no pack size"
     if not local_pack_size:
         return None, "Apniko catalogue product has no pack size to compare"
-    if normalize_identity_value(source_pack_size) != normalize_identity_value(local_pack_size):
+    if not same_pack_size(source_pack_size, local_pack_size):
         return None, f"pack-size mismatch (Apniko: {local_pack_size}; source: {source_pack_size})"
 
     front = (product.get("selected_images") or {}).get("front") or {}

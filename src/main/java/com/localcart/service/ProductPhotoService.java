@@ -19,10 +19,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.net.URI;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Transactional
@@ -36,6 +40,16 @@ public class ProductPhotoService {
     );
 
     private static final String AUTHORIZED_BRAND_SOURCE = "Brand / supplier authorised catalogue";
+
+    private static final Pattern PACK_SIZE_PATTERN = Pattern.compile(
+            "(?:(?<count>\\d+(?:[.,]\\d+)?)\\s*[x×]\\s*)?"
+                    + "(?<amount>\\d+(?:[.,]\\d+)?)\\s*"
+                    + "(?<unit>milligrams?|mg|micrograms?|mcg|kilograms?|kg|grams?|gm|g|"
+                    + "milliliters?|millilitres?|ml|liters?|litres?|l|pieces?|pcs|counts?|ct)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private record NormalizedPackSize(String dimension, BigDecimal amount) {}
 
     @Value("${APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS:${apniko.catalogue.photo-authorized-image-hosts:}}")
     private String authorizedImageHosts = "";
@@ -98,8 +112,8 @@ public class ProductPhotoService {
             requiredText(request.authorizationReference(), 500, "Manufacturer/supplier permission reference");
             String sourceBrand = requiredText(request.sourceProductBrand(), 100, "Source product brand");
             String sourcePack = requiredText(request.sourcePackSize(), 80, "Source pack size");
-            if (!sameNormalizedText(sourceBrand, product.getBrand())
-                    || !sameNormalizedText(sourcePack, product.getPackSize())) {
+            if (!sameBrand(sourceBrand, product.getBrand())
+                    || !samePackSize(sourcePack, product.getPackSize())) {
                 throw new BadRequestException("Supplier brand and pack size must exactly match the Apniko catalogue product");
             }
             if (!isAuthorizedImageHost(imageUri.getHost(), sourceHost)
@@ -115,8 +129,8 @@ public class ProductPhotoService {
             }
             String sourceBrand = requiredText(request.sourceProductBrand(), 100, "Source product brand");
             String sourcePack = requiredText(request.sourcePackSize(), 80, "Source pack size");
-            if (!sameNormalizedText(sourceBrand, product.getBrand())
-                    || !sameNormalizedText(sourcePack, product.getPackSize())) {
+            if (!sameBrand(sourceBrand, product.getBrand())
+                    || !samePackSize(sourcePack, product.getPackSize())) {
                 throw new BadRequestException("Open Facts brand and pack size must exactly match the Apniko catalogue product");
             }
             String imageHost = "images." + sourceHost.substring("world.".length());
@@ -232,10 +246,71 @@ public class ProductPhotoService {
         return text;
     }
 
-    private boolean sameNormalizedText(String left, String right) {
+    private boolean sameBrand(String left, String right) {
+        if (left == null || right == null) return false;
+        String normalizedLeft = normalizeBrand(left);
+        String normalizedRight = normalizeBrand(right);
+        return !normalizedLeft.isBlank() && normalizedLeft.equals(normalizedRight);
+    }
+
+    private String normalizeBrand(String value) {
+        return Normalizer.normalize(value, Normalizer.Form.NFKD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^\\p{L}\\p{N}]", "");
+    }
+
+    private boolean samePackSize(String left, String right) {
+        NormalizedPackSize normalizedLeft = normalizePackSize(left);
+        NormalizedPackSize normalizedRight = normalizePackSize(right);
+        if (normalizedLeft != null || normalizedRight != null) {
+            return normalizedLeft != null && normalizedLeft.equals(normalizedRight);
+        }
         if (left == null || right == null) return false;
         return left.trim().replaceAll("\\s+", " ")
                 .equalsIgnoreCase(right.trim().replaceAll("\\s+", " "));
+    }
+
+    private NormalizedPackSize normalizePackSize(String value) {
+        if (value == null) return null;
+        Matcher matcher = PACK_SIZE_PATTERN.matcher(value);
+        if (!matcher.find()) return null;
+
+        BigDecimal amount = new BigDecimal(matcher.group("amount").replace(',', '.'));
+        if (matcher.group("count") != null) {
+            amount = amount.multiply(new BigDecimal(matcher.group("count").replace(',', '.')));
+        }
+
+        String unit = matcher.group("unit").toLowerCase(Locale.ROOT);
+        String dimension;
+        BigDecimal factor;
+        if (unit.equals("mg") || unit.startsWith("milligram")) {
+            dimension = "mass";
+            factor = new BigDecimal("0.001");
+        } else if (unit.equals("mcg") || unit.startsWith("microgram")) {
+            dimension = "mass";
+            factor = new BigDecimal("0.000001");
+        } else if (unit.equals("g") || unit.equals("gm") || unit.startsWith("gram")) {
+            dimension = "mass";
+            factor = BigDecimal.ONE;
+        } else if (unit.equals("kg") || unit.startsWith("kilogram")) {
+            dimension = "mass";
+            factor = new BigDecimal("1000");
+        } else if (unit.equals("ml") || unit.startsWith("milliliter") || unit.startsWith("millilitre")) {
+            dimension = "volume";
+            factor = BigDecimal.ONE;
+        } else if (unit.equals("l") || unit.startsWith("liter") || unit.startsWith("litre")) {
+            dimension = "volume";
+            factor = new BigDecimal("1000");
+        } else if (unit.equals("pcs") || unit.equals("piece") || unit.equals("pieces")
+                || unit.equals("count") || unit.equals("counts") || unit.equals("ct")) {
+            dimension = "count";
+            factor = BigDecimal.ONE;
+        } else {
+            return null;
+        }
+
+        return new NormalizedPackSize(dimension, amount.multiply(factor).stripTrailingZeros());
     }
 
     private boolean isAuthorizedImageHost(String imageHost, String sourceHost) {

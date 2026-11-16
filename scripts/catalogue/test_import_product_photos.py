@@ -106,6 +106,44 @@ class ProductPhotoImporterTests(unittest.TestCase):
         self.assertIsNone(candidate)
         self.assertIn("pack-size mismatch", reason)
 
+    def test_brand_formatting_and_diacritics_are_normalized_without_fuzzy_matching(self):
+        def candidate_for(local_brand, source_brand):
+            item = {"barcode": BARCODE, "name": "Grocery", "brand": local_brand, "packSize": "200 ml"}
+            payload = {"product": {
+                "code": BARCODE, "brands": source_brand, "quantity": "200ml",
+                "selected_images": {"front": {"display": {"en": IMAGE}}},
+            }}
+            return find_candidate(item, payload, API_URL)
+
+        self.assertIsNotNone(candidate_for("Coca cola", "Coca-Cola"))
+        self.assertIsNotNone(candidate_for("Nestle", "Nestlé"))
+        self.assertIsNotNone(candidate_for("KitKat", "Kit Kat"))
+        self.assertIsNone(candidate_for("Coca-Cola", "Pepsi-Cola"))
+
+    def test_equivalent_pack_units_are_normalized_but_real_differences_are_rejected(self):
+        def candidate_for(local_pack, source_pack):
+            item = {"barcode": BARCODE, "name": "Grocery", "brand": "Sample Brand", "packSize": local_pack}
+            payload = {"product": {
+                "code": BARCODE, "brands": "Sample Brand", "quantity": source_pack,
+                "selected_images": {"front": {"display": {"en": IMAGE}}},
+            }}
+            return find_candidate(item, payload, API_URL)
+
+        equivalent_pairs = (
+            ("100 g", "100gm"), ("200 ml", "200ml"), ("1 g", "1000 mg"),
+            ("1000 ml", "1 l"), ("90 g", "90 g / 3.2 OZ"), ("200 g", "2 x 100gm"),
+        )
+        for local_pack, source_pack in equivalent_pairs:
+            with self.subTest(local_pack=local_pack, source_pack=source_pack):
+                self.assertIsNotNone(candidate_for(local_pack, source_pack))
+
+        mismatched_pairs = (
+            ("100 g", "200 g"), ("100 g", "100 ml"), ("100 g", "2 x 100 g"),
+        )
+        for local_pack, source_pack in mismatched_pairs:
+            with self.subTest(local_pack=local_pack, source_pack=source_pack):
+                self.assertIsNone(candidate_for(local_pack, source_pack))
+
     def test_absent_front_image_is_skipped_not_guessed(self):
         item = {
             "barcode": BARCODE, "name": "Grocery",
