@@ -113,6 +113,12 @@ public class ProductPhotoService {
                     || sourceUri.getQuery() != null || sourceUri.getFragment() != null) {
                 throw new BadRequestException("Use the canonical Open Facts product page for the exact barcode");
             }
+            String sourceBrand = requiredText(request.sourceProductBrand(), 100, "Source product brand");
+            String sourcePack = requiredText(request.sourcePackSize(), 80, "Source pack size");
+            if (!sameNormalizedText(sourceBrand, product.getBrand())
+                    || !sameNormalizedText(sourcePack, product.getPackSize())) {
+                throw new BadRequestException("Open Facts brand and pack size must exactly match the Apniko catalogue product");
+            }
             String imageHost = "images." + sourceHost.substring("world.".length());
             String imageDigits = imageUri.getPath().replaceAll("[^0-9]", "");
             if (!imageHost.equalsIgnoreCase(imageUri.getHost())
