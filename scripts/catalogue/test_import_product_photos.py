@@ -44,12 +44,17 @@ class ProductPhotoImporterTests(unittest.TestCase):
         payload = {"product": {
             "code": BARCODE,
             "product_name": "Grocery pack",
+            "brands": "Sample Brand",
+            "quantity": "1 kg",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
             "photographers_tags": ["verified-contributor"],
         }}
         candidate = find_candidate(item, payload, API_URL)
         self.assertEqual(candidate["matchedBarcode"], BARCODE)
         self.assertEqual(candidate["license"], "CC BY-SA")
+        self.assertEqual(candidate["sourceProductBrand"], "Sample Brand")
+        self.assertEqual(candidate["sourcePackSize"], "1 kg")
+        self.assertIsNone(candidate["authorizationReference"])
         self.assertIn("verified-contributor", candidate["attribution"])
         self.assertEqual(candidate["sourceUrl"], "https://world.openfoodfacts.org/product/" + BARCODE)
 
