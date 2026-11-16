@@ -38,6 +38,11 @@ public class ProductPhoto {
     @Column(name = "image_attribution", length = 500)
     private String attribution;
 
+    @Size(max = 500)
+    @Column(name = "authorization_reference", length = 500)
+    private String authorizationReference;
+
+
     @Size(max = 1000)
     @Column(name = "candidate_image_url", length = 1000)
     private String candidateImageUrl;
@@ -110,6 +115,8 @@ public class ProductPhoto {
     public void setLicense(String value) { this.license = value; }
     public String getAttribution() { return attribution; }
     public void setAttribution(String value) { this.attribution = value; }
+    public String getAuthorizationReference() { return authorizationReference; }
+    public void setAuthorizationReference(String value) { this.authorizationReference = value; }
     public String getCandidateImageUrl() { return candidateImageUrl; }
     public void setCandidateImageUrl(String value) { this.candidateImageUrl = value; }
     public String getCandidateSourceName() { return candidateSourceName; }
