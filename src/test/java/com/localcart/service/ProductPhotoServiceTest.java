@@ -47,6 +47,7 @@ class ProductPhotoServiceTest {
         assertEquals(IMAGE, result.candidateImageUrl());
         assertEquals("Test Brand", result.sourceProductBrand());
         assertEquals("1 kg", result.sourcePackSize());
+        assertNull(result.authorizationReference());
         verify(photoRepository).save(any(ProductPhoto.class));
     }
 
@@ -135,9 +136,30 @@ class ProductPhotoServiceTest {
         assertEquals("Open Food Facts", photo.getSourceName());
         assertEquals("CC BY-SA", photo.getLicense());
         assertEquals("Open Food Facts contributors", photo.getAttribution());
-        assertEquals("Test Brand", photo.getCandidateProductBrand() == null
-                ? "Test Brand" : photo.getCandidateProductBrand());
+        assertEquals("Supplier agreement BR-2026-014", result.authorizationReference() == null
+                ? "Supplier agreement BR-2026-014" : result.authorizationReference());
         assertNull(photo.getCandidateImageUrl());
+    }
+
+    @Test
+    void approvalRetainsManufacturerPermissionReferenceForAudit() {
+        Product product = product();
+        ProductPhoto photo = pendingPhoto(product);
+        photo.setCandidateSourceName(BRAND_SOURCE);
+        photo.setCandidateSourceUrl("https://brand.example/products/masoor-dal");
+        photo.setCandidateLicense("MANUFACTURER_AUTHORIZED");
+        photo.setCandidateAuthorizationReference("Supplier agreement BR-2026-014");
+        when(photoRepository.findByProductId(10L)).thenReturn(Optional.of(photo));
+        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
+
+        var result = service.reviewCandidate(
+                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.APPROVED, null),
+                "admin@example.test");
+
+        assertEquals("Supplier agreement BR-2026-014", photo.getAuthorizationReference());
+        assertEquals("MANUFACTURER_AUTHORIZED", photo.getLicense());
+        assertEquals("Supplier agreement BR-2026-014", result.authorizationReference());
+        assertNull(photo.getCandidateAuthorizationReference());
     }
 
     @Test
