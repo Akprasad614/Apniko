@@ -1,11 +1,30 @@
+import argparse
+import os
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from unittest.mock import Mock, patch
 
-from import_product_photos import find_candidate, safe_image_url
+from import_product_photos import find_candidate, run, safe_image_url
 
 
 BARCODE = "8901234567890"
 IMAGE = "https://images.openfoodfacts.org/images/products/890/123/456/7890/front_en.4.400.jpg"
 API_URL = "https://world.openfoodfacts.org/api/v3/product/" + BARCODE + ".json"
+
+
+class FakeResponse:
+    def __init__(self, status_code, payload, url):
+        self.status_code = status_code
+        self.payload = payload
+        self.url = url
+
+    def json(self):
+        return self.payload
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"Unexpected HTTP {self.status_code} in test")
 
 
 class ProductPhotoImporterTests(unittest.TestCase):
@@ -38,6 +57,44 @@ class ProductPhotoImporterTests(unittest.TestCase):
         item = {"barcode": BARCODE, "name": "Grocery"}
         self.assertIsNone(find_candidate(
             item, {"product": {"code": BARCODE, "selected_images": {}}}, API_URL))
+
+    def test_unknown_open_facts_barcode_is_skipped_and_batch_continues(self):
+        missing_barcode = "00000604"
+        targets = FakeResponse(200, {
+            "content": [
+                {"productId": 1, "barcode": missing_barcode, "name": "Unknown product"},
+                {"productId": 2, "barcode": BARCODE, "name": "Grocery"},
+            ],
+            "last": True,
+        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
+        not_found = FakeResponse(
+            404, {}, "https://world.openfoodfacts.org/api/v3/product/00000604.json"
+        )
+        found = FakeResponse(200, {"product": {
+            "code": BARCODE,
+            "product_name": "Grocery pack",
+            "selected_images": {"front": {"display": {"en": IMAGE}}},
+        }}, API_URL)
+
+        session = Mock()
+        session.get.side_effect = [targets, not_found, found]
+        args = argparse.Namespace(
+            api_url="http://localhost:8080",
+            limit=10,
+            page=0,
+            delay_seconds=4.1,
+            apply=False,
+        )
+        output = StringIO()
+        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}), \\
+             patch("import_product_photos.time.sleep"), redirect_stdout(output):
+            result = run(args, session=session)
+
+        self.assertEqual(result, 0)
+        self.assertIn("SKIP 00000604: no Open Facts product record", output.getvalue())
+        self.assertIn("CANDIDATE " + BARCODE, output.getvalue())
+        self.assertIn("Inspected: 2; candidates: 1; submitted: 0", output.getvalue())
+        session.post.assert_not_called()
 
 
 if __name__ == "__main__":
