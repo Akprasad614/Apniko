@@ -70,6 +70,10 @@ public class ShopInventoryService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
+        if (!product.isVisibleToCustomers()) {
+            throw new BadRequestException("This product is not approved for shop listings");
+        }
+
         if (request.getPrice() < 0 || request.getStockQuantity() < 0) {
             throw new BadRequestException("Price and stock quantity cannot be negative");
         }
