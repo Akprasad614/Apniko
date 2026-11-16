@@ -1,6 +1,7 @@
 package com.localcart.controller;
 
 import com.localcart.entity.Product;
+import com.localcart.dto.ProductResponse;
 import com.localcart.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -35,24 +36,14 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-
-        return ResponseEntity.ok(
-                productService.getAllProducts()
-        );
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
+        return ResponseEntity.ok(productService.getCatalogueProducts());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(
-            @PathVariable Long id) {
-
-        Optional<Product> product =
-                productService.getProductById(id);
-
-        if (product.isPresent()) {
-            return ResponseEntity.ok(product.get());
-        }
-
-        return ResponseEntity.notFound().build();
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
+        return productService.getCatalogueProductById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
