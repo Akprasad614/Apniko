@@ -128,6 +128,11 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
             headers={"User-Agent": user_agent, "Accept": "application/json"},
             timeout=(5, 25),
         )
+        if response.status_code == 404:
+            # A catalogue GTIN may not exist in the community-maintained source.
+            # Treat that as a normal no-match and continue with the remaining products.
+            print(f"SKIP {barcode}: no Open Facts product record for this barcode")
+            continue
         if response.status_code in (429, 503):
             print("Open Facts rate limit/service unavailable; stop and retry later.", file=sys.stderr)
             return 3
