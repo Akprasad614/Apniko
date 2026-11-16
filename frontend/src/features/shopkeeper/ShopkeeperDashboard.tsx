@@ -850,17 +850,22 @@ export function ShopkeeperDashboard() {
                                 onClick={() => setNewProductId(String(product.id))}>
                                 <span className="shopkeeper-catalogue-choice__image">
                                   {product.imageUrl
-                                    ? <img src={product.imageUrl} alt="" loading="lazy" />
-                                    : <span aria-hidden="true">◇</span>}
+                                    ? <img src={product.imageUrl} alt={product.name} loading="lazy" />
+                                    : (
+                                      <span className="shopkeeper-catalogue-choice__photo-missing">
+                                        <span aria-hidden="true">▧</span>
+                                        <small>Photo not yet available</small>
+                                      </span>
+                                    )}
                                 </span>
                                 <span className="shopkeeper-catalogue-choice__copy">
                                   <strong>{product.name}</strong>
                                   <small>{[
-                                    product.brand,
-                                    product.packSize,
+                                    product.brand || 'Brand not listed',
+                                    product.packSize || 'Pack size not listed',
                                     product.category,
                                     product.mrp ? 'MRP ' + formatShopkeeperRupees(product.mrp) : null,
-                                  ].filter(Boolean).join(' · ') || 'Catalogue product'}</small>
+                                  ].filter(Boolean).join(' · ')}</small>
                                 </span>
                                 <span className="shopkeeper-catalogue-choice__select">{newProductId === String(product.id) ? 'Selected' : 'Select'}</span>
                               </button>
