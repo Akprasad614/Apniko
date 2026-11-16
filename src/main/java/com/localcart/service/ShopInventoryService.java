@@ -10,6 +10,7 @@ import com.localcart.dto.UpdateLowStockThresholdRequest;
 import com.localcart.entity.InventoryMovement;
 import com.localcart.entity.InventoryMovementType;
 import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
