@@ -28,6 +28,7 @@ export interface ShopkeeperProduct {
   brand?: string | null
   barcode?: string | null
   packSize?: string | null
+  mrp?: number | null
   subcategory?: string | null
   imageUrl?: string | null
   imageSourceName?: string | null
