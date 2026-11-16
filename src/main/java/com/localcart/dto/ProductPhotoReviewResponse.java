@@ -13,6 +13,7 @@ public record ProductPhotoReviewResponse(
         String sourceProductBrand,
         String sourcePackSize,
         String candidateAuthorizationReference,
+        String authorizationReference,
         String candidateImageUrl,
         String candidateSourceName,
         String candidateSourceUrl,
