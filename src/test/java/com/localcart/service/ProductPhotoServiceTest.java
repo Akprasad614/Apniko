@@ -21,6 +21,7 @@ class ProductPhotoServiceTest {
     private static final String BARCODE = "8901234567890";
     private static final String IMAGE = "https://images.openfoodfacts.org/images/products/890/123/456/7890/front_en.4.400.jpg";
     private static final String SOURCE = "https://world.openfoodfacts.org/product/" + BARCODE;
+    private static final String BRAND_SOURCE = "Brand / supplier authorised catalogue";
     private ProductRepository productRepository;
     private ProductPhotoRepository photoRepository;
     private ProductPhotoService service;
@@ -44,6 +45,8 @@ class ProductPhotoServiceTest {
         assertEquals(ProductImageReviewStatus.PENDING, result.status());
         assertNull(result.approvedImageUrl());
         assertEquals(IMAGE, result.candidateImageUrl());
+        assertEquals("Test Brand", result.sourceProductBrand());
+        assertEquals("1 kg", result.sourcePackSize());
         verify(photoRepository).save(any(ProductPhoto.class));
     }
 
@@ -57,6 +60,62 @@ class ProductPhotoServiceTest {
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, candidate(
                         "https://example.com/images/products/8901234567890/front.jpg", BARCODE)));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
+    }
+
+    @Test
+    void manufacturerAuthorisedImageRequiresPermissionReferenceAndTrustedHost() {
+        Product product = product();
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
+        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
+
+        ProductPhotoCandidateRequest authorised = new ProductPhotoCandidateRequest(
+                "https://images.brand.example/products/masoor-1kg/front.jpg",
+                "https://brand.example/products/masoor-dal",
+                BRAND_SOURCE,
+                "Masoor Dal",
+                "Brand Example",
+                "1 kg",
+                "MANUFACTURER_AUTHORIZED",
+                "Image supplied by the brand",
+                "Supplier agreement BR-2026-014",
+                BARCODE
+        );
+
+        var result = service.submitCandidate(10L, authorised);
+
+        assertEquals(ProductImageReviewStatus.PENDING, result.status());
+        assertEquals(BRAND_SOURCE, result.candidateSourceName());
+        assertEquals("MANUFACTURER_AUTHORIZED", result.candidateLicense());
+        assertEquals("Brand Example", result.sourceProductBrand());
+        assertEquals("1 kg", result.sourcePackSize());
+        assertEquals("Supplier agreement BR-2026-014", result.candidateAuthorizationReference());
+    }
+
+    @Test
+    void manufacturerAuthorisedImageRejectsMissingPermissionOrUnapprovedImageHost() {
+        Product product = product();
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
+        ProductPhotoCandidateRequest missingPermission = new ProductPhotoCandidateRequest(
+                "https://images.brand.example/products/masoor-1kg/front.jpg",
+                "https://brand.example/products/masoor-dal",
+                BRAND_SOURCE, "Masoor Dal", "Brand Example", "1 kg",
+                "MANUFACTURER_AUTHORIZED", "Brand image", null, BARCODE
+        );
+        ProductPhotoCandidateRequest unapprovedHost = new ProductPhotoCandidateRequest(
+                "https://other-cdn.example/products/masoor-1kg/front.jpg",
+                "https://brand.example/products/masoor-dal",
+                BRAND_SOURCE, "Masoor Dal", "Brand Example", "1 kg",
+                "MANUFACTURER_AUTHORIZED", "Brand image",
+                "Supplier agreement BR-2026-014", BARCODE
+        );
+
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, missingPermission));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, unapprovedHost));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
@@ -76,6 +135,8 @@ class ProductPhotoServiceTest {
         assertEquals("Open Food Facts", photo.getSourceName());
         assertEquals("CC BY-SA", photo.getLicense());
         assertEquals("Open Food Facts contributors", photo.getAttribution());
+        assertEquals("Test Brand", photo.getCandidateProductBrand() == null
+                ? "Test Brand" : photo.getCandidateProductBrand());
         assertNull(photo.getCandidateImageUrl());
     }
 
@@ -111,6 +172,8 @@ class ProductPhotoServiceTest {
     private Product product() {
         Product product = new Product();
         product.setName("Test grocery");
+        product.setBrand("Test Brand");
+        product.setPackSize("1 kg");
         product.setBarcode(BARCODE);
         return product;
     }
@@ -124,6 +187,8 @@ class ProductPhotoServiceTest {
         photo.setCandidateLicense("CC BY-SA");
         photo.setCandidateAttribution("Open Food Facts contributors");
         photo.setCandidateProductName("Test grocery pack");
+        photo.setCandidateProductBrand("Test Brand");
+        photo.setCandidatePackSize("1 kg");
         photo.setCandidateBarcode(BARCODE);
         photo.setReviewStatus(ProductImageReviewStatus.PENDING);
         return photo;
@@ -132,6 +197,7 @@ class ProductPhotoServiceTest {
     private ProductPhotoCandidateRequest candidate(String image, String barcode) {
         return new ProductPhotoCandidateRequest(
                 image, SOURCE, "Open Food Facts", "Test grocery pack",
-                "CC BY-SA", "Open Food Facts contributors", barcode);
+                "Test Brand", "1 kg", "CC BY-SA",
+                "Open Food Facts contributors", null, barcode);
     }
 }
