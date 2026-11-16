@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import Mock, patch
 
-from import_product_photos import find_candidate, run, safe_image_url
+from import_product_photos import explain_candidate, find_candidate, run, safe_image_url
 
 
 BARCODE = "8901234567890"
@@ -80,6 +80,32 @@ class ProductPhotoImporterTests(unittest.TestCase):
             }}
             self.assertIsNone(find_candidate(item, payload, API_URL))
 
+    def test_skip_reason_identifies_brand_or_pack_mismatch(self):
+        item = {
+            "barcode": BARCODE, "name": "Grocery",
+            "brand": "Sample Brand", "packSize": "1 kg",
+        }
+        wrong_brand = {"product": {
+            "code": BARCODE,
+            "brands": "Different Brand",
+            "quantity": "1 kg",
+            "selected_images": {"front": {"display": {"en": IMAGE}}},
+        }}
+        wrong_pack = {"product": {
+            "code": BARCODE,
+            "brands": "Sample Brand",
+            "quantity": "500 g",
+            "selected_images": {"front": {"display": {"en": IMAGE}}},
+        }}
+
+        candidate, reason = explain_candidate(item, wrong_brand, API_URL)
+        self.assertIsNone(candidate)
+        self.assertIn("brand mismatch", reason)
+
+        candidate, reason = explain_candidate(item, wrong_pack, API_URL)
+        self.assertIsNone(candidate)
+        self.assertIn("pack-size mismatch", reason)
+
     def test_absent_front_image_is_skipped_not_guessed(self):
         item = {
             "barcode": BARCODE, "name": "Grocery",
@@ -128,7 +154,9 @@ class ProductPhotoImporterTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertIn("SKIP 00000604: no Open Facts product record", output.getvalue())
-        self.assertIn("CANDIDATE " + BARCODE, output.getvalue())
+        self.assertIn("CANDIDATE product #2 · GTIN " + BARCODE, output.getvalue())
+        self.assertIn("Apniko : Grocery · Sample Brand · 1 kg", output.getvalue())
+        self.assertIn("Source : Grocery pack · Sample Brand · 1 kg", output.getvalue())
         self.assertIn("Inspected: 2; candidates: 1; submitted: 0", output.getvalue())
         session.post.assert_not_called()
 
