@@ -62,6 +62,19 @@ public class ProductPhoto {
     @Column(name = "candidate_product_name", length = 200)
     private String candidateProductName;
 
+    @Size(max = 100)
+    @Column(name = "candidate_product_brand", length = 100)
+    private String candidateProductBrand;
+
+    @Size(max = 80)
+    @Column(name = "candidate_pack_size", length = 80)
+    private String candidatePackSize;
+
+    @Size(max = 500)
+    @Column(name = "candidate_authorization_reference", length = 500)
+    private String candidateAuthorizationReference;
+
+
     @Size(max = 14)
     @Column(name = "candidate_barcode", length = 14)
     private String candidateBarcode;
@@ -109,6 +122,12 @@ public class ProductPhoto {
     public void setCandidateAttribution(String value) { this.candidateAttribution = value; }
     public String getCandidateProductName() { return candidateProductName; }
     public void setCandidateProductName(String value) { this.candidateProductName = value; }
+    public String getCandidateProductBrand() { return candidateProductBrand; }
+    public void setCandidateProductBrand(String value) { this.candidateProductBrand = value; }
+    public String getCandidatePackSize() { return candidatePackSize; }
+    public void setCandidatePackSize(String value) { this.candidatePackSize = value; }
+    public String getCandidateAuthorizationReference() { return candidateAuthorizationReference; }
+    public void setCandidateAuthorizationReference(String value) { this.candidateAuthorizationReference = value; }
     public String getCandidateBarcode() { return candidateBarcode; }
     public void setCandidateBarcode(String value) { this.candidateBarcode = value; }
     public ProductImageReviewStatus getReviewStatus() { return reviewStatus; }
@@ -129,6 +148,9 @@ public class ProductPhoto {
         candidateLicense = null;
         candidateAttribution = null;
         candidateProductName = null;
+        candidateProductBrand = null;
+        candidatePackSize = null;
+        candidateAuthorizationReference = null;
         candidateBarcode = null;
     }
 }
