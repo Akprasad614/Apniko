@@ -71,7 +71,11 @@ public interface ShopInventoryRepository
               AND inventory.stockQuantity > 0
               AND (product.catalogueReviewStatus IS NULL OR product.catalogueReviewStatus = :visibleStatus)
               AND (:searchTerm IS NULL OR
-                   LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+                   LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.brand, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR COALESCE(product.barcode, '') LIKE CONCAT('%', :searchTerm, '%')
+                   OR LOWER(COALESCE(product.subcategory, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.packSize, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
               AND (:category IS NULL OR
                    LOWER(product.category) = LOWER(:category))
               AND (:shopId IS NULL OR shop.id = :shopId)
@@ -88,7 +92,11 @@ public interface ShopInventoryRepository
               AND inventory.stockQuantity > 0
               AND (product.catalogueReviewStatus IS NULL OR product.catalogueReviewStatus = :visibleStatus)
               AND (:searchTerm IS NULL OR
-                   LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+                   LOWER(product.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.brand, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR COALESCE(product.barcode, '') LIKE CONCAT('%', :searchTerm, '%')
+                   OR LOWER(COALESCE(product.subcategory, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                   OR LOWER(COALESCE(product.packSize, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
               AND (:category IS NULL OR
                    LOWER(product.category) = LOWER(:category))
               AND (:shopId IS NULL OR shop.id = :shopId)
