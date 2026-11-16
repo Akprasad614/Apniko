@@ -1183,3 +1183,154 @@
     width: 100%;
   }
 }
+
+
+/* Shared product catalogue presentation for shopkeeper inventory. */
+.shopkeeper-catalogue-search {
+  display: grid;
+  max-width: 560px;
+  gap: .4rem;
+  margin: .85rem 0;
+  color: var(--lc-ink);
+  font-size: .67rem;
+  font-weight: 800;
+}
+.shopkeeper-catalogue-search input {
+  min-height: 42px;
+  border: 1px solid var(--lc-line);
+  border-radius: 8px;
+  padding: .55rem .7rem;
+  color: var(--lc-ink);
+  background: #fff;
+  font-size: .72rem;
+}
+.shopkeeper-catalogue-picker {
+  display: grid;
+  max-height: 410px;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: .6rem;
+  overflow: auto;
+  margin: .65rem 0 1rem;
+  padding: .15rem .2rem .4rem;
+}
+.shopkeeper-catalogue-choice {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 64px minmax(0,1fr);
+  align-items: center;
+  gap: .55rem;
+  border: 1px solid var(--lc-line);
+  border-radius: 9px;
+  padding: .5rem;
+  color: var(--lc-ink);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.shopkeeper-catalogue-choice:hover,
+.shopkeeper-catalogue-choice.is-selected {
+  border-color: #789d5d;
+  background: #f6f9f1;
+}
+.shopkeeper-catalogue-choice__image {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 7px;
+  color: #849078;
+  background: #f5f6f1;
+  font-size: 1.3rem;
+}
+.shopkeeper-catalogue-choice__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+.shopkeeper-catalogue-choice__copy {
+  display: grid;
+  min-width: 0;
+  gap: .2rem;
+}
+.shopkeeper-catalogue-choice__copy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--lc-forest);
+  font-size: .65rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.shopkeeper-catalogue-choice__copy small {
+  overflow: hidden;
+  color: var(--lc-muted);
+  font-size: .55rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shopkeeper-catalogue-choice__select {
+  grid-column: 2;
+  color: #59843d;
+  font-size: .56rem;
+  font-weight: 850;
+}
+.shopkeeper-form-grid--listing {
+  max-width: 560px;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+}
+.shopkeeper-product-cell {
+  display: flex;
+  min-width: 210px;
+  align-items: center;
+  gap: .65rem;
+}
+.shopkeeper-product-cell__image {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #eceee8;
+  border-radius: 7px;
+  color: #849078;
+  background: #f7f8f4;
+}
+.shopkeeper-product-cell__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+.shopkeeper-product-cell__copy {
+  display: grid;
+  min-width: 0;
+  gap: .18rem;
+  white-space: normal;
+}
+.shopkeeper-inventory-table td .shopkeeper-product-cell__copy strong {
+  color: var(--lc-forest);
+  font-size: .68rem;
+}
+.shopkeeper-inventory-table td .shopkeeper-product-cell__copy small {
+  display: block;
+  max-width: 270px;
+  overflow: hidden;
+  margin: 0;
+  color: var(--lc-muted);
+  font-size: .56rem;
+  text-overflow: ellipsis;
+}
+.shopkeeper-inventory-table td:first-child {
+  min-width: 250px;
+}
+@media(max-width:1000px) {
+  .shopkeeper-catalogue-picker { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:700px) {
+  .shopkeeper-catalogue-picker { grid-template-columns: 1fr; max-height: 340px; }
+  .shopkeeper-form-grid--listing { grid-template-columns: 1fr; }
+  .shopkeeper-product-cell { min-width: 190px; }
+}
