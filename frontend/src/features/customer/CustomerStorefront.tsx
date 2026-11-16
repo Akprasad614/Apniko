@@ -40,6 +40,11 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
   const [appliedSearch, setAppliedSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'price'>('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [minPriceInput, setMinPriceInput] = useState('')
+  const [maxPriceInput, setMaxPriceInput] = useState('')
+  const [appliedMinPrice, setAppliedMinPrice] = useState<number | undefined>(undefined)
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState<number | undefined>(undefined)
   const [productPage, setProductPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [loadingShops, setLoadingShops] = useState(true)
@@ -118,7 +123,9 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         category: activeCategory,
         shopId: selectedShopId,
         sortBy,
-        direction: 'asc',
+        direction: sortDirection,
+        minPrice: appliedMinPrice,
+        maxPrice: appliedMaxPrice,
         page,
         size: PAGE_SIZE,
       })
@@ -133,7 +140,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
       setLoadingProducts(false)
       setLoadingMore(false)
     }
-  }, [activeCategory, appliedSearch, selectedShopId, sortBy, token])
+  }, [activeCategory, appliedMaxPrice, appliedMinPrice, appliedSearch, selectedShopId, sortBy, sortDirection, token])
 
   useEffect(() => {
     void loadProducts(0, false)
@@ -168,6 +175,21 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAppliedSearch(searchInput.trim())
+  }
+
+  function applyPriceFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const min = minPriceInput.trim() ? Number(minPriceInput) : undefined
+    const max = maxPriceInput.trim() ? Number(maxPriceInput) : undefined
+    if ((min !== undefined && (!Number.isFinite(min) || min < 0))
+      || (max !== undefined && (!Number.isFinite(max) || max < 0))
+      || (min !== undefined && max !== undefined && min > max)) {
+      setProductError('Enter a valid price range. The minimum cannot exceed the maximum.')
+      return
+    }
+    setProductError('')
+    setAppliedMinPrice(min)
+    setAppliedMaxPrice(max)
   }
 
   async function addProduct(product: MarketplaceInventoryItem) {
@@ -299,11 +321,38 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
               </form>
               <label className="market-sort">
                 <span>Sort by</span>
-                <select value={sortBy} onChange={(event) => setSortBy(event.target.value as 'name' | 'price')}>
-                  <option value="name">Name</option>
-                  <option value="price">Price</option>
+                <select value={sortBy + ':' + sortDirection} onChange={(event) => {
+                  const [nextSort, nextDirection] = event.target.value.split(':')
+                  setSortBy(nextSort as 'name' | 'price')
+                  setSortDirection(nextDirection as 'asc' | 'desc')
+                }}>
+                  <option value="name:asc">Name A–Z</option>
+                  <option value="price:asc">Price: low to high</option>
+                  <option value="price:desc">Price: high to low</option>
                 </select>
               </label>
+              <form className="market-price-filter" onSubmit={applyPriceFilters}>
+                <label>
+                  <span>Min ₹</span>
+                  <input type="number" min="0" step="1" value={minPriceInput}
+                    onChange={(event) => setMinPriceInput(event.target.value)} placeholder="Any" />
+                </label>
+                <label>
+                  <span>Max ₹</span>
+                  <input type="number" min="0" step="1" value={maxPriceInput}
+                    onChange={(event) => setMaxPriceInput(event.target.value)} placeholder="Any" />
+                </label>
+                <button type="submit">Apply</button>
+                {(appliedMinPrice !== undefined || appliedMaxPrice !== undefined) && (
+                  <button type="button" className="market-price-filter__clear"
+                    onClick={() => {
+                      setMinPriceInput('')
+                      setMaxPriceInput('')
+                      setAppliedMinPrice(undefined)
+                      setAppliedMaxPrice(undefined)
+                    }}>Clear</button>
+                )}
+              </form>
             </div>
 
             <div className="marketplace-content marketplace-content--full">
