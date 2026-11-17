@@ -69,12 +69,81 @@ required_requests = {
     'Customer — capture cart quantity before add',
     'Customer — add item to cart',
     'Customer — verify cart',
-    'Customer — checkout using platform delivery',
+    'Customer — checkout and leave fulfilment for shopkeeper',
+    'Shopkeeper — reject acceptance before fulfilment is saved',
+    'Shopkeeper — save platform delivery for this order',
     'Customer — verify cart is empty after checkout',
 }
 missing = required_requests.difference(names)
 if missing:
     raise SystemExit('E2E collection is missing: ' + ', '.join(sorted(missing)))
+
+# The customer does not choose fulfilment at checkout. The shopkeeper saves it
+# for this individual order before the acceptance transition is allowed.
+requests_by_name = {}
+def index_requests(items):
+    for item in items:
+        if 'item' in item:
+            index_requests(item['item'])
+        else:
+            requests_by_name[item.get('name', '')] = item
+index_requests(collection.get('item', []))
+
+checkout_item = requests_by_name['Customer — checkout and leave fulfilment for shopkeeper']
+checkout_body = checkout_item.get('request', {}).get('body', {}).get('raw', '')
+if 'deliveryMode' in checkout_body:
+    raise SystemExit('Customer checkout must not choose an order fulfilment mode.')
+checkout_tests = '\\n'.join(
+    '\\n'.join(event.get('script', {}).get('exec', []))
+    for event in checkout_item.get('event', [])
+    if event.get('listen') == 'test'
+)
+if 'Fulfilment remains undecided at customer checkout' not in checkout_tests:
+    raise SystemExit('Checkout test must assert fulfilment is undecided.')
+
+pre_accept = requests_by_name['Shopkeeper — reject acceptance before fulfilment is saved']
+save_fulfilment = requests_by_name['Shopkeeper — save platform delivery for this order']
+accept_item = requests_by_name['Shopkeeper — move order to ACCEPTED']
+pre_accept_tests = '\\n'.join(
+    '\\n'.join(event.get('script', {}).get('exec', []))
+    for event in pre_accept.get('event', [])
+    if event.get('listen') == 'test'
+)
+save_tests = '\\n'.join(
+    '\\n'.join(event.get('script', {}).get('exec', []))
+    for event in save_fulfilment.get('event', [])
+    if event.get('listen') == 'test'
+)
+accept_tests = '\\n'.join(
+    '\\n'.join(event.get('script', {}).get('exec', []))
+    for event in accept_item.get('event', [])
+    if event.get('listen') == 'test'
+)
+if 'pm.response.to.have.status(400)' not in pre_accept_tests:
+    raise SystemExit('E2E must verify acceptance fails before fulfilment is saved.')
+if 'order.deliveryMode' not in save_tests or 'PLATFORM_DELIVERY' not in save_tests:
+    raise SystemExit('E2E must verify the per-order PLATFORM_DELIVERY selection was saved.')
+if 'order.deliveryMode' not in accept_tests or 'PLATFORM_DELIVERY' not in accept_tests:
+    raise SystemExit('E2E must verify acceptance retains the saved fulfilment mode.')
+
+names_in_order = [item.get('name', '') for item in collection.get('item', [])]
+sequence = [
+    'Shopkeeper — reject acceptance before fulfilment is saved',
+    'Shopkeeper — save platform delivery for this order',
+    'Shopkeeper — move order to ACCEPTED',
+]
+positions = [names_in_order.index(name) for name in sequence]
+if positions != sorted(positions):
+    raise SystemExit('Fulfilment must be rejected-before-save, then saved, then accepted.')
+
+for name in sequence:
+    auth = requests_by_name[name].get('request', {}).get('auth', {})
+    bearer = auth.get('bearer', [])
+    if auth.get('type') != 'bearer' or not any(
+        item.get('value') == '{{shopkeeperToken}}' for item in bearer
+    ):
+        raise SystemExit(f'{name} must authenticate with the shopkeeper token.')
+
 
 # Walk Postman request test scripts and ensure the immediate POST / GET assertions exist.
 test_scripts = []

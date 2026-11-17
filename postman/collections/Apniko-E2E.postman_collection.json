@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "2574318c-04ef-4173-a665-0913fd6c4844",
     "name": "Apniko E2E — Customer to Delivery (Isolated DB)",
-    "description": "Repeatable local end-to-end workflow for a cloned localcart_test database on localhost:8081. The collection verifies the immediate POST cart response against the cart quantity before the add, checks the GET cart response, confirms checkout clears the cart, and walks the order through shopkeeper, delivery-partner and COD payment steps. It does not call live Razorpay APIs. Set credentials only in the private Postman environment file excluded from Git. Checkout deducts stock in localcart_test. The clone script refuses to overwrite a non-empty test database.",
+    "description": "Repeatable local end-to-end workflow for a cloned localcart_test database on localhost:8081. The customer checkout deliberately leaves fulfilment undecided. The collection proves the shopkeeper cannot accept before saving a per-order fulfilment choice, then saves PLATFORM_DELIVERY and completes the delivery-partner and COD payment journey. It also verifies immediate cart POST/GET quantity consistency and cart clearing. It does not call live Razorpay APIs. Set credentials only in the private Postman environment file excluded from Git. Checkout deducts stock in localcart_test. The clone script refuses to overwrite a non-empty test database.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -625,7 +625,7 @@
       ]
     },
     {
-      "name": "Customer — checkout using platform delivery",
+      "name": "Customer — checkout and leave fulfilment for shopkeeper",
       "request": {
         "method": "POST",
         "header": [
@@ -653,7 +653,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"deliveryMode\": \"PLATFORM_DELIVERY\",\n  \"addressId\": {{customerAddressId}}\n}",
+          "raw": "{\n  \"addressId\": \"{{customerAddressId}}\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -693,7 +693,7 @@
               "const order = pm.response.json();",
               "pm.test(\"Order ID is returned\", () => pm.expect(order.id).to.exist);",
               "pm.test(\"New order starts as PLACED\", () => pm.expect(order.status).to.eql(\"PLACED\"));",
-              "pm.test(\"Order uses PLATFORM_DELIVERY\", () => pm.expect(order.deliveryMode).to.eql(\"PLATFORM_DELIVERY\"));",
+              "pm.test(\"Fulfilment remains undecided at customer checkout\", () => pm.expect([null, undefined]).to.include(order.deliveryMode));",
               "const productId = Number(pm.environment.get(\"productId\"));",
               "const orderItem = (order.items || []).find(entry => Number(entry.product && entry.product.id) === productId);",
               "pm.test(\"Order contains the cart product\", () => pm.expect(orderItem, \"order item\").to.exist);",
@@ -889,6 +889,137 @@
       ]
     },
     {
+      "name": "Shopkeeper — reject acceptance before fulfilment is saved",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/shopkeeper/orders/{{orderId}}/status?status=ACCEPTED",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shopkeeper",
+            "orders",
+            "{{orderId}}",
+            "status"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "ACCEPTED"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{shopkeeperToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Acceptance is blocked until fulfilment is saved\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shopkeeper — save platform delivery for this order",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/shopkeeper/orders/{{orderId}}/fulfilment?deliveryMode=PLATFORM_DELIVERY",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shopkeeper",
+            "orders",
+            "{{orderId}}",
+            "fulfilment"
+          ],
+          "query": [
+            {
+              "key": "deliveryMode",
+              "value": "PLATFORM_DELIVERY"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{shopkeeperToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const baseUrl = pm.environment.get(\"baseUrl\") || \"\";",
+              "if (!/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8081\\/?$/.test(baseUrl)) {",
+              "  throw new Error(\"Safety stop: set baseUrl to http://localhost:8081 (the isolated localcart_test instance).\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Saving per-order fulfilment returns 200\", () => pm.response.to.have.status(200));",
+              "const order = pm.response.json();",
+              "pm.test(\"The order remains PLACED until separately accepted\", () => pm.expect(order.status).to.eql(\"PLACED\"));",
+              "pm.test(\"The saved fulfilment belongs to this order\", () => pm.expect(order.deliveryMode).to.eql(\"PLATFORM_DELIVERY\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Shopkeeper — move order to ACCEPTED",
       "request": {
         "method": "PUT",
@@ -948,7 +1079,8 @@
             "exec": [
               "pm.test(\"Shopkeeper transition to ACCEPTED returns 200\", () => pm.response.to.have.status(200));",
               "const order = pm.response.json();",
-              "pm.test(\"Order status is ACCEPTED\", () => pm.expect(order.status).to.eql(\"ACCEPTED\"));"
+              "pm.test(\"Order status is ACCEPTED\", () => pm.expect(order.status).to.eql(\"ACCEPTED\"));",
+              "pm.test(\"Accepted order retains the shopkeeper-saved fulfilment\", () => pm.expect(order.deliveryMode).to.eql(\"PLATFORM_DELIVERY\"));"
             ]
           }
         }
