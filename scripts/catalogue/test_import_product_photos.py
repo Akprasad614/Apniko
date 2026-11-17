@@ -1,7 +1,7 @@
 import argparse
 import os
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from unittest.mock import Mock, patch
 
@@ -220,7 +220,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         )
         output = StringIO()
         with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
-            with redirect_stdout(output):
+            with redirect_stdout(output), redirect_stderr(output):
                 result = run(args, session=session)
 
         self.assertEqual(result, 2)
