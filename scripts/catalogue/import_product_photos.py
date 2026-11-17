@@ -174,12 +174,35 @@ def find_candidate(local_product: dict, payload: dict, api_url: str) -> dict | N
     return candidate
 
 
+def parse_product_ids(value: str) -> set[int]:
+    """Parse a comma-separated allowlist of positive Apniko product IDs."""
+    raw_values = [part.strip() for part in value.split(",")]
+    if not raw_values or any(not part for part in raw_values):
+        raise argparse.ArgumentTypeError("Product IDs must be comma-separated positive integers")
+    try:
+        parsed = [int(part) for part in raw_values]
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "Product IDs must be comma-separated positive integers"
+        ) from error
+    if any(product_id <= 0 for product_id in parsed):
+        raise argparse.ArgumentTypeError("Product IDs must be positive integers")
+    if len(parsed) != len(set(parsed)):
+        raise argparse.ArgumentTypeError("Product IDs must not contain duplicates")
+    return set(parsed)
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--api-url", default=os.environ.get("APNIKO_API_URL", "http://localhost:8080"))
     result.add_argument("--limit", type=int, default=10)
     result.add_argument("--page", type=int, default=0)
     result.add_argument("--delay-seconds", type=float, default=4.1)
+    result.add_argument(
+        "--product-ids",
+        type=parse_product_ids,
+        help="Only inspect/submit these comma-separated Apniko product IDs",
+    )
     result.add_argument("--apply", action="store_true", help="Submit matching candidates to the admin review queue")
     return result
 
@@ -217,6 +240,28 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
             break
         page += 1
     products = products[:args.limit]
+    requested_product_ids = getattr(args, "product_ids", None)
+    if requested_product_ids:
+        target_ids = {
+            int(item["productId"])
+            for item in products
+            if item.get("productId") is not None
+        }
+        missing_ids = requested_product_ids - target_ids
+        if missing_ids:
+            missing_text = ", ".join(str(value) for value in sorted(missing_ids))
+            print(
+                "Requested product IDs are not in the fetched import-target page: "
+                + missing_text
+                + ". Increase --limit or select the correct --page.",
+                file=sys.stderr,
+            )
+            return 2
+        products = [
+            item for item in products
+            if int(item.get("productId", -1)) in requested_product_ids
+        ]
+        print("Product ID allowlist:", ", ".join(str(value) for value in sorted(requested_product_ids)))
     if not products:
         print("No barcode-backed products are waiting for a photo lookup.")
         return 0

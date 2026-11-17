@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import Mock, patch
 
-from import_product_photos import explain_candidate, find_candidate, run, safe_image_url
+from import_product_photos import explain_candidate, find_candidate, parse_product_ids, run, safe_image_url
 
 
 BARCODE = "8901234567890"
@@ -154,6 +154,86 @@ class ProductPhotoImporterTests(unittest.TestCase):
                 "code": BARCODE, "brands": "Sample Brand", "quantity": "1 kg",
                 "selected_images": {},
             }}, API_URL))
+
+    def test_product_id_allowlist_only_submits_selected_candidate(self):
+        other_barcode = "8901234567891"
+        targets = FakeResponse(200, {
+            "content": [
+                {"productId": 26, "barcode": other_barcode, "name": "Do not submit",
+                 "brand": "Sample Brand", "packSize": "1 kg"},
+                {"productId": 29, "barcode": BARCODE, "name": "Selected grocery",
+                 "brand": "Sample Brand", "packSize": "1 kg"},
+            ],
+            "last": True,
+        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
+        found = FakeResponse(200, {"product": {
+            "code": BARCODE,
+            "product_name": "Selected grocery",
+            "brands": "Sample Brand",
+            "quantity": "1 kg",
+            "selected_images": {"front": {"display": {"en": IMAGE}}},
+        }}, API_URL)
+        saved = FakeResponse(200, {"status": "PENDING"},
+                             "http://localhost:8080/api/admin/catalogue/products/29/photo-candidate")
+
+        session = Mock()
+        session.get.side_effect = [targets, found]
+        session.post.return_value = saved
+        args = argparse.Namespace(
+            api_url="http://localhost:8080",
+            limit=100,
+            page=0,
+            delay_seconds=4.1,
+            apply=True,
+            product_ids={29},
+        )
+        output = StringIO()
+        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
+            with patch("import_product_photos.time.sleep"), redirect_stdout(output):
+                result = run(args, session=session)
+
+        self.assertEqual(result, 0)
+        self.assertIn("Product ID allowlist: 29", output.getvalue())
+        self.assertIn("CANDIDATE product #29", output.getvalue())
+        self.assertNotIn("CANDIDATE product #26", output.getvalue())
+        self.assertIn("Inspected: 1; candidates: 1; submitted: 1", output.getvalue())
+        session.post.assert_called_once()
+        self.assertTrue(session.post.call_args.args[0].endswith("/api/admin/catalogue/products/29/photo-candidate"))
+
+    def test_product_id_allowlist_fails_when_id_is_not_in_target_page(self):
+        targets = FakeResponse(200, {
+            "content": [
+                {"productId": 26, "barcode": BARCODE, "name": "Grocery",
+                 "brand": "Sample Brand", "packSize": "1 kg"},
+            ],
+            "last": True,
+        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
+        session = Mock()
+        session.get.return_value = targets
+        args = argparse.Namespace(
+            api_url="http://localhost:8080",
+            limit=10,
+            page=0,
+            delay_seconds=4.1,
+            apply=True,
+            product_ids={999},
+        )
+        output = StringIO()
+        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
+            with redirect_stdout(output):
+                result = run(args, session=session)
+
+        self.assertEqual(result, 2)
+        self.assertIn("999", output.getvalue())
+        self.assertEqual(session.get.call_count, 1)
+        session.post.assert_not_called()
+
+    def test_parse_product_ids_requires_unique_positive_integers(self):
+        self.assertEqual(parse_product_ids("26,29,31"), {26, 29, 31})
+        for invalid in ("", "26,,29", "26,zero", "0,29", "26,26"):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(argparse.ArgumentTypeError):
+                    parse_product_ids(invalid)
 
     def test_unknown_open_facts_barcode_is_skipped_and_batch_continues(self):
         missing_barcode = "00000604"
