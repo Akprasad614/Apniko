@@ -142,6 +142,10 @@ def explain_candidate(
     if not same_pack_size(source_pack_size, local_pack_size):
         return None, f"pack-size mismatch (Apniko: {local_pack_size}; source: {source_pack_size})"
 
+    source_product_name = str(product.get("product_name") or "").strip()
+    if not source_product_name:
+        return None, "source record has no product name"
+
     front = (product.get("selected_images") or {}).get("front") or {}
     variants = front.get("display") or front.get("small") or {}
     image_url = variants.get("en") or next(iter(variants.values()), None)
@@ -159,7 +163,7 @@ def explain_candidate(
         "imageUrl": image_url,
         "sourceUrl": f"https://{source_host}/product/{barcode}",
         "sourceName": source_name,
-        "sourceProductName": str(product.get("product_name") or local_product.get("name") or "").strip(),
+        "sourceProductName": source_product_name,
         "sourceProductBrand": source_brand,
         "sourcePackSize": source_pack_size,
         "license": LICENSE,
