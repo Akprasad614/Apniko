@@ -17,6 +17,11 @@ export interface CustomerOrderItem {
     id: number
     name: string
     category?: string | null
+    imageUrl?: string | null
+    imageSourceName?: string | null
+    imageSourceUrl?: string | null
+    imageLicense?: string | null
+    imageAttribution?: string | null
   }
 }
 
