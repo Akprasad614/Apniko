@@ -124,7 +124,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         def candidate_for(local_pack, source_pack):
             item = {"barcode": BARCODE, "name": "Grocery", "brand": "Sample Brand", "packSize": local_pack}
             payload = {"product": {
-                "code": BARCODE, "brands": "Sample Brand", "quantity": source_pack,
+                "code": BARCODE, "product_name": "Grocery pack", "brands": "Sample Brand", "quantity": source_pack,
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
             }}
             return find_candidate(item, payload, API_URL)
@@ -143,6 +143,23 @@ class ProductPhotoImporterTests(unittest.TestCase):
         for local_pack, source_pack in mismatched_pairs:
             with self.subTest(local_pack=local_pack, source_pack=source_pack):
                 self.assertIsNone(candidate_for(local_pack, source_pack))
+
+    def test_missing_source_product_name_is_skipped_instead_of_using_apniko_name(self):
+        item = {
+            "barcode": BARCODE, "name": "Apniko catalogue name",
+            "brand": "Sample Brand", "packSize": "1 kg",
+        }
+        payload = {"product": {
+            "code": BARCODE,
+            "brands": "Sample Brand",
+            "quantity": "1 kg",
+            "selected_images": {"front": {"display": {"en": IMAGE}}},
+        }}
+
+        candidate, reason = explain_candidate(item, payload, API_URL)
+
+        self.assertIsNone(candidate)
+        self.assertEqual(reason, "source record has no product name")
 
     def test_absent_front_image_is_skipped_not_guessed(self):
         item = {
