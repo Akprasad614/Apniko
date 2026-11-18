@@ -80,7 +80,8 @@ class ProductResponseTest {
 
         String json = new ObjectMapper().writeValueAsString(product);
 
-        assertFalse(json.contains("imageUrl"));
+        assertTrue(json.contains("\"imageUrl\":null"));
+        assertTrue(json.contains("\"imageSourceName\":null"));
         assertFalse(json.contains("Private pending source"));
         assertFalse(json.contains("pending.jpg"));
         assertFalse(json.contains("\"photo\""));
