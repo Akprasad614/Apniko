@@ -48,3 +48,7 @@ frontend/.env.*
 data/catalogue/source/
 data/catalogue/reports/
 .venv-catalogue/
+
+# Python generated files
+__pycache__/
+*.py[cod]
