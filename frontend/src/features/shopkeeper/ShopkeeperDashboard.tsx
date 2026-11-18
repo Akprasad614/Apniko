@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
+import { ProductPhotoCredit } from '../../components/ProductPhotoCredit'
 import {
   canAcceptShopkeeperOrderWithSavedFulfilment,
   canCancelShopkeeperOrder,
@@ -844,31 +845,40 @@ export function ShopkeeperDashboard() {
                         {addableProducts.length ? (
                           <div className="shopkeeper-catalogue-picker" aria-label="Select a catalogue product">
                             {addableProducts.slice(0, 48).map((product) => (
-                              <button type="button" key={product.id}
-                                className={newProductId === String(product.id) ? 'shopkeeper-catalogue-choice is-selected' : 'shopkeeper-catalogue-choice'}
-                                aria-pressed={newProductId === String(product.id)}
-                                onClick={() => setNewProductId(String(product.id))}>
-                                <span className="shopkeeper-catalogue-choice__image">
-                                  {product.imageUrl
-                                    ? <img src={product.imageUrl} alt={product.name} loading="lazy" />
-                                    : (
-                                      <span className="shopkeeper-catalogue-choice__photo-missing">
-                                        <span aria-hidden="true">▧</span>
-                                        <small>Photo not yet available</small>
-                                      </span>
-                                    )}
-                                </span>
-                                <span className="shopkeeper-catalogue-choice__copy">
-                                  <strong>{product.name}</strong>
-                                  <small>{[
-                                    product.brand || 'Brand not listed',
-                                    product.packSize || 'Pack size not listed',
-                                    product.category,
-                                    product.mrp ? 'MRP ' + formatShopkeeperRupees(product.mrp) : null,
-                                  ].filter(Boolean).join(' · ')}</small>
-                                </span>
-                                <span className="shopkeeper-catalogue-choice__select">{newProductId === String(product.id) ? 'Selected' : 'Select'}</span>
-                              </button>
+                              <div className="shopkeeper-catalogue-choice-wrap" key={product.id}>
+                                <button type="button"
+                                  className={newProductId === String(product.id) ? 'shopkeeper-catalogue-choice is-selected' : 'shopkeeper-catalogue-choice'}
+                                  aria-pressed={newProductId === String(product.id)}
+                                  onClick={() => setNewProductId(String(product.id))}>
+                                  <span className="shopkeeper-catalogue-choice__image">
+                                    {product.imageUrl
+                                      ? <img src={product.imageUrl} alt={product.name} loading="lazy" />
+                                      : (
+                                        <span className="shopkeeper-catalogue-choice__photo-missing">
+                                          <span aria-hidden="true">▧</span>
+                                          <small>Photo not yet available</small>
+                                        </span>
+                                      )}
+                                  </span>
+                                  <span className="shopkeeper-catalogue-choice__copy">
+                                    <strong>{product.name}</strong>
+                                    <small>{[
+                                      product.brand || 'Brand not listed',
+                                      product.packSize || 'Pack size not listed',
+                                      product.category,
+                                      product.mrp ? 'MRP ' + formatShopkeeperRupees(product.mrp) : null,
+                                    ].filter(Boolean).join(' · ')}</small>
+                                  </span>
+                                  <span className="shopkeeper-catalogue-choice__select">{newProductId === String(product.id) ? 'Selected' : 'Select'}</span>
+                                </button>
+                                <ProductPhotoCredit
+                                  sourceName={product.imageSourceName}
+                                  sourceUrl={product.imageSourceUrl}
+                                  license={product.imageLicense}
+                                  attribution={product.imageAttribution}
+                                  className="shopkeeper-product-photo-credit"
+                                />
+                              </div>
                             ))}
                           </div>
                         ) : (
@@ -939,6 +949,13 @@ export function ShopkeeperDashboard() {
                               {isVisible ? 'Listed for customers' : 'Not listed'}
                             </span>
                           </div>
+                          <ProductPhotoCredit
+                            sourceName={item.imageSourceName}
+                            sourceUrl={item.imageSourceUrl}
+                            license={item.imageLicense}
+                            attribution={item.imageAttribution}
+                            className="shopkeeper-product-photo-credit"
+                          />
                           <div className="shopkeeper-inventory-card__body">
                             <p className="shopkeeper-inventory-card__brand">{item.brand || 'Brand not listed'}</p>
                             <h3>{item.productName}</h3>
