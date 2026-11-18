@@ -6,6 +6,7 @@ import com.localcart.entity.Cart;
 import com.localcart.entity.CartItem;
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductCatalogueReviewStatus;
+import com.localcart.entity.ProductPhoto;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
@@ -135,6 +136,13 @@ class CartServiceTest {
         User customer = user(Role.CUSTOMER, 10L, true);
         Shop shop = shop(1L, "Local Fresh");
         Product product = product(101L, "Rice", "Staples");
+        ProductPhoto photo = new ProductPhoto();
+        photo.setApprovedImageUrl("https://cdn.example.test/rice-5kg.jpg");
+        photo.setSourceName("Open Food Facts");
+        photo.setSourceUrl("https://world.openfoodfacts.org/product/8901234567890");
+        photo.setLicense("CC BY-SA");
+        photo.setAttribution("Open Food Facts contributors");
+        product.setPhoto(photo);
         CartItem cartItem = new CartItem();
         cartItem.setProduct(product);
         cartItem.setQuantity(2);
@@ -158,6 +166,11 @@ class CartServiceTest {
         assertEquals(251.00, response.getTotalAmount(), 0.001);
         assertTrue(response.getItems().get(0).isAvailable());
         assertEquals(8, response.getItems().get(0).getAvailableStock());
+        assertEquals("https://cdn.example.test/rice-5kg.jpg", response.getItems().get(0).getImageUrl());
+        assertEquals("https://world.openfoodfacts.org/product/8901234567890",
+                response.getItems().get(0).getImageSourceUrl());
+        assertEquals("CC BY-SA", response.getItems().get(0).getImageLicense());
+        assertEquals("Open Food Facts contributors", response.getItems().get(0).getImageAttribution());
     }
 
     private void arrangeActiveCustomerAndShop() {
