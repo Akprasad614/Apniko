@@ -1655,3 +1655,28 @@
   color: #7a8478;
   font-size: .55rem;
 }
+
+
+.shopkeeper-catalogue-choice-wrap {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: .3rem;
+}
+.shopkeeper-catalogue-choice-wrap > .shopkeeper-catalogue-choice {
+  width: 100%;
+}
+.shopkeeper-product-photo-credit {
+  display: block;
+  min-width: 0;
+  padding-inline: .15rem;
+  color: var(--lc-muted);
+  font-size: .52rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.shopkeeper-product-photo-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
