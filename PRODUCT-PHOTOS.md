@@ -30,6 +30,14 @@ For any source, the reviewer compares the Apniko product with the source image a
 
 A barcode match alone is not enough to approve a photograph. Loose produce should not be treated as a branded packaged product.
 
+## Photo credits and licence display
+
+For Open Facts photos, use the source's CC BY-SA 3.0 licence deed and provide the source record, available contributor/photographer attribution and a link to the licence alongside the displayed image. Do not replace missing source attribution with an invented creator name. The customer catalogue, shopkeeper product picker and shop inventory use the same approved-photo credit component.
+
+The Open Facts image licence does not automatically clear every right visible in a package photograph. Packaging artwork, trademarks, logos and other graphic elements may carry separate rights. An exact barcode/brand/pack match is necessary for product identity, but it is not proof that every visible element is cleared for commercial reuse. Keep an image out of the published catalogue when its source or rights are uncertain.
+
+Apniko does not crop, retouch, remove branding from or otherwise alter the source image during import. Should a future workflow modify a licensed image, it must record that modification and preserve the licence attribution obligations.
+
 ## Manufacturer / supplier authorised images
 
 The admin-only photo candidate API supports a source named `Brand / supplier authorised catalogue`. Such a candidate must:
