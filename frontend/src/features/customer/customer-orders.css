@@ -274,8 +274,26 @@
   font-size: 0.66rem;
 }
 
+.customer-order__item-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.18rem;
+}
 .customer-order__item small {
   color: var(--lc-muted);
+}
+
+.customer-order__item-credit {
+  display: block;
+  color: var(--lc-muted);
+  font-size: 0.52rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.customer-order__item-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .customer-order__item strong {
