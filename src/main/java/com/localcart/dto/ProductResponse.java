@@ -19,6 +19,9 @@ public class ProductResponse {
     private BigDecimal mrp;
     private String imageUrl;
     private String imageSourceName;
+    private String imageSourceUrl;
+    private String imageLicense;
+    private String imageAttribution;
 
     public ProductResponse() {
     }
@@ -44,6 +47,9 @@ public class ProductResponse {
         if (photo != null && photo.getApprovedImageUrl() != null) {
             response.imageUrl = photo.getApprovedImageUrl();
             response.imageSourceName = photo.getSourceName();
+            response.imageSourceUrl = photo.getSourceUrl();
+            response.imageLicense = photo.getLicense();
+            response.imageAttribution = photo.getAttribution();
         }
         return response;
     }
@@ -58,4 +64,7 @@ public class ProductResponse {
     public BigDecimal getMrp() { return mrp; }
     public String getImageUrl() { return imageUrl; }
     public String getImageSourceName() { return imageSourceName; }
+    public String getImageSourceUrl() { return imageSourceUrl; }
+    public String getImageLicense() { return imageLicense; }
+    public String getImageAttribution() { return imageAttribution; }
 }
