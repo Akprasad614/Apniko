@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { FallbackImage } from '../../components/FallbackImage'
 import { ApiError, apiRequest } from '../../lib/api'
 import './product-photo-review.css'
 
@@ -129,11 +130,14 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
           <div className="product-photo-review__list">
             {items.map((item) => (
               <article className="product-photo-review-card" key={item.productId}>
-                <div className="product-photo-review-card__image">
-                  {item.candidateImageUrl
-                    ? <img src={item.candidateImageUrl} alt={item.sourceProductName || item.productName} loading="lazy" />
-                    : <span>Image unavailable</span>}
-                </div>
+                <FallbackImage
+                  src={item.candidateImageUrl}
+                  alt={item.sourceProductName || item.productName}
+                  unavailableLabel="Image unavailable"
+                  className="product-photo-review-card__image"
+                  imageClassName="product-photo-review-card__image-content"
+                  fallbackClassName="product-photo-review-card__image-fallback"
+                />
                 <div className="product-photo-review-card__details">
                   <p className="product-photo-review-card__eyebrow">PRODUCT #{item.productId}</p>
                   <h4>{item.productName}</h4>

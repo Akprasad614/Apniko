@@ -1372,7 +1372,9 @@
   border-radius: 9px;
   background: #fff;
 }
-.shopkeeper-catalogue-choice__image img {
+.shopkeeper-catalogue-choice__image-content {
+  width: 100%;
+  height: 100%;
   padding: .5rem;
   object-fit: contain;
 }
@@ -1432,7 +1434,14 @@
   border-bottom: 1px solid #eef0e9;
   background: #fff;
 }
-.shopkeeper-inventory-card__media > img {
+.shopkeeper-inventory-card__image-wrap {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 185px;
+  place-items: center;
+}
+.shopkeeper-inventory-card__image {
   width: 100%;
   height: 100%;
   padding: .75rem;
@@ -1603,7 +1612,8 @@
     gap: .6rem;
   }
   .shopkeeper-inventory-card__media,
-  .shopkeeper-inventory-card__photo-placeholder {
+  .shopkeeper-inventory-card__photo-placeholder,
+  .shopkeeper-inventory-card__image-wrap {
     min-height: 132px;
   }
   .shopkeeper-inventory-card__body {
