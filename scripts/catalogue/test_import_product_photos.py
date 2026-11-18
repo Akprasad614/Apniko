@@ -110,7 +110,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         def candidate_for(local_brand, source_brand):
             item = {"barcode": BARCODE, "name": "Grocery", "brand": local_brand, "packSize": "200 ml"}
             payload = {"product": {
-                "code": BARCODE, "brands": source_brand, "quantity": "200ml",
+                "code": BARCODE, "product_name": "Grocery pack",
+                "brands": source_brand, "quantity": "200ml",
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
             }}
             return find_candidate(item, payload, API_URL)
