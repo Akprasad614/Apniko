@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
+import { ApprovedProductImage } from './ApprovedProductImage'
 import {
   buildMarketplaceSearchPath,
   formatRupees,
@@ -16,6 +17,22 @@ import type {
 import './customer-storefront.css'
 
 const PAGE_SIZE = 24
+
+function categorySymbol(category: string): string {
+  const value = category.toLowerCase()
+  if (value.includes('fruit') || value.includes('vegetable')) return '🥬'
+  if (value.includes('dairy') || value.includes('bakery') || value.includes('egg')) return '🥛'
+  if (value.includes('foodgrain') || value.includes('oil') || value.includes('masala')) return '🌾'
+  if (value.includes('snack') || value.includes('branded')) return '🍪'
+  if (value.includes('beverage')) return '🥤'
+  if (value.includes('cleaning') || value.includes('household')) return '🧹'
+  if (value.includes('beauty') || value.includes('hygiene')) return '🧴'
+  if (value.includes('baby')) return '🍼'
+  if (value.includes('gourmet') || value.includes('world')) return '🍝'
+  if (value.includes('pet') || value.includes('garden')) return '🐾'
+  if (value.includes('meat') || value.includes('fish')) return '🐟'
+  return '🛒'
+}
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
@@ -39,6 +56,11 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
   const [appliedSearch, setAppliedSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'price'>('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [minPriceInput, setMinPriceInput] = useState('')
+  const [maxPriceInput, setMaxPriceInput] = useState('')
+  const [appliedMinPrice, setAppliedMinPrice] = useState<number | undefined>(undefined)
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState<number | undefined>(undefined)
   const [productPage, setProductPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [loadingShops, setLoadingShops] = useState(true)
@@ -117,7 +139,9 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         category: activeCategory,
         shopId: selectedShopId,
         sortBy,
-        direction: 'asc',
+        direction: sortDirection,
+        minPrice: appliedMinPrice,
+        maxPrice: appliedMaxPrice,
         page,
         size: PAGE_SIZE,
       })
@@ -132,7 +156,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
       setLoadingProducts(false)
       setLoadingMore(false)
     }
-  }, [activeCategory, appliedSearch, selectedShopId, sortBy, token])
+  }, [activeCategory, appliedMaxPrice, appliedMinPrice, appliedSearch, selectedShopId, sortBy, sortDirection, token])
 
   useEffect(() => {
     void loadProducts(0, false)
@@ -169,6 +193,21 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     setAppliedSearch(searchInput.trim())
   }
 
+  function applyPriceFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const min = minPriceInput.trim() ? Number(minPriceInput) : undefined
+    const max = maxPriceInput.trim() ? Number(maxPriceInput) : undefined
+    if ((min !== undefined && (!Number.isFinite(min) || min < 0))
+      || (max !== undefined && (!Number.isFinite(max) || max < 0))
+      || (min !== undefined && max !== undefined && min > max)) {
+      setProductError('Enter a valid price range. The minimum cannot exceed the maximum.')
+      return
+    }
+    setProductError('')
+    setAppliedMinPrice(min)
+    setAppliedMaxPrice(max)
+  }
+
   async function addProduct(product: MarketplaceInventoryItem) {
     if (selectedShopId === null || busyProductId !== null) return
     setBusyProductId(product.productId)
@@ -192,26 +231,56 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     }
   }
 
+  async function setProductQuantity(product: MarketplaceInventoryItem, quantity: number) {
+    if (selectedShopId === null || busyProductId !== null) return
+    setBusyProductId(product.productId)
+    setBasketError('')
+    setNotice('')
+    try {
+      const updated = quantity <= 0
+        ? await apiRequest<Basket>(
+          `/api/customer/cart/${selectedShopId}/items/${product.productId}`,
+          { method: 'DELETE' },
+          token,
+        )
+        : await apiRequest<Basket>(
+          `/api/customer/cart/${selectedShopId}/items/${product.productId}`,
+          { method: 'PUT', body: JSON.stringify({ quantity }) },
+          token,
+        )
+      setBasket(updated)
+      setNotice(quantity <= 0
+        ? `${product.productName} removed from your basket.`
+        : `${product.productName} quantity updated.`)
+    } catch (error) {
+      setBasketError(messageFor(error))
+    } finally {
+      setBusyProductId(null)
+    }
+  }
+
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
 
   return (
     <div className="customer-storefront">
       <div className={`customer-wrap customer-main customer-main--${view}`}>
         {view === 'home' && (
-        <section className="customer-intro" aria-labelledby="customer-title">
-          <div>
-            <p className="customer-eyebrow"><span /> THE LOCAL SHELF</p>
-            <h1 id="customer-title">Good things are<br /><em>closer than you think.</em></h1>
-            <p className="customer-intro__copy">
-              Browse the shops on Apniko, see what they have in stock, and put together a basket from the store you choose.
-            </p>
-          </div>
-          <div className="customer-intro__aside">
-            <span className="customer-intro__aside-mark" aria-hidden="true">✳</span>
-            <p>Every basket starts with a local shop.</p>
-            <span>CHOOSE A SHOP · FIND YOUR USUALS</span>
-          </div>
-        </section>
+          <section className="customer-intro customer-grocery-hero" aria-labelledby="customer-title">
+            <div className="customer-grocery-hero__copy">
+              <p className="customer-eyebrow"><span /> YOUR EVERYDAY GROCERY RUN</p>
+              <h1 id="customer-title">Good food.<br /><em>Closer to home.</em></h1>
+              <p className="customer-intro__copy">
+                Shop the products your neighbourhood store actually has in stock, at the price it sets today.
+              </p>
+            </div>
+            <div className="customer-grocery-hero__note">
+              <span aria-hidden="true">✳</span>
+              <div>
+                <strong>Local shelves, one basket.</strong>
+                <p>Choose a shop to see its products, live stock and local prices.</p>
+              </div>
+            </div>
+          </section>
         )}
 
         {view === 'categories' && (
@@ -227,8 +296,8 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         <section className="shop-section" aria-labelledby="shop-section-title">
           <div className="customer-section-heading">
             <div>
-              <p className="customer-eyebrow">01 / PICK YOUR SHOP</p>
-              <h2 id="shop-section-title">The shops on your shelf</h2>
+              <p className="customer-eyebrow">SHOP LOCAL</p>
+              <h2 id="shop-section-title">Choose your store</h2>
             </div>
             <span className="customer-section-heading__count">
               {loadingShops ? 'Loading shops' : `${shops.length} ${shops.length === 1 ? 'shop' : 'shops'}`}
@@ -245,25 +314,26 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
               <p>There aren't any active shops listed on Apniko yet. Check back when a local shop joins.</p>
             </div>
           ) : (
-            <div className="shop-ribbon" aria-label="Choose a shop">
-              {shops.map((shop, index) => (
-                <button
-                  className={`shop-choice${selectedShopId === shop.id ? ' is-selected' : ''}`}
-                  key={shop.id}
-                  type="button"
-                  aria-pressed={selectedShopId === shop.id}
-                  onClick={() => {
-                    setSelectedShopId(shop.id)
+            <label className="customer-store-select">
+              <span>Delivering from</span>
+              <select
+                value={selectedShopId ?? ''}
+                onChange={(event) => {
+                  const nextShopId = Number(event.target.value)
+                  if (Number.isSafeInteger(nextShopId) && nextShopId > 0) {
+                    setSelectedShopId(nextShopId)
                     setNotice('')
-                  }}
-                >
-                  <span className="shop-choice__index">SHOP {String(index + 1).padStart(2, '0')}</span>
-                  <strong>{shop.name}</strong>
-                  <span className="shop-choice__address">{shop.address || 'Address not listed'}</span>
-                  <span className="shop-choice__select">{selectedShopId === shop.id ? 'Selected ✓' : 'View this shop ↗'}</span>
-                </button>
-              ))}
-            </div>
+                  }
+                }}
+                aria-label="Choose your neighbourhood shop"
+              >
+                {shops.map((shop) => (
+                  <option value={shop.id} key={shop.id}>
+                    {shop.name}{shop.address ? ` — ${shop.address}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
         </section>
 
@@ -271,7 +341,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
           <section className="marketplace-section" aria-labelledby="marketplace-title">
             <div className="marketplace-heading">
               <div>
-                <p className="customer-eyebrow">02 / FROM THE COUNTER OF</p>
+                <p className="customer-eyebrow">SHOPPING FROM</p>
                 <h2 id="marketplace-title">{selectedShop.name}</h2>
                 <p className="marketplace-heading__address">{selectedShop.address || 'Local shop'}</p>
               </div>
@@ -298,11 +368,38 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
               </form>
               <label className="market-sort">
                 <span>Sort by</span>
-                <select value={sortBy} onChange={(event) => setSortBy(event.target.value as 'name' | 'price')}>
-                  <option value="name">Name</option>
-                  <option value="price">Price</option>
+                <select value={sortBy + ':' + sortDirection} onChange={(event) => {
+                  const [nextSort, nextDirection] = event.target.value.split(':')
+                  setSortBy(nextSort as 'name' | 'price')
+                  setSortDirection(nextDirection as 'asc' | 'desc')
+                }}>
+                  <option value="name:asc">Name A–Z</option>
+                  <option value="price:asc">Price: low to high</option>
+                  <option value="price:desc">Price: high to low</option>
                 </select>
               </label>
+              <form className="market-price-filter" onSubmit={applyPriceFilters}>
+                <label>
+                  <span>Min ₹</span>
+                  <input type="number" min="0" step="1" value={minPriceInput}
+                    onChange={(event) => setMinPriceInput(event.target.value)} placeholder="Any" />
+                </label>
+                <label>
+                  <span>Max ₹</span>
+                  <input type="number" min="0" step="1" value={maxPriceInput}
+                    onChange={(event) => setMaxPriceInput(event.target.value)} placeholder="Any" />
+                </label>
+                <button type="submit">Apply</button>
+                {(appliedMinPrice !== undefined || appliedMaxPrice !== undefined) && (
+                  <button type="button" className="market-price-filter__clear"
+                    onClick={() => {
+                      setMinPriceInput('')
+                      setMaxPriceInput('')
+                      setAppliedMinPrice(undefined)
+                      setAppliedMaxPrice(undefined)
+                    }}>Clear</button>
+                )}
+              </form>
             </div>
 
             <div className="marketplace-content marketplace-content--full">
@@ -317,7 +414,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                         aria-pressed={activeCategory === category}
                         onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
                       >
-                        <span className="customer-category-card__symbol" aria-hidden="true">{category.slice(0, 1).toUpperCase()}</span>
+                        <span className="customer-category-card__symbol" aria-hidden="true">{categorySymbol(category)}</span>
                         <strong>{category}</strong>
                         <span>Explore products <span aria-hidden="true">→</span></span>
                       </button>
@@ -329,6 +426,31 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                       </div>
                     )}
                   </div>
+                )}
+                {view === 'home' && categories.length > 0 && (
+                  <section className="customer-category-preview" aria-labelledby="customer-category-preview-title">
+                    <div className="customer-catalogue-section-heading">
+                      <div>
+                        <p className="customer-eyebrow">BROWSE THE SHELVES</p>
+                        <h3 id="customer-category-preview-title">Shop by category</h3>
+                      </div>
+                      <Link to="/customer/categories">See all categories <span aria-hidden="true">→</span></Link>
+                    </div>
+                    <div className="customer-category-grid customer-category-grid--home" aria-label="Available product categories">
+                      {categories.slice(0, 8).map((category) => (
+                        <button
+                          className={`customer-category-card${activeCategory === category ? ' is-selected' : ''}`}
+                          key={category}
+                          type="button"
+                          aria-pressed={activeCategory === category}
+                          onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
+                        >
+                          <span className="customer-category-card__symbol" aria-hidden="true">{categorySymbol(category)}</span>
+                          <strong>{category}</strong>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
                 )}
                 <div className="category-row" aria-label="Filter by category">
                   <button
@@ -363,42 +485,73 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                     <p>Try another search or category, or choose a different shop.</p>
                   </div>
                 ) : (
-                  <div className="product-list">
-                    {products.map((product, index) => (
-                      <article className="product-row" key={product.id}>
-                        <div className={`product-row__mark product-row__mark--${index % 4}`} aria-hidden="true">
-                          <span>{product.category?.slice(0, 1).toUpperCase() || 'L'}</span>
-                        </div>
-                        <div className="product-row__details">
-                          <span className="product-row__category">
-                            {[product.category, product.subcategory].filter(Boolean).join(' · ') || 'Everyday essentials'}
-                          </span>
-                          <h4>{product.productName}</h4>
-                          <span className="product-row__stock">
-                            {[
-                              product.brand,
-                              product.packSize,
-                              product.stockQuantity > 0 && product.available
-                                ? `${product.stockQuantity} available`
-                                : 'Currently unavailable',
-                            ].filter(Boolean).join(' · ')}
-                          </span>
-                        </div>
-                        <div className="product-row__buy">
-                          <strong>{formatRupees(product.price)}</strong>
-                          {product.mrp !== null && product.mrp !== undefined && product.mrp > product.price && (
-                            <small>MRP {formatRupees(product.mrp)}</small>
-                          )}
-                          <button
-                            type="button"
-                            disabled={!product.available || product.stockQuantity < 1 || busyProductId === product.productId}
-                            onClick={() => void addProduct(product)}
-                          >
-                            {busyProductId === product.productId ? 'Adding…' : 'Add +'}
-                          </button>
-                        </div>
-                      </article>
-                    ))}
+                  <div className="product-list catalogue-product-grid">
+                    {products.map((product) => {
+                      const basketItem = basket?.items.find((item) => item.productId === product.productId)
+                      const busy = busyProductId === product.productId
+                      const hasDiscountedMrp = product.mrp !== null
+                        && product.mrp !== undefined
+                        && product.mrp > product.price
+                      const discountPercent = hasDiscountedMrp
+                        ? Math.round(((product.mrp! - product.price) / product.mrp!) * 100)
+                        : 0
+                      return (
+                        <article className="catalogue-product-card" key={product.id}>
+                          <div className="catalogue-product-card__media">
+                            <ApprovedProductImage
+                              variant="card"
+                              imageUrl={product.imageUrl}
+                              productName={product.productName}
+                              sourceName={product.imageSourceName}
+                              sourceUrl={product.imageSourceUrl}
+                              license={product.imageLicense}
+                              attribution={product.imageAttribution}
+                            />
+                            {hasDiscountedMrp && discountPercent > 0 && (
+                              <span className="catalogue-product-card__discount">{discountPercent}% OFF</span>
+                            )}
+                            {(!product.available || product.stockQuantity < 1) && (
+                              <span className="catalogue-product-card__unavailable">Out of stock</span>
+                            )}
+                          </div>
+                          <div className="catalogue-product-card__body">
+                            <p className="catalogue-product-card__brand">{product.brand || 'Brand not listed'}</p>
+                            <h4>{product.productName}</h4>
+                            <p className="catalogue-product-card__pack">
+                              {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Pack details not listed'}
+                            </p>
+                            {product.stockQuantity > 0 && product.stockQuantity <= 5 && product.available && (
+                              <p className="catalogue-product-card__stock">Only {product.stockQuantity} left at this shop</p>
+                            )}
+                            <div className="catalogue-product-card__purchase">
+                              <div className="catalogue-product-card__price">
+                                <strong>{formatRupees(product.price)}</strong>
+                                {hasDiscountedMrp && <del>{formatRupees(product.mrp as number)}</del>}
+                              </div>
+                              {basketItem ? (
+                                <div className="catalogue-product-card__quantity" aria-label={`Quantity of ${product.productName} in basket`}>
+                                  <button type="button" aria-label={`Remove one ${product.productName}`}
+                                    disabled={busy}
+                                    onClick={() => void setProductQuantity(product, basketItem.quantity - 1)}>−</button>
+                                  <strong aria-live="polite">{basketItem.quantity}</strong>
+                                  <button type="button" aria-label={`Add one ${product.productName}`}
+                                    disabled={busy || !product.available || basketItem.quantity >= product.stockQuantity}
+                                    onClick={() => void setProductQuantity(product, basketItem.quantity + 1)}>+</button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={!product.available || product.stockQuantity < 1 || busy}
+                                  onClick={() => void addProduct(product)}
+                                >
+                                  {busy ? 'Adding…' : 'ADD'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
                   </div>
                 )}
 

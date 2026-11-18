@@ -3,12 +3,14 @@ package com.localcart.service;
 import com.localcart.dto.AddInventoryRequest;
 import com.localcart.dto.InventoryMovementResponse;
 import com.localcart.dto.InventoryResponse;
+import com.localcart.dto.ProductResponse;
 import com.localcart.dto.RestockInventoryRequest;
 import com.localcart.dto.UpdateInventoryRequest;
 import com.localcart.dto.UpdateLowStockThresholdRequest;
 import com.localcart.entity.InventoryMovement;
 import com.localcart.entity.InventoryMovementType;
 import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
@@ -20,6 +22,10 @@ import com.localcart.repository.ProductRepository;
 import com.localcart.repository.ShopInventoryRepository;
 import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,6 +70,10 @@ public class ShopInventoryService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
+        if (!product.isVisibleToCustomers()) {
+            throw new BadRequestException("This product is not approved for shop listings");
+        }
+
         if (request.getPrice() < 0 || request.getStockQuantity() < 0) {
             throw new BadRequestException("Price and stock quantity cannot be negative");
         }
@@ -96,6 +106,30 @@ public class ShopInventoryService {
 
         return inventoryRepository.findByShopId(shopId)
                 .stream().map(this::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> searchAddableProducts(
+            String email, Long shopId, String searchTerm, int page, int size) {
+        User owner = getShopkeeper(email);
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
+        checkOwnership(shop, owner);
+
+        if (page < 0) {
+            throw new BadRequestException("Page number cannot be negative");
+        }
+        if (size < 1 || size > 48) {
+            throw new BadRequestException("Catalogue page size must be between 1 and 48");
+        }
+
+        String term = searchTerm == null || searchTerm.isBlank()
+                ? null : searchTerm.trim();
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.ASC, "name").and(Sort.by(Sort.Direction.ASC, "id")));
+        return productRepository.findAddableProductsForShop(
+                        shopId, term, ProductCatalogueReviewStatus.ACTIVE, pageable)
+                .map(ProductResponse::from);
     }
 
     public InventoryResponse updateInventory(
@@ -264,6 +298,14 @@ public class ShopInventoryService {
         response.setAvailable(inventory.isAvailable());
         response.setLowStockThreshold(threshold);
         response.setLowStock(inventory.getStockQuantity() <= threshold);
+        var photo = inventory.getProduct().getPhoto();
+        if (photo != null && photo.getApprovedImageUrl() != null) {
+            response.setImageUrl(photo.getApprovedImageUrl());
+            response.setImageSourceName(photo.getSourceName());
+            response.setImageSourceUrl(photo.getSourceUrl());
+            response.setImageLicense(photo.getLicense());
+            response.setImageAttribution(photo.getAttribution());
+        }
         return response;
     }
 

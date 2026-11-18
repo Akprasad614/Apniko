@@ -22,6 +22,11 @@ export interface MarketplaceInventoryItem {
   price: number
   stockQuantity: number
   available: boolean
+  imageUrl?: string | null
+  imageSourceName?: string | null
+  imageSourceUrl?: string | null
+  imageLicense?: string | null
+  imageAttribution?: string | null
 }
 
 export interface MarketplacePage<T> {
@@ -42,6 +47,11 @@ export interface BasketItem {
   lineTotal: number
   availableStock: number
   available: boolean
+  imageUrl?: string | null
+  imageSourceName?: string | null
+  imageSourceUrl?: string | null
+  imageLicense?: string | null
+  imageAttribution?: string | null
 }
 
 export interface Basket {
@@ -58,6 +68,8 @@ export interface MarketplaceSearchOptions {
   shopId?: number | null
   sortBy?: 'name' | 'price' | 'shop'
   direction?: 'asc' | 'desc'
+  minPrice?: number
+  maxPrice?: number
   page?: number
   size?: number
 }
@@ -72,6 +84,8 @@ export function buildMarketplaceSearchPath(options: MarketplaceSearchOptions = {
   if (options.shopId !== undefined && options.shopId !== null) {
     params.set('shopId', String(options.shopId))
   }
+  if (options.minPrice !== undefined) params.set('minPrice', String(options.minPrice))
+  if (options.maxPrice !== undefined) params.set('maxPrice', String(options.maxPrice))
 
   params.set('page', String(options.page ?? 0))
   params.set('size', String(options.size ?? 24))

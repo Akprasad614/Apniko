@@ -2,6 +2,7 @@ package com.localcart.service;
 
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductCatalogueReviewStatus;
+import com.localcart.dto.ProductResponse;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.ProductRepository;
 import org.springframework.stereotype.Service;
@@ -111,6 +112,20 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Optional<Product> getProductById(Long id) {
         return productRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getCatalogueProducts() {
+        return productRepository.findAllVisibleWithPhoto(ProductCatalogueReviewStatus.ACTIVE).stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProductResponse> getCatalogueProductById(Long id) {
+        return productRepository.findById(id)
+                .filter(Product::isVisibleToCustomers)
+                .map(ProductResponse::from);
     }
 
     private String identityKey(Product product) {

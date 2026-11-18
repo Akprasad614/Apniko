@@ -65,5 +65,8 @@ jobs:
       - name: Verify Phase 2 catalogue import tools
         run: bash scripts/verify-phase2.sh
 
+      - name: Verify Phase 3 authentic product photo tooling
+        run: bash scripts/verify-phase3.sh
+
       - name: Run Maven verification and tests
         run: ./mvnw -B -ntp verify

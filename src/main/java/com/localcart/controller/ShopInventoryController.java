@@ -3,12 +3,14 @@ package com.localcart.controller;
 import com.localcart.dto.AddInventoryRequest;
 import com.localcart.dto.InventoryMovementResponse;
 import com.localcart.dto.InventoryResponse;
+import com.localcart.dto.ProductResponse;
 import com.localcart.dto.RestockInventoryRequest;
 import com.localcart.dto.UpdateInventoryRequest;
 import com.localcart.dto.UpdateLowStockThresholdRequest;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.ShopInventoryService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +36,21 @@ public class ShopInventoryController {
             return ResponseEntity.status(401).build();
         }
         return ResponseEntity.ok(inventoryService.addInventory(email, shopId, request));
+    }
+
+    @GetMapping("/{shopId}/catalogue")
+    public ResponseEntity<Page<ProductResponse>> searchAddableProducts(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "24") int size) {
+        String email = SecurityUtils.getCurrentUserEmail();
+        if (email == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(
+                inventoryService.searchAddableProducts(email, shopId, q, page, size)
+        );
     }
 
     @GetMapping("/{shopId}/inventory")

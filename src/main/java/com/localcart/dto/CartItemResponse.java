@@ -6,6 +6,11 @@ public class CartItemResponse {
     private Long productId;
     private String productName;
     private String category;
+    private String imageUrl;
+    private String imageSourceName;
+    private String imageSourceUrl;
+    private String imageLicense;
+    private String imageAttribution;
     private double price;
     private int quantity;
     private double lineTotal;
@@ -46,6 +51,21 @@ public class CartItemResponse {
     public void setCategory(String category) {
         this.category = category;
     }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String value) { this.imageUrl = value; }
+
+    public String getImageSourceName() { return imageSourceName; }
+    public void setImageSourceName(String value) { this.imageSourceName = value; }
+
+    public String getImageSourceUrl() { return imageSourceUrl; }
+    public void setImageSourceUrl(String value) { this.imageSourceUrl = value; }
+
+    public String getImageLicense() { return imageLicense; }
+    public void setImageLicense(String value) { this.imageLicense = value; }
+
+    public String getImageAttribution() { return imageAttribution; }
+    public void setImageAttribution(String value) { this.imageAttribution = value; }
 
     public double getPrice() {
         return price;

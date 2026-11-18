@@ -33,6 +33,18 @@ describe('customer marketplace helpers', () => {
     expect(url.searchParams.get('direction')).toBe('asc')
   })
 
+  it('includes the selected shop price range in the search request', () => {
+    const url = new URL(buildMarketplaceSearchPath({
+      shopId: 21,
+      minPrice: 25,
+      maxPrice: 150,
+    }), 'http://localhost')
+
+    expect(url.searchParams.get('shopId')).toBe('21')
+    expect(url.searchParams.get('minPrice')).toBe('25')
+    expect(url.searchParams.get('maxPrice')).toBe('150')
+  })
+
   it('formats prices in Indian rupees', () => {
     expect(formatRupees(1250)).toContain('1,250')
     expect(formatRupees(1250)).toContain('₹')

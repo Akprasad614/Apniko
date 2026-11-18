@@ -28,7 +28,13 @@ export interface ShopkeeperProduct {
   brand?: string | null
   barcode?: string | null
   packSize?: string | null
+  mrp?: number | null
   subcategory?: string | null
+  imageUrl?: string | null
+  imageSourceName?: string | null
+  imageSourceUrl?: string | null
+  imageLicense?: string | null
+  imageAttribution?: string | null
 }
 
 export interface ShopkeeperInventoryItem {
@@ -48,6 +54,11 @@ export interface ShopkeeperInventoryItem {
   available: boolean
   lowStockThreshold: number
   lowStock: boolean
+  imageUrl?: string | null
+  imageSourceName?: string | null
+  imageSourceUrl?: string | null
+  imageLicense?: string | null
+  imageAttribution?: string | null
 }
 
 export interface ShopkeeperOrderItem {

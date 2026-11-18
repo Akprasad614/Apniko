@@ -7,6 +7,7 @@ import com.localcart.dto.UpdateLowStockThresholdRequest;
 import com.localcart.entity.InventoryMovement;
 import com.localcart.entity.InventoryMovementType;
 import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ShopInventory;
@@ -76,6 +77,26 @@ class ShopInventoryServiceCoverageTest {
         assertEquals(InventoryMovementType.INITIAL_STOCK, captor.getValue().getMovementType());
         assertEquals(0, captor.getValue().getPreviousQuantity());
         assertEquals(0, captor.getValue().getNewQuantity());
+    }
+
+    @Test
+    void addInventoryRejectsCatalogueProductAwaitingModeration() {
+        User owner = owner();
+        Shop shop = shop(1L, owner);
+        Product hiddenProduct = product(101L);
+        hiddenProduct.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+        arrangeOwnerAndShop(owner, shop);
+        when(productRepository.findById(101L)).thenReturn(Optional.of(hiddenProduct));
+
+        AddInventoryRequest request = new AddInventoryRequest();
+        request.setProductId(101L);
+        request.setPrice(35.50);
+        request.setStockQuantity(5);
+
+        assertThrows(BadRequestException.class,
+                () -> service.addInventory("owner@example.com", 1L, request));
+        verify(inventoryRepository, never()).save(any(ShopInventory.class));
+        verifyNoInteractions(movementRepository);
     }
 
     @Test

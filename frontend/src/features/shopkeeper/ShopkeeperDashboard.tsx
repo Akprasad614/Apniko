@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
+import { ProductPhotoCredit } from '../../components/ProductPhotoCredit'
 import {
   canAcceptShopkeeperOrderWithSavedFulfilment,
   canCancelShopkeeperOrder,
@@ -26,6 +27,11 @@ import type {
 import './shopkeeper-dashboard.css'
 
 type DashboardTab = 'overview' | 'orders' | 'inventory'
+interface CatalogueProductPage {
+  content: ShopkeeperProduct[]
+  number: number
+  last: boolean
+}
 type OrderFilter = 'ALL' | 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED'
 
 function messageFor(error: unknown): string {
@@ -62,6 +68,8 @@ export function ShopkeeperDashboard() {
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [loadingInventory, setLoadingInventory] = useState(false)
   const [catalogueLoading, setCatalogueLoading] = useState(false)
+  const [cataloguePage, setCataloguePage] = useState(0)
+  const [catalogueHasMore, setCatalogueHasMore] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busyKey, setBusyKey] = useState('')
@@ -74,6 +82,7 @@ export function ShopkeeperDashboard() {
   const [actionReason, setActionReason] = useState('')
   const [showAddInventory, setShowAddInventory] = useState(false)
   const [newProductId, setNewProductId] = useState('')
+  const [catalogueSearch, setCatalogueSearch] = useState('')
   const [newPrice, setNewPrice] = useState('')
   const [newStock, setNewStock] = useState('')
   const [editingItem, setEditingItem] = useState<ShopkeeperInventoryItem | null>(null)
@@ -187,22 +196,47 @@ export function ShopkeeperDashboard() {
     void loadInventory(selectedShopId)
   }, [loadInventory, selectedShopId])
 
-  async function openAddInventory() {
-    setShowAddInventory(true)
-    setError('')
-    if (catalogue.length || catalogueLoading) return
+  async function loadCataloguePage(page: number, append: boolean, query: string) {
+    if (selectedShopId === null) return
     setCatalogueLoading(true)
+    setError('')
+    if (!append) setNewProductId('')
     try {
-      const result = await apiRequest<ShopkeeperProduct[]>('/api/products', {}, token)
-      setCatalogue(result)
-      const existingIds = new Set(inventory.map((item) => item.productId))
-      const firstAvailable = result.find((product) => !existingIds.has(product.id))
-      if (firstAvailable) setNewProductId(String(firstAvailable.id))
+      const params = new URLSearchParams({
+        page: String(page),
+        size: '24',
+      })
+      if (query.trim()) params.set('q', query.trim())
+      const result = await apiRequest<CatalogueProductPage>(
+        `/api/shopkeeper/shops/${selectedShopId}/catalogue?${params.toString()}`,
+        {},
+        token,
+      )
+      setCatalogue((current) => {
+        if (!append) return result.content
+        const byId = new Map(current.map((product) => [product.id, product]))
+        result.content.forEach((product) => byId.set(product.id, product))
+        return [...byId.values()]
+      })
+      setCataloguePage(result.number)
+      setCatalogueHasMore(!result.last)
+      if (!append && result.content.length) {
+        setNewProductId(String(result.content[0]?.id))
+      }
     } catch (loadError) {
       setError(messageFor(loadError))
+      if (!append) setCatalogue([])
     } finally {
       setCatalogueLoading(false)
     }
+  }
+
+  async function openAddInventory() {
+    setShowAddInventory(true)
+    setCatalogueSearch('')
+    setNewProductId('')
+    setError('')
+    await loadCataloguePage(0, false, '')
   }
 
   async function saveOrderFulfilment(
@@ -787,13 +821,85 @@ export function ShopkeeperDashboard() {
                 {showAddInventory && (
                   <form className="shopkeeper-form-panel" onSubmit={(event) => void addInventory(event)}>
                     <div className="shopkeeper-form-panel__heading"><div><p className="shopkeeper-eyebrow">ADD TO THIS SHOP</p><h3>Put a product on the shelf</h3></div><button type="button" onClick={() => setShowAddInventory(false)} aria-label="Close add product form">×</button></div>
-                    {catalogueLoading ? <p>Loading the product catalogue…</p> : addableProducts.length ? (
-                      <div className="shopkeeper-form-grid">
-                        <label>Product<select required value={newProductId} onChange={(event) => setNewProductId(event.target.value)}><option value="">Choose a product</option>{addableProducts.map((product) => <option key={product.id} value={product.id}>{product.name}{product.category ? ` · ${product.category}` : ''}</option>)}</select></label>
-                        <label>Price (₹)<input type="number" min="0" step="0.01" required value={newPrice} onChange={(event) => setNewPrice(event.target.value)} placeholder="e.g. 48" /></label>
-                        <label>Opening stock<input type="number" min="0" step="1" required value={newStock} onChange={(event) => setNewStock(event.target.value)} placeholder="e.g. 20" /></label>
-                      </div>
-                    ) : !catalogueLoading ? <p className="shopkeeper-muted">Every catalogue product is already listed in this shop. Ask an administrator to add a new product to the shared catalogue when needed.</p> : null}
+                    {catalogueLoading ? <p role="status">Loading the product catalogue…</p> : (
+                      <>
+                        <div className="shopkeeper-catalogue-search">
+                          <label htmlFor="shopkeeper-catalogue-search-input">Find a product in the shared catalogue</label>
+                          <div>
+                            <input id="shopkeeper-catalogue-search-input" type="search" value={catalogueSearch}
+                              onChange={(event) => setCatalogueSearch(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault()
+                                  void loadCataloguePage(0, false, catalogueSearch)
+                                }
+                              }}
+                              placeholder="Search product, brand, pack size or barcode…" />
+                            <button type="button" className="shopkeeper-primary-button"
+                              disabled={catalogueLoading}
+                              onClick={() => void loadCataloguePage(0, false, catalogueSearch)}>
+                              {catalogueLoading ? 'Searching…' : 'Search'}
+                            </button>
+                          </div>
+                        </div>
+                        {addableProducts.length ? (
+                          <div className="shopkeeper-catalogue-picker" aria-label="Select a catalogue product">
+                            {addableProducts.slice(0, 48).map((product) => (
+                              <div className="shopkeeper-catalogue-choice-wrap" key={product.id}>
+                                <button type="button"
+                                  className={newProductId === String(product.id) ? 'shopkeeper-catalogue-choice is-selected' : 'shopkeeper-catalogue-choice'}
+                                  aria-pressed={newProductId === String(product.id)}
+                                  onClick={() => setNewProductId(String(product.id))}>
+                                  <span className="shopkeeper-catalogue-choice__image">
+                                    {product.imageUrl
+                                      ? <img src={product.imageUrl} alt={product.name} loading="lazy" />
+                                      : (
+                                        <span className="shopkeeper-catalogue-choice__photo-missing">
+                                          <span aria-hidden="true">▧</span>
+                                          <small>Photo not yet available</small>
+                                        </span>
+                                      )}
+                                  </span>
+                                  <span className="shopkeeper-catalogue-choice__copy">
+                                    <strong>{product.name}</strong>
+                                    <small>{[
+                                      product.brand || 'Brand not listed',
+                                      product.packSize || 'Pack size not listed',
+                                      product.category,
+                                      product.mrp ? 'MRP ' + formatShopkeeperRupees(product.mrp) : null,
+                                    ].filter(Boolean).join(' · ')}</small>
+                                  </span>
+                                  <span className="shopkeeper-catalogue-choice__select">{newProductId === String(product.id) ? 'Selected' : 'Select'}</span>
+                                </button>
+                                <ProductPhotoCredit
+                                  sourceName={product.imageSourceName}
+                                  sourceUrl={product.imageSourceUrl}
+                                  license={product.imageLicense}
+                                  attribution={product.imageAttribution}
+                                  className="shopkeeper-product-photo-credit"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="shopkeeper-muted">
+                            {catalogueSearch
+                              ? 'No unlisted products match that search. Try a brand, category or pack size.'
+                              : 'Every catalogue product is already listed in this shop.'}
+                          </p>
+                        )}
+                        {catalogueHasMore && (
+                          <button type="button" className="shopkeeper-text-button" disabled={catalogueLoading}
+                            onClick={() => void loadCataloguePage(cataloguePage + 1, true, catalogueSearch)}>
+                            {catalogueLoading ? 'Loading…' : 'Load more catalogue products'}
+                          </button>
+                        )}
+                        <div className="shopkeeper-form-grid shopkeeper-form-grid--listing">
+                          <label>Price for this shop (₹)<input type="number" min="0" step="0.01" required value={newPrice} onChange={(event) => setNewPrice(event.target.value)} placeholder="e.g. 48" /></label>
+                          <label>Opening stock<input type="number" min="0" step="1" required value={newStock} onChange={(event) => setNewStock(event.target.value)} placeholder="e.g. 20" /></label>
+                        </div>
+                      </>
+                    )}
                     <div className="shopkeeper-form-actions"><button className="shopkeeper-primary-button" type="submit" disabled={busyKey === 'inventory-add' || catalogueLoading || addableProducts.length === 0}>{busyKey === 'inventory-add' ? 'Adding…' : 'Add to inventory'}</button><button type="button" className="shopkeeper-text-button" onClick={() => setShowAddInventory(false)}>Close</button></div>
                   </form>
                 )}
@@ -823,22 +929,81 @@ export function ShopkeeperDashboard() {
                 )}
 
                 {loadingInventory ? <div className="shopkeeper-empty" role="status">Loading stock records…</div> : visibleInventory.length ? (
-                  <div className="shopkeeper-inventory-table-wrap">
-                    <table className="shopkeeper-inventory-table">
-                      <thead><tr><th>Product</th><th>Price</th><th>On hand</th><th>Listing</th><th>Low-stock level</th><th>Actions</th></tr></thead>
-                      <tbody>
-                        {visibleInventory.map((item) => (
-                          <tr key={item.id}>
-                            <td><strong>{item.productName}</strong><small>{item.category || 'Everyday essentials'}</small></td>
-                            <td>{formatShopkeeperRupees(item.price)}</td>
-                            <td><strong>{item.stockQuantity}</strong>{(item.lowStock || item.stockQuantity <= item.lowStockThreshold) && <span className="shopkeeper-low-stock">Low</span>}</td>
-                            <td><span className={item.available && item.stockQuantity > 0 ? 'shopkeeper-listing shopkeeper-listing--live' : 'shopkeeper-listing'}>{item.available && item.stockQuantity > 0 ? 'Visible' : 'Hidden'}</span></td>
-                            <td><input className="shopkeeper-threshold-input" type="number" min="0" step="1" aria-label={`Low stock threshold for ${item.productName}`} value={item.lowStockThreshold} onChange={(event) => { const value = event.target.value; setInventory((current) => current.map((entry) => entry.id === item.id ? { ...entry, lowStockThreshold: Number(value) } : entry)) }} onBlur={(event) => void updateThreshold(item, event.target.value)} /></td>
-                            <td><div className="shopkeeper-row-actions"><button type="button" onClick={() => startEditing(item)}>Edit</button><button type="button" onClick={() => { setRestockItem(item); setRestockQuantity(''); setRestockNote('') }}>Restock</button><button type="button" onClick={() => void openMovements(item)}>History</button></div></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="shopkeeper-inventory-grid">
+                    {visibleInventory.map((item) => {
+                      const isVisible = item.available && item.stockQuantity > 0
+                      const isLow = item.lowStock || item.stockQuantity <= item.lowStockThreshold
+                      return (
+                        <article className="shopkeeper-inventory-card" key={item.id}>
+                          <div className="shopkeeper-inventory-card__media">
+                            {item.imageUrl
+                              ? <img src={item.imageUrl} alt={item.productName} loading="lazy" />
+                              : (
+                                <div className="shopkeeper-inventory-card__photo-placeholder" role="img"
+                                  aria-label={'Verified product photo not yet available for ' + item.productName}>
+                                  <span aria-hidden="true">▧</span>
+                                  <small>Photo not yet available</small>
+                                </div>
+                              )}
+                            <span className={'shopkeeper-inventory-card__listing' + (isVisible ? ' is-visible' : '')}>
+                              {isVisible ? 'Listed for customers' : 'Not listed'}
+                            </span>
+                          </div>
+                          <ProductPhotoCredit
+                            sourceName={item.imageSourceName}
+                            sourceUrl={item.imageSourceUrl}
+                            license={item.imageLicense}
+                            attribution={item.imageAttribution}
+                            className="shopkeeper-product-photo-credit"
+                          />
+                          <div className="shopkeeper-inventory-card__body">
+                            <p className="shopkeeper-inventory-card__brand">{item.brand || 'Brand not listed'}</p>
+                            <h3>{item.productName}</h3>
+                            <p className="shopkeeper-inventory-card__pack">
+                              {[item.packSize, item.category].filter(Boolean).join(' · ') || 'Pack details not listed'}
+                            </p>
+                            <div className="shopkeeper-inventory-card__metrics">
+                              <div>
+                                <small>Shop price</small>
+                                <strong>{formatShopkeeperRupees(item.price)}</strong>
+                              </div>
+                              <div>
+                                <small>On hand</small>
+                                <strong>{item.stockQuantity}<small> units</small></strong>
+                                {isLow && <span className="shopkeeper-low-stock">Low stock</span>}
+                              </div>
+                            </div>
+                            <label className="shopkeeper-inventory-card__threshold">
+                              Low-stock alert at
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                aria-label={'Low stock threshold for ' + item.productName}
+                                value={item.lowStockThreshold}
+                                onChange={(event) => {
+                                  const value = event.target.value
+                                  setInventory((current) => current.map((entry) => entry.id === item.id
+                                    ? { ...entry, lowStockThreshold: Number(value) }
+                                    : entry))
+                                }}
+                                onBlur={(event) => void updateThreshold(item, event.target.value)}
+                              />
+                              <span>units</span>
+                            </label>
+                            <div className="shopkeeper-inventory-card__actions">
+                              <button type="button" onClick={() => startEditing(item)}>Edit listing</button>
+                              <button type="button" onClick={() => {
+                                setRestockItem(item)
+                                setRestockQuantity('')
+                                setRestockNote('')
+                              }}>Restock</button>
+                              <button type="button" onClick={() => void openMovements(item)}>History</button>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="shopkeeper-empty"><h3>{inventory.length ? 'No matching products' : 'Your shelf is empty'}</h3><p>{inventory.length ? 'Try a different search or switch off the low-stock filter.' : 'Add products from the shared catalogue to start managing your shelf.'}</p></div>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { formatRupees } from './marketplace'
+import { ApprovedProductImage } from './ApprovedProductImage'
 import type { Basket, MarketplaceShop } from './marketplace'
 import type { CustomerAddress } from './CustomerAddresses'
 import './customer-shell.css'
@@ -372,7 +373,15 @@ export function CustomerCart() {
             <div className="customer-cart-item-list">
               {basket.items.map((item) => (
                 <article className="customer-cart-item" key={item.productId}>
-                  <div className="customer-cart-item__symbol" aria-hidden="true">{item.productName.slice(0, 1).toUpperCase()}</div>
+                  <ApprovedProductImage
+                    imageUrl={item.imageUrl}
+                    productName={item.productName}
+                    sourceName={item.imageSourceName}
+                    sourceUrl={item.imageSourceUrl}
+                    license={item.imageLicense}
+                    attribution={item.imageAttribution}
+                    variant="thumbnail"
+                  />
                   <div className="customer-cart-item__details">
                     <strong>{item.productName}</strong><span>{formatRupees(item.price)} each</span>
                     <small>{item.available ? item.availableStock + ' available' : 'Currently unavailable'}</small>
