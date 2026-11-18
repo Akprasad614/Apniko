@@ -32,6 +32,9 @@ export interface ShopkeeperProduct {
   subcategory?: string | null
   imageUrl?: string | null
   imageSourceName?: string | null
+  imageSourceUrl?: string | null
+  imageLicense?: string | null
+  imageAttribution?: string | null
 }
 
 export interface ShopkeeperInventoryItem {
@@ -53,6 +56,9 @@ export interface ShopkeeperInventoryItem {
   lowStock: boolean
   imageUrl?: string | null
   imageSourceName?: string | null
+  imageSourceUrl?: string | null
+  imageLicense?: string | null
+  imageAttribution?: string | null
 }
 
 export interface ShopkeeperOrderItem {
