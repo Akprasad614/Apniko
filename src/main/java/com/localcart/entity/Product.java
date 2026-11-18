@@ -1,5 +1,6 @@
 package com.localcart.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -148,8 +149,34 @@ public class Product {
     @OneToOne(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private ProductPhoto photo;
 
+    @JsonIgnore
     public ProductPhoto getPhoto() { return photo; }
     public void setPhoto(ProductPhoto photo) { this.photo = photo; }
+
+    /**
+     * Safe, read-only photo projection for order entity responses.
+     * The ProductPhoto relation itself is intentionally hidden because it also
+     * contains pending/rejected candidate URLs and supplier evidence.
+     */
+    public String getImageUrl() {
+        return photo != null ? photo.getApprovedImageUrl() : null;
+    }
+
+    public String getImageSourceName() {
+        return getImageUrl() != null ? photo.getSourceName() : null;
+    }
+
+    public String getImageSourceUrl() {
+        return getImageUrl() != null ? photo.getSourceUrl() : null;
+    }
+
+    public String getImageLicense() {
+        return getImageUrl() != null ? photo.getLicense() : null;
+    }
+
+    public String getImageAttribution() {
+        return getImageUrl() != null ? photo.getAttribution() : null;
+    }
 
     public boolean isVisibleToCustomers() {
         return catalogueReviewStatus == null
