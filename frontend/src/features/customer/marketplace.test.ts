@@ -1,7 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { buildMarketplaceSearchPath, formatRupees } from './marketplace'
+import { buildMarketplaceSearchPath, formatRupees, getPublicShopHeading } from './marketplace'
 
 describe('customer marketplace helpers', () => {
+  it('exposes only the public shop name and address in the customer heading', () => {
+    const shop = {
+      id: 17,
+      name: 'Apniko Test Shop',
+      ownerName: 'Apniko Test Shopkeeper',
+      phone: 'private phone',
+      address: 'Central Market',
+      active: true,
+    }
+
+    expect(getPublicShopHeading(shop)).toEqual({
+      name: 'Apniko Test Shop',
+      address: 'Central Market',
+    })
+  })
+
   it('builds a search URL from the selected shop and filters', () => {
     const path = buildMarketplaceSearchPath({
       query: '  basmati rice  ',

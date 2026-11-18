@@ -7,6 +7,13 @@ export interface MarketplaceShop {
   active: boolean
 }
 
+export function getPublicShopHeading(shop: Pick<MarketplaceShop, 'name' | 'address'>) {
+  return {
+    name: shop.name,
+    address: shop.address || 'Local shop',
+  }
+}
+
 export interface MarketplaceInventoryItem {
   id: number
   shopId: number

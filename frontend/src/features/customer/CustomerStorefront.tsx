@@ -7,6 +7,7 @@ import { ApprovedProductImage } from './ApprovedProductImage'
 import {
   buildMarketplaceSearchPath,
   formatRupees,
+  getPublicShopHeading,
 } from './marketplace'
 import type {
   Basket,
@@ -260,6 +261,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
   }
 
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
+  const publicShopHeading = selectedShop ? getPublicShopHeading(selectedShop) : null
 
   return (
     <div className="customer-storefront">
@@ -342,12 +344,8 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
             <div className="marketplace-heading">
               <div>
                 <p className="customer-eyebrow">SHOPPING FROM</p>
-                <h2 id="marketplace-title">{selectedShop.name}</h2>
-                <p className="marketplace-heading__address">{selectedShop.address || 'Local shop'}</p>
-              </div>
-              <div className="marketplace-heading__owner">
-                <span>SHOPKEEPER</span>
-                <strong>{selectedShop.ownerName || 'Local store'}</strong>
+                <h2 id="marketplace-title">{publicShopHeading?.name}</h2>
+                <p className="marketplace-heading__address">{publicShopHeading?.address}</p>
               </div>
             </div>
 

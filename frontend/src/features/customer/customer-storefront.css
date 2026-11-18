@@ -289,24 +289,6 @@
   font-size: 0.72rem;
 }
 
-.marketplace-heading__owner {
-  display: grid;
-  gap: 0.25rem;
-  text-align: right;
-}
-
-.marketplace-heading__owner span {
-  color: var(--lc-terracotta);
-  font-size: 0.55rem;
-  font-weight: 850;
-  letter-spacing: 0.14em;
-}
-
-.marketplace-heading__owner strong {
-  color: var(--lc-forest);
-  font-size: 0.78rem;
-}
-
 .marketplace-tools {
   display: flex;
   align-items: end;
@@ -1053,10 +1035,6 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0.2rem;
-  }
-
-  .marketplace-heading__owner {
-    display: none;
   }
 
   .category-row {
