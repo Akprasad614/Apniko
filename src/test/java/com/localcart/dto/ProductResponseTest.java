@@ -3,10 +3,14 @@ package com.localcart.dto;
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductImageReviewStatus;
 import com.localcart.entity.ProductPhoto;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProductResponseTest {
 
@@ -36,6 +40,50 @@ class ProductResponseTest {
         assertEquals("https://brand.example/products/aashirvaad-atta", response.getImageSourceUrl());
         assertEquals("MANUFACTURER_AUTHORIZED", response.getImageLicense());
         assertEquals("Image supplied by Aashirvaad", response.getImageAttribution());
+    }
+
+    @Test
+    void rawOrderProductProjectionExposesOnlyApprovedPhotoMetadata() throws JsonProcessingException {
+        Product product = new Product();
+        product.setName("Aashirvaad Atta");
+
+        ProductPhoto photo = new ProductPhoto();
+        photo.setApprovedImageUrl("https://cdn.example.test/approved.jpg");
+        photo.setSourceName("Open Food Facts");
+        photo.setSourceUrl("https://world.openfoodfacts.org/product/8900000000000");
+        photo.setLicense("CC BY-SA");
+        photo.setAttribution("Open Food Facts contributors");
+        photo.setCandidateImageUrl("https://cdn.example.test/pending.jpg");
+        photo.setCandidateAuthorizationReference("PRIVATE-SUPPLIER-AGREEMENT");
+        product.setPhoto(photo);
+
+        String json = new ObjectMapper().writeValueAsString(product);
+
+        assertTrue(json.contains("\"imageUrl\":\"https://cdn.example.test/approved.jpg\""));
+        assertTrue(json.contains("\"imageLicense\":\"CC BY-SA\""));
+        assertTrue(json.contains("\"imageAttribution\":\"Open Food Facts contributors\""));
+        assertFalse(json.contains("candidateImageUrl"));
+        assertFalse(json.contains("pending.jpg"));
+        assertFalse(json.contains("PRIVATE-SUPPLIER-AGREEMENT"));
+        assertFalse(json.contains("\"photo\""));
+    }
+
+    @Test
+    void doesNotExposeAnyPhotoMetadataWhenThereIsNoApprovedImage() throws JsonProcessingException {
+        Product product = new Product();
+        product.setName("Aashirvaad Atta");
+
+        ProductPhoto photo = new ProductPhoto();
+        photo.setCandidateImageUrl("https://cdn.example.test/pending.jpg");
+        photo.setSourceName("Private pending source");
+        product.setPhoto(photo);
+
+        String json = new ObjectMapper().writeValueAsString(product);
+
+        assertFalse(json.contains("imageUrl"));
+        assertFalse(json.contains("Private pending source"));
+        assertFalse(json.contains("pending.jpg"));
+        assertFalse(json.contains("\"photo\""));
     }
 
     @Test
