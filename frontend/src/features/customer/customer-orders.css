@@ -264,11 +264,12 @@
 }
 
 .customer-order__item {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
   gap: 0.7rem;
   border-bottom: 1px solid var(--lc-line);
-  padding: 0.48rem 0;
+  padding: 0.55rem 0;
   color: var(--lc-ink);
   font-size: 0.66rem;
 }
