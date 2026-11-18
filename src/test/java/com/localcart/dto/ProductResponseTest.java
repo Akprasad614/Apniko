@@ -21,6 +21,9 @@ class ProductResponseTest {
         ProductPhoto photo = new ProductPhoto();
         photo.setApprovedImageUrl("https://cdn.example.test/aashirvaad-atta-5kg.jpg");
         photo.setSourceName("Manufacturer-authorised catalogue");
+        photo.setSourceUrl("https://brand.example/products/aashirvaad-atta");
+        photo.setLicense("MANUFACTURER_AUTHORIZED");
+        photo.setAttribution("Image supplied by Aashirvaad");
         photo.setReviewStatus(ProductImageReviewStatus.APPROVED);
         product.setPhoto(photo);
 
@@ -30,6 +33,9 @@ class ProductResponseTest {
         assertEquals("Aashirvaad", response.getBrand());
         assertEquals("5 kg", response.getPackSize());
         assertEquals("https://cdn.example.test/aashirvaad-atta-5kg.jpg", response.getImageUrl());
+        assertEquals("https://brand.example/products/aashirvaad-atta", response.getImageSourceUrl());
+        assertEquals("MANUFACTURER_AUTHORIZED", response.getImageLicense());
+        assertEquals("Image supplied by Aashirvaad", response.getImageAttribution());
     }
 
     @Test
