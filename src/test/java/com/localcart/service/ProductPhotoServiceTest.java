@@ -8,6 +8,7 @@ import com.localcart.entity.ProductPhoto;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ConflictException;
 import com.localcart.repository.ProductPhotoRepository;
+import com.localcart.repository.ProductPhotoReviewHistoryRepository;
 import com.localcart.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,13 +30,15 @@ class ProductPhotoServiceTest {
     private static final String BRAND_SOURCE = "Brand / supplier authorised catalogue";
     private ProductRepository productRepository;
     private ProductPhotoRepository photoRepository;
+    private ProductPhotoReviewHistoryRepository historyRepository;
     private ProductPhotoService service;
 
     @BeforeEach
     void setUp() {
         productRepository = mock(ProductRepository.class);
         photoRepository = mock(ProductPhotoRepository.class);
-        service = new ProductPhotoService(productRepository, photoRepository);
+        historyRepository = mock(ProductPhotoReviewHistoryRepository.class);
+        service = new ProductPhotoService(productRepository, photoRepository, historyRepository);
     }
 
     @Test
