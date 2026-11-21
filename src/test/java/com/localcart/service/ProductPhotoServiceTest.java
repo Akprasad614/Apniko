@@ -189,7 +189,7 @@ class ProductPhotoServiceTest {
         when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
         var result = service.reviewCandidate(
-                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.APPROVED, null),
+                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.APPROVED, null, true),
                 "admin@example.test");
 
         assertEquals(ProductImageReviewStatus.APPROVED, result.status());
@@ -199,6 +199,18 @@ class ProductPhotoServiceTest {
         assertEquals("Open Food Facts contributors", photo.getAttribution());
         assertNull(result.authorizationReference());
         assertNull(photo.getCandidateImageUrl());
+    }
+
+    @Test
+    void approvalRequiresExplicitIdentityAndRightsConfirmation() {
+        ProductPhoto photo = pendingPhoto(product());
+        when(photoRepository.findByProductId(10L)).thenReturn(Optional.of(photo));
+
+        assertThrows(BadRequestException.class, () -> service.reviewCandidate(
+                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.APPROVED, null, false),
+                "admin@example.test"));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
+        assertNull(photo.getApprovedImageUrl());
     }
 
     @Test
@@ -213,7 +225,7 @@ class ProductPhotoServiceTest {
         when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
         var result = service.reviewCandidate(
-                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.APPROVED, null),
+                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.APPROVED, null, true),
                 "admin@example.test");
 
         assertEquals("Supplier agreement BR-2026-014", photo.getAuthorizationReference());
@@ -232,7 +244,7 @@ class ProductPhotoServiceTest {
         when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
         var result = service.reviewCandidate(
-                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.REJECTED, "Different packaging"),
+                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.REJECTED, "Different packaging", false),
                 "admin@example.test");
 
         assertEquals(ProductImageReviewStatus.APPROVED, result.status());
@@ -246,7 +258,7 @@ class ProductPhotoServiceTest {
         when(photoRepository.findByProductId(10L)).thenReturn(Optional.of(photo));
 
         assertThrows(BadRequestException.class, () -> service.reviewCandidate(
-                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.REJECTED, " "),
+                10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.REJECTED, " ", false),
                 "admin@example.test"));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }

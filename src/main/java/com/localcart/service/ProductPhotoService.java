@@ -177,6 +177,11 @@ public class ProductPhotoService {
                 || request.status() == ProductImageReviewStatus.PENDING) {
             throw new BadRequestException("Choose APPROVED or REJECTED for the photo review");
         }
+        if (request.status() == ProductImageReviewStatus.APPROVED
+                && !request.verificationConfirmed()) {
+            throw new BadRequestException(
+                    "Confirm the exact product match and image-use permission before approving this photograph");
+        }
         ProductPhoto photo = photoRepository.findByProductId(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Photo candidate not found"));
         if (photo.getReviewStatus() != ProductImageReviewStatus.PENDING
