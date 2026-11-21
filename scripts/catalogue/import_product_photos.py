@@ -108,6 +108,19 @@ def same_pack_size(left: object, right: object) -> bool:
     return bool(exact_left and exact_right and exact_left == exact_right)
 
 
+def valid_gtin(value: str) -> bool:
+    """Return whether value is an 8, 12, 13 or 14 digit GTIN with a valid check digit."""
+    code = str(value or "").strip()
+    if not re.fullmatch(r"(?:\d{8}|\d{12}|\d{13}|\d{14})", code):
+        return False
+    total = 0
+    weight = 3
+    for digit in reversed(code[:-1]):
+        total += int(digit) * weight
+        weight = 1 if weight == 3 else 3
+    return (10 - total % 10) % 10 == int(code[-1])
+
+
 def explain_candidate(
     local_product: dict, payload: dict, api_url: str
 ) -> tuple[dict | None, str | None]:
@@ -115,6 +128,8 @@ def explain_candidate(
     product = payload.get("product") or {}
     if not barcode:
         return None, "Apniko product has no barcode"
+    if not valid_gtin(barcode):
+        return None, "Apniko barcode is not a valid GTIN check digit"
     if str(product.get("code") or "").strip() != barcode:
         return None, "source GTIN does not exactly match the Apniko barcode"
 

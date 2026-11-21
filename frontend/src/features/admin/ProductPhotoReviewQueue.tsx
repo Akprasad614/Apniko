@@ -121,7 +121,7 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
         {
           method: 'POST',
           body: JSON.stringify({
-            reason: 'Legacy pending candidate retired for Phase 3B refresh; source image and rights did not meet the current Apniko product-photo standard.',
+            reason: 'Pending candidate retired from the active queue for Phase 3B re-review. The original image and source metadata are retained in the audit history; no approval is implied.',
             confirmRetirement: true,
           }),
         },

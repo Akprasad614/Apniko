@@ -166,6 +166,9 @@ public class ProductPhotoService {
         if (barcode == null || barcode.isBlank()) {
             throw new BadRequestException("A verified GTIN barcode is required before looking up a product photo");
         }
+        if (!isValidGtin(barcode)) {
+            throw new BadRequestException("The Apniko catalogue barcode must be a valid 8, 12, 13 or 14 digit GTIN");
+        }
         if (!barcode.equals(request.matchedBarcode().trim())) {
             throw new BadRequestException("The source barcode does not exactly match this catalogue product");
         }
@@ -333,6 +336,17 @@ public class ProductPhotoService {
             throw new BadRequestException(label + " must not exceed " + maxLength + " characters");
         }
         return text;
+    }
+
+    private boolean isValidGtin(String value) {
+        if (value == null || !value.matches("(?:\\d{8}|\\d{12}|\\d{13}|\\d{14})")) return false;
+        int total = 0;
+        int weight = 3;
+        for (int index = value.length() - 2; index >= 0; index--) {
+            total += Character.digit(value.charAt(index), 10) * weight;
+            weight = weight == 3 ? 1 : 3;
+        }
+        return (10 - total % 10) % 10 == Character.digit(value.charAt(value.length() - 1), 10);
     }
 
     private boolean sameBrand(String left, String right) {

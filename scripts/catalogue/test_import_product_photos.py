@@ -5,7 +5,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from unittest.mock import Mock, patch
 
-from import_product_photos import explain_candidate, find_candidate, parse_product_ids, run, safe_image_url
+from import_product_photos import explain_candidate, find_candidate, parse_product_ids, run, safe_image_url, valid_gtin
 
 
 BARCODE = "8901234567890"
@@ -28,6 +28,12 @@ class FakeResponse:
 
 
 class ProductPhotoImporterTests(unittest.TestCase):
+    def test_gtin_check_digit_is_validated_before_source_lookup(self):
+        self.assertTrue(valid_gtin(BARCODE))
+        self.assertTrue(valid_gtin("00000604"))
+        self.assertFalse(valid_gtin("8901234567891"))
+        self.assertFalse(valid_gtin("12345"))
+
     def test_only_https_allowlisted_images_with_matching_barcode_are_accepted(self):
         self.assertTrue(safe_image_url(IMAGE, BARCODE))
         self.assertFalse(safe_image_url(IMAGE.replace("https://", "http://"), BARCODE))

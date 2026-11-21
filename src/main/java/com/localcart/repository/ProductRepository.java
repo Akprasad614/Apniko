@@ -94,6 +94,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             FROM Product product
             LEFT JOIN product.photo photo
             WHERE product.barcode IS NOT NULL
+              AND TRIM(product.barcode) <> ''
               AND (photo IS NULL OR photo.approvedImageUrl IS NULL)
               AND (photo IS NULL OR photo.reviewStatus IS NULL
                    OR photo.reviewStatus = :rejectedStatus)
