@@ -14,7 +14,7 @@ export function productPhotoLicenseUrl(license?: string | null): string | null {
   const normalized = (license ?? '')
     .trim()
     .replace(/[-_]/g, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .toUpperCase()
 
   return normalized === 'CC BY SA'

@@ -4,12 +4,17 @@ import com.localcart.dto.ProductPhotoCandidateRequest;
 import com.localcart.dto.ProductPhotoImportTargetResponse;
 import com.localcart.dto.ProductPhotoReviewRequest;
 import com.localcart.dto.ProductPhotoReviewResponse;
+import com.localcart.dto.ProductPhotoRolloutReportResponse;
+import com.localcart.dto.ProductPhotoCandidateRetirementResponse;
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductImageReviewStatus;
 import com.localcart.entity.ProductPhoto;
+import com.localcart.entity.ProductPhotoReviewHistory;
 import com.localcart.exception.BadRequestException;
+import com.localcart.exception.ConflictException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.ProductPhotoRepository;
+import com.localcart.repository.ProductPhotoReviewHistoryRepository;
 import com.localcart.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -24,6 +29,7 @@ import java.net.URI;
 import java.text.Normalizer;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,10 +62,15 @@ public class ProductPhotoService {
 
     private final ProductRepository productRepository;
     private final ProductPhotoRepository photoRepository;
+    private final ProductPhotoReviewHistoryRepository historyRepository;
 
-    public ProductPhotoService(ProductRepository productRepository, ProductPhotoRepository photoRepository) {
+    public ProductPhotoService(
+            ProductRepository productRepository,
+            ProductPhotoRepository photoRepository,
+            ProductPhotoReviewHistoryRepository historyRepository) {
         this.productRepository = productRepository;
         this.photoRepository = photoRepository;
+        this.historyRepository = historyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -82,12 +93,85 @@ public class ProductPhotoService {
                         product.getBarcode(), product.getPackSize()));
     }
 
+    @Transactional(readOnly = true)
+    public ProductPhotoRolloutReportResponse getRolloutReport() {
+        long totalProducts = productRepository.count();
+        long productsWithBarcode = productRepository.countProductsWithBarcode();
+        long approvedPhotos = photoRepository.countByReviewStatusAndApprovedImageUrlIsNotNull(
+                ProductImageReviewStatus.APPROVED);
+        long pending = photoRepository.countByReviewStatus(ProductImageReviewStatus.PENDING);
+        long rejected = photoRepository.countByReviewStatus(ProductImageReviewStatus.REJECTED);
+        long openFacts = photoRepository.countApprovedOpenFactsPhotos(ProductImageReviewStatus.APPROVED);
+        long supplierAuthorized = photoRepository.countByReviewStatusAndLicense(
+                ProductImageReviewStatus.APPROVED, "MANUFACTURER_AUTHORIZED");
+        long eligibleWithBarcode = productRepository.countProductsWithBarcodeMissingApprovedPhoto(
+                ProductImageReviewStatus.REJECTED);
+        return new ProductPhotoRolloutReportResponse(
+                totalProducts,
+                productsWithBarcode,
+                Math.max(0, totalProducts - approvedPhotos),
+                approvedPhotos,
+                pending,
+                rejected,
+                openFacts,
+                supplierAuthorized,
+                eligibleWithBarcode,
+                historyRepository.countByOutcome("RETIRED")
+        );
+    }
+
+    public ProductPhotoCandidateRetirementResponse retirePendingCandidates(
+            String reason, String adminEmail, boolean confirmation) {
+        if (!confirmation) {
+            throw new BadRequestException("Explicit confirmation is required before retiring pending photo candidates");
+        }
+        String normalizedReason = requiredText(reason, 500, "Retirement reason");
+        String reviewer = adminEmail == null || adminEmail.isBlank() ? "admin" : adminEmail.trim();
+        int retired = 0;
+        int preservedApproved = 0;
+        Instant now = Instant.now();
+
+        // Always process page zero: each batch is moved out of PENDING before the next fetch.
+        while (true) {
+            Page<ProductPhoto> batch = photoRepository.findByReviewStatus(
+                    ProductImageReviewStatus.PENDING,
+                    PageRequest.of(0, MAX_PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id")));
+            if (batch.isEmpty()) break;
+
+            for (ProductPhoto photo : batch.getContent()) {
+                historyRepository.save(ProductPhotoReviewHistory.from(
+                        photo, "RETIRED", normalizedReason, reviewer, now));
+                boolean hasApprovedPhoto = photo.getApprovedImageUrl() != null
+                        && !photo.getApprovedImageUrl().isBlank();
+                photo.setReviewStatus(hasApprovedPhoto
+                        ? ProductImageReviewStatus.APPROVED
+                        : ProductImageReviewStatus.REJECTED);
+                photo.setReviewReason(normalizedReason);
+                photo.setReviewedAt(now);
+                photo.setReviewedBy(reviewer);
+                photo.clearCandidate();
+                if (hasApprovedPhoto) preservedApproved++;
+                retired++;
+            }
+            photoRepository.saveAll(batch.getContent());
+        }
+
+        return new ProductPhotoCandidateRetirementResponse(
+                retired,
+                preservedApproved,
+                "Pending candidates retired with an audit record. Products without an approved image are eligible for a fresh lookup.");
+    }
+
+
     public ProductPhotoReviewResponse submitCandidate(Long productId, ProductPhotoCandidateRequest request) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
         String barcode = product.getBarcode();
         if (barcode == null || barcode.isBlank()) {
             throw new BadRequestException("A verified GTIN barcode is required before looking up a product photo");
+        }
+        if (!isValidGtin(barcode)) {
+            throw new BadRequestException("The Apniko catalogue barcode must be a valid 8, 12, 13 or 14 digit GTIN");
         }
         if (!barcode.equals(request.matchedBarcode().trim())) {
             throw new BadRequestException("The source barcode does not exactly match this catalogue product");
@@ -146,6 +230,12 @@ public class ProductPhotoService {
             }
         }
 
+        if (historyRepository.existsByProductIdAndCandidateImageUrlAndOutcomeIn(
+                productId, imageUri.toString(), List.of("REJECTED", "RETIRED"))) {
+            throw new ConflictException(
+                    "This exact image URL was previously rejected or retired for this product. Submit a different source image.");
+        }
+
         ProductPhoto photo = photoRepository.findByProductId(productId).orElseGet(ProductPhoto::new);
         if (photo.getReviewStatus() == ProductImageReviewStatus.PENDING) {
             throw new BadRequestException("This product already has a photograph waiting for review");
@@ -192,6 +282,13 @@ public class ProductPhotoService {
         if (request.status() == ProductImageReviewStatus.REJECTED && reason.isBlank()) {
             throw new BadRequestException("A reason is required when rejecting a product photo");
         }
+
+        historyRepository.save(ProductPhotoReviewHistory.from(
+                photo,
+                request.status().name(),
+                reason,
+                adminEmail == null || adminEmail.isBlank() ? "admin" : adminEmail.trim(),
+                Instant.now()));
 
         if (request.status() == ProductImageReviewStatus.APPROVED) {
             photo.setApprovedImageUrl(photo.getCandidateImageUrl());
@@ -249,6 +346,17 @@ public class ProductPhotoService {
             throw new BadRequestException(label + " must not exceed " + maxLength + " characters");
         }
         return text;
+    }
+
+    private boolean isValidGtin(String value) {
+        if (value == null || !value.matches("(?:\\d{8}|\\d{12}|\\d{13}|\\d{14})")) return false;
+        int total = 0;
+        int weight = 3;
+        for (int index = value.length() - 2; index >= 0; index--) {
+            total += Character.digit(value.charAt(index), 10) * weight;
+            weight = weight == 3 ? 1 : 3;
+        }
+        return (10 - total % 10) % 10 == Character.digit(value.charAt(value.length() - 1), 10);
     }
 
     private boolean sameBrand(String left, String right) {

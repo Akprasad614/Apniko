@@ -166,3 +166,25 @@ Keep implementation checks separate from content completion. The Phase 3B rollou
 - products intentionally left without a photograph because no acceptable source exists.
 
 Do not mark Phase 3B content rollout complete until the photographs have been inspected and the source/licence or written permission evidence has been verified. The repository cannot manufacture supplier permissions or substitute illustrative images for genuine product photography.
+
+### Phase 3B refresh sequence (local)
+
+1. Pull the merged code and restart the backend so Hibernate creates the
+   `product_photo_review_history` table.
+2. In Admin → Product catalogue → Product photo review, inspect the rollout
+   report. Retire legacy pending candidates only when they need to be re-reviewed;
+   the old image URL and source evidence are archived before the active queue is cleared.
+3. From the repository root, run the secure helper:
+
+   ```bash
+   python3 -m venv .venv-catalogue
+   source .venv-catalogue/bin/activate
+   python -m pip install -r scripts/catalogue/requirements.txt
+   python scripts/catalogue/refresh_product_photos.py --limit 100
+   ```
+
+4. Inspect the dry-run candidate list. To submit exact matches to the pending
+   admin queue, repeat with `--apply`. The helper logs in securely, does not print
+   the JWT, and does not approve photos.
+5. Inspect each submitted image in the Admin queue. Approve only after the visible
+   package, variant, pack and commercial rights evidence have been checked.
