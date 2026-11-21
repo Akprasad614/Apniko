@@ -4,6 +4,8 @@ import com.localcart.dto.ProductPhotoCandidateRequest;
 import com.localcart.dto.ProductPhotoImportTargetResponse;
 import com.localcart.dto.ProductPhotoReviewRequest;
 import com.localcart.dto.ProductPhotoReviewResponse;
+import com.localcart.dto.ProductPhotoRolloutReportResponse;
+import com.localcart.dto.ProductPhotoCandidateRetirementResponse;
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductImageReviewStatus;
 import com.localcart.entity.ProductPhoto;
