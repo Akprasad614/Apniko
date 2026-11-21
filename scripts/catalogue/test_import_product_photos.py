@@ -295,7 +295,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
                 result = run(args, session=session)
 
         self.assertEqual(result, 0)
-        self.assertIn("previously rejected or retired", output.getvalue())
+        self.assertIn("already rejected or retired", output.getvalue())
         self.assertIn("Inspected: 1; candidates: 1; submitted: 0", output.getvalue())
         session.post.assert_called_once()
 
