@@ -325,6 +325,9 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
                 base + f"/api/admin/catalogue/products/{item['productId']}/photo-candidate",
                 json=candidate, headers=headers, timeout=(5, 20),
             )
+            if saved.status_code == 409:
+                print(f"  SKIP product #{item['productId']}: this exact image URL was already rejected or retired")
+                continue
             saved.raise_for_status()
             submitted += 1
             print(f"  submitted product #{item['productId']} for admin review")

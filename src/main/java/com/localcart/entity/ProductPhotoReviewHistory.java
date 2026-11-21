@@ -74,6 +74,9 @@ public class ProductPhotoReviewHistory {
     @Column(name = "authorization_reference", length = 500)
     private String authorizationReference;
 
+    @Column(name = "candidate_submitted_at")
+    private Instant candidateSubmittedAt;
+
     @Size(max = 16)
     @Column(name = "outcome", nullable = false, length = 16)
     private String outcome;
@@ -109,6 +112,7 @@ public class ProductPhotoReviewHistory {
         history.sourceProductBrand = photo.getCandidateProductBrand();
         history.sourcePackSize = photo.getCandidatePackSize();
         history.authorizationReference = photo.getCandidateAuthorizationReference();
+        history.candidateSubmittedAt = photo.getSubmittedAt();
         history.outcome = outcome;
         history.reason = reason;
         history.reviewedBy = reviewedBy;

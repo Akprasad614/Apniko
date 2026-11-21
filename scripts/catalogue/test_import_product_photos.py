@@ -259,6 +259,46 @@ class ProductPhotoImporterTests(unittest.TestCase):
                 with self.assertRaises(argparse.ArgumentTypeError):
                     parse_product_ids(invalid)
 
+    def test_previously_retired_image_conflict_is_skipped_without_aborting_batch(self):
+        targets = FakeResponse(200, {
+            "content": [{
+                "productId": 42, "barcode": BARCODE, "name": "Grocery",
+                "brand": "Sample Brand", "packSize": "1 kg",
+            }],
+            "last": True,
+        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
+        found = FakeResponse(200, {"product": {
+            "code": BARCODE,
+            "product_name": "Grocery pack",
+            "brands": "Sample Brand",
+            "quantity": "1 kg",
+            "selected_images": {"front": {"display": {"en": IMAGE}}},
+        }}, API_URL)
+        conflict = FakeResponse(
+            409, {"error": "This exact image URL was previously rejected or retired"},
+            "http://localhost:8080/api/admin/catalogue/products/42/photo-candidate",
+        )
+        session = Mock()
+        session.get.side_effect = [targets, found]
+        session.post.return_value = conflict
+        args = argparse.Namespace(
+            api_url="http://localhost:8080",
+            limit=10,
+            page=0,
+            delay_seconds=4.1,
+            apply=True,
+            product_ids=None,
+        )
+        output = StringIO()
+        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
+            with patch("import_product_photos.time.sleep"), redirect_stdout(output):
+                result = run(args, session=session)
+
+        self.assertEqual(result, 0)
+        self.assertIn("previously rejected or retired", output.getvalue())
+        self.assertIn("Inspected: 1; candidates: 1; submitted: 0", output.getvalue())
+        session.post.assert_called_once()
+
     def test_unknown_open_facts_barcode_is_skipped_and_batch_continues(self):
         missing_barcode = "00000604"
         targets = FakeResponse(200, {

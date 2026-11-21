@@ -9,6 +9,7 @@ import com.localcart.entity.ProductImageReviewStatus;
 import com.localcart.entity.ProductPhoto;
 import com.localcart.entity.ProductPhotoReviewHistory;
 import com.localcart.exception.BadRequestException;
+import com.localcart.exception.ConflictException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.ProductPhotoRepository;
 import com.localcart.repository.ProductPhotoReviewHistoryRepository;
@@ -26,6 +27,7 @@ import java.net.URI;
 import java.text.Normalizer;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -224,6 +226,12 @@ public class ProductPhotoService {
             if (!"CC BY SA".equalsIgnoreCase(license)) {
                 throw new BadRequestException("Open Facts product images must use the CC BY-SA licence");
             }
+        }
+
+        if (historyRepository.existsByProductIdAndCandidateImageUrlAndOutcomeIn(
+                productId, imageUri.toString(), List.of("REJECTED", "RETIRED"))) {
+            throw new ConflictException(
+                    "This exact image URL was previously rejected or retired for this product. Submit a different source image.");
         }
 
         ProductPhoto photo = photoRepository.findByProductId(productId).orElseGet(ProductPhoto::new);

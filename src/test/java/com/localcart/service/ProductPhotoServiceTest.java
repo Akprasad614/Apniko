@@ -6,6 +6,7 @@ import com.localcart.entity.Product;
 import com.localcart.entity.ProductImageReviewStatus;
 import com.localcart.entity.ProductPhoto;
 import com.localcart.exception.BadRequestException;
+import com.localcart.exception.ConflictException;
 import com.localcart.repository.ProductPhotoRepository;
 import com.localcart.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,18 @@ class ProductPhotoServiceTest {
         assertEquals("1 kg", result.sourcePackSize());
         assertNull(result.authorizationReference());
         verify(photoRepository).save(any(ProductPhoto.class));
+    }
+
+    @Test
+    void previouslyRetiredImageUrlCannotBeSubmittedAgain() {
+        Product product = product();
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(historyRepository.existsByProductIdAndCandidateImageUrlAndOutcomeIn(
+                10L, IMAGE, List.of("REJECTED", "RETIRED"))).thenReturn(true);
+
+        assertThrows(ConflictException.class,
+                () -> service.submitCandidate(10L, candidate(IMAGE, BARCODE)));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
     @Test
