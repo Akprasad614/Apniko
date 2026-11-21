@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public record ProductPhotoReviewRequest(
         @NotNull ProductImageReviewStatus status,
-        @Size(max = 500) String reason
+        @Size(max = 500) String reason,
+        boolean verificationConfirmed
 ) {
 }
