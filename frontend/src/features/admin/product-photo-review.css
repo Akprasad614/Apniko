@@ -151,3 +151,47 @@
     flex-direction: column;
   }
 }
+
+
+/* Phase 3B: make candidate inspection and the approval gate explicit. */
+.product-photo-review-card__image-wrap {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+.product-photo-review-card__image-wrap > a {
+  color: var(--lc-forest);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+  text-underline-offset: 3px;
+}
+.product-photo-review-card__source-note {
+  border-left: 3px solid var(--lc-terracotta, #b86b45);
+  padding: 0.5rem 0.65rem;
+  color: var(--lc-forest-deep);
+  background: #f8f4ed;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+.product-photo-review-card__submitted {
+  color: var(--lc-muted);
+  font-size: 0.65rem;
+}
+.product-photo-review-card__verification {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  border: 1px solid var(--lc-line);
+  border-radius: 9px;
+  padding: 0.7rem;
+  color: var(--lc-forest-deep);
+  background: #fbfaf6;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+.product-photo-review-card__verification input {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  accent-color: var(--lc-forest);
+}

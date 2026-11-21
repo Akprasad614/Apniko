@@ -48,6 +48,8 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
   const [notice, setNotice] = useState('')
   const [busyId, setBusyId] = useState<number | null>(null)
   const [reasons, setReasons] = useState<Record<number, string>>({})
+  const [verification, setVerification] = useState<Record<number, boolean>>({})
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({})
 
   const loadQueue = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true)
@@ -74,19 +76,35 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
       setError('Add a reason before rejecting this photograph.')
       return
     }
+    if (status === 'APPROVED' && !verification[item.productId]) {
+      setError('Confirm the product match and image-use permission before approving this photograph.')
+      return
+    }
     setBusyId(item.productId)
     setError('')
     setNotice('')
     try {
       await apiRequest<ProductPhotoReviewItem>(
         '/api/admin/catalogue/products/' + item.productId + '/photo-review',
-        { method: 'PATCH', body: JSON.stringify({ status, reason: reason || null }) },
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status,
+            reason: reason || null,
+            verificationConfirmed: status === 'APPROVED' && verification[item.productId] === true,
+          }),
+        },
         token,
       )
       setNotice(status === 'APPROVED'
         ? 'Approved photo for ' + item.productName + '.'
         : 'Rejected photo for ' + item.productName + '.')
       setReasons((current) => {
+        const next = { ...current }
+        delete next[item.productId]
+        return next
+      })
+      setVerification((current) => {
         const next = { ...current }
         delete next[item.productId]
         return next
@@ -129,10 +147,22 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
           <div className="product-photo-review__list">
             {items.map((item) => (
               <article className="product-photo-review-card" key={item.productId}>
-                <div className="product-photo-review-card__image">
-                  {item.candidateImageUrl
-                    ? <img src={item.candidateImageUrl} alt={item.sourceProductName || item.productName} loading="lazy" />
-                    : <span>Image unavailable</span>}
+                <div className="product-photo-review-card__image-wrap">
+                  <div className="product-photo-review-card__image">
+                    {item.candidateImageUrl && !failedImages[item.productId]
+                      ? <img
+                          src={item.candidateImageUrl}
+                          alt={item.sourceProductName || item.productName}
+                          loading="lazy"
+                          onError={() => setFailedImages((current) => ({ ...current, [item.productId]: true }))}
+                        />
+                      : <span>{item.candidateImageUrl ? 'Photograph could not be loaded' : 'Image unavailable'}</span>}
+                  </div>
+                  {item.candidateImageUrl && !failedImages[item.productId] && (
+                    <a href={item.candidateImageUrl} target="_blank" rel="noreferrer">
+                      Open full-size photograph ↗
+                    </a>
+                  )}
                 </div>
                 <div className="product-photo-review-card__details">
                   <p className="product-photo-review-card__eyebrow">PRODUCT #{item.productId}</p>
@@ -152,9 +182,19 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
                       <div><dt>Permission evidence</dt><dd>{item.candidateAuthorizationReference || item.authorizationReference}</dd></div>
                     )}
                   </dl>
+                  <div className="product-photo-review-card__source-note">
+                    {item.candidateSourceName === 'Brand / supplier authorised catalogue'
+                      ? 'Supplier-authorised source: verify the recorded permission reference covers Apniko’s intended commercial display.'
+                      : 'Community-contributed source: inspect the actual packaging and verify that the image licence and visible artwork rights are suitable for Apniko.'}
+                  </div>
                   {item.candidateSourceUrl && (
                     <a href={item.candidateSourceUrl} target="_blank" rel="noreferrer">Open source product record ↗</a>
                   )}
+                  <div className="product-photo-review-card__submitted">
+                    Submitted: {item.submittedAt
+                      ? new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.submittedAt))
+                      : 'Not recorded'}
+                  </div>
                   <label className="product-photo-review-card__reason">
                     Rejection reason (required when rejecting)
                     <textarea value={reasons[item.productId] ?? ''}
@@ -163,11 +203,24 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
                       }))}
                       maxLength={500} rows={2} placeholder="e.g. Different pack size or label" />
                   </label>
+                  <label className="product-photo-review-card__verification">
+                    <input
+                      type="checkbox"
+                      checked={verification[item.productId] === true}
+                      onChange={(event) => setVerification((current) => ({
+                        ...current, [item.productId]: event.target.checked,
+                      }))}
+                    />
+                    <span>
+                      I checked the photograph against the exact product, brand, variant and pack size,
+                      and verified the recorded licence or permission for Apniko’s intended use.
+                    </span>
+                  </label>
                   <div className="product-photo-review-card__actions">
                     <button type="button" className="operations-button"
-                      disabled={busyId === item.productId}
+                      disabled={busyId === item.productId || verification[item.productId] !== true}
                       onClick={() => void review(item, 'APPROVED')}>
-                      {busyId === item.productId ? 'Saving…' : 'Approve photo'}
+                      {busyId === item.productId ? 'Saving…' : 'Approve verified photo'}
                     </button>
                     <button type="button" className="operations-button operations-button--secondary"
                       disabled={busyId === item.productId || !(reasons[item.productId] ?? '').trim()}
