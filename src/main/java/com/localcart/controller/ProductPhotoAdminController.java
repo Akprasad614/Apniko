@@ -4,6 +4,9 @@ import com.localcart.dto.ProductPhotoCandidateRequest;
 import com.localcart.dto.ProductPhotoImportTargetResponse;
 import com.localcart.dto.ProductPhotoReviewRequest;
 import com.localcart.dto.ProductPhotoReviewResponse;
+import com.localcart.dto.ProductPhotoRolloutReportResponse;
+import com.localcart.dto.ProductPhotoCandidateRetirementRequest;
+import com.localcart.dto.ProductPhotoCandidateRetirementResponse;
 import com.localcart.security.SecurityUtils;
 import com.localcart.service.ProductPhotoService;
 import jakarta.validation.Valid;
@@ -35,6 +38,19 @@ public class ProductPhotoAdminController {
             @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(photoService.getImportTargets(page, size));
     }
+
+    @GetMapping("/photo-rollout-report")
+    public ResponseEntity<ProductPhotoRolloutReportResponse> getRolloutReport() {
+        return ResponseEntity.ok(photoService.getRolloutReport());
+    }
+
+    @PostMapping("/photo-review-queue/retire-unverified")
+    public ResponseEntity<ProductPhotoCandidateRetirementResponse> retireUnverifiedCandidates(
+            @Valid @RequestBody ProductPhotoCandidateRetirementRequest request) {
+        return ResponseEntity.ok(photoService.retirePendingCandidates(
+                request.reason(), SecurityUtils.getCurrentUserEmail(), request.confirmRetirement()));
+    }
+
 
     @PostMapping("/products/{productId}/photo-candidate")
     public ResponseEntity<ProductPhotoReviewResponse> submitCandidate(

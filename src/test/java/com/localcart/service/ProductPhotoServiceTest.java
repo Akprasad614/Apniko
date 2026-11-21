@@ -12,6 +12,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -261,6 +265,53 @@ class ProductPhotoServiceTest {
                 10L, new ProductPhotoReviewRequest(ProductImageReviewStatus.REJECTED, " ", false),
                 "admin@example.test"));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
+    }
+
+
+    @Test
+    void retirementArchivesPendingCandidateAndMakesProductEligibleForFreshLookup() {
+        ProductPhoto photo = pendingPhoto(product());
+        when(photoRepository.findByReviewStatus(eq(ProductImageReviewStatus.PENDING), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(photo)), Page.empty());
+        when(photoRepository.saveAll(any())).thenAnswer(call -> call.getArgument(0));
+
+        var result = service.retirePendingCandidates(
+                "Legacy candidate retired before Phase 3B refresh",
+                "admin@example.test",
+                true);
+
+        assertEquals(1, result.retiredCandidates());
+        assertEquals(0, result.preservedPreviouslyApprovedPhotos());
+        assertEquals(ProductImageReviewStatus.REJECTED, photo.getReviewStatus());
+        assertNull(photo.getCandidateImageUrl());
+        assertEquals("Legacy candidate retired before Phase 3B refresh", photo.getReviewReason());
+        verify(historyRepository).save(any());
+        verify(photoRepository, times(2)).findByReviewStatus(
+                eq(ProductImageReviewStatus.PENDING), any(Pageable.class));
+        verify(photoRepository).saveAll(any());
+    }
+
+    @Test
+    void retirementPreservesPreviouslyApprovedPhotoAndRequiresConfirmation() {
+        ProductPhoto photo = pendingPhoto(product());
+        String approved = "https://images.openfoodfacts.org/images/products/890/123/456/7890/approved.jpg";
+        photo.setApprovedImageUrl(approved);
+        when(photoRepository.findByReviewStatus(eq(ProductImageReviewStatus.PENDING), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(photo)), Page.empty());
+        when(photoRepository.saveAll(any())).thenAnswer(call -> call.getArgument(0));
+
+        assertThrows(BadRequestException.class,
+                () -> service.retirePendingCandidates("Retire pending candidates", "admin@example.test", false));
+        verify(photoRepository, never()).saveAll(any());
+
+        var result = service.retirePendingCandidates(
+                "Retire old candidate, preserve approved image", "admin@example.test", true);
+
+        assertEquals(1, result.retiredCandidates());
+        assertEquals(1, result.preservedPreviouslyApprovedPhotos());
+        assertEquals(ProductImageReviewStatus.APPROVED, photo.getReviewStatus());
+        assertEquals(approved, photo.getApprovedImageUrl());
+        verify(historyRepository).save(any());
     }
 
     private Product product() {

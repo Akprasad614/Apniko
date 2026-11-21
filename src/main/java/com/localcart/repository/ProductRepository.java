@@ -103,4 +103,26 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Pageable pageable
     );
 
+    @Query("""
+            SELECT COUNT(product)
+            FROM Product product
+            WHERE product.barcode IS NOT NULL
+              AND TRIM(product.barcode) <> ''
+            """)
+    long countProductsWithBarcode();
+
+    @Query("""
+            SELECT COUNT(product)
+            FROM Product product
+            LEFT JOIN product.photo photo
+            WHERE product.barcode IS NOT NULL
+              AND TRIM(product.barcode) <> ''
+              AND (photo IS NULL OR photo.approvedImageUrl IS NULL)
+              AND (photo IS NULL OR photo.reviewStatus IS NULL
+                   OR photo.reviewStatus = :rejectedStatus)
+            """)
+    long countProductsWithBarcodeMissingApprovedPhoto(
+            @Param("rejectedStatus") ProductImageReviewStatus rejectedStatus
+    );
+
 }

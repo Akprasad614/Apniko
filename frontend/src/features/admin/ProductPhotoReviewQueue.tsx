@@ -25,6 +25,25 @@ interface ProductPhotoReviewItem {
   reviewedBy: string | null
   reviewReason: string | null
 }
+
+interface PhotoRolloutReport {
+  totalCatalogueProducts: number
+  productsWithBarcodeField: number
+  productsWithoutApprovedPhoto: number
+  productsWithApprovedPhoto: number
+  pendingCandidates: number
+  rejectedCandidates: number
+  approvedOpenFactsPhotos: number
+  approvedManufacturerAuthorizedPhotos: number
+  productsEligibleForFreshLookup: number
+  retiredCandidates: number
+}
+interface RetirementResult {
+  retiredCandidates: number
+  preservedPreviouslyApprovedPhotos: number
+  message: string
+}
+
 interface ReviewPage {
   content: ProductPhotoReviewItem[]
   number: number
@@ -43,6 +62,8 @@ function messageFor(error: unknown): string {
 export function ProductPhotoReviewQueue({ token }: { token: string }) {
   const [page, setPage] = useState(0)
   const [result, setResult] = useState<ReviewPage | null>(null)
+  const [report, setReport] = useState<PhotoRolloutReport | null>(null)
+  const [retiring, setRetiring] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -63,12 +84,60 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
     } catch (loadError) {
       setError(messageFor(loadError))
       setResult(null)
+    }
+    try {
+      const summary = await apiRequest<PhotoRolloutReport>(
+        '/api/admin/catalogue/photo-rollout-report',
+        {}, token,
+      )
+      setReport(summary)
+    } catch {
+      setReport(null)
     } finally {
       if (!quiet) setLoading(false)
     }
   }, [page, token])
 
   useEffect(() => { void loadQueue() }, [loadQueue])
+
+
+  async function retireLegacyCandidates() {
+    const pending = report?.pendingCandidates ?? 0
+    if (!pending || retiring) return
+    const confirmed = window.confirm(
+      'Retire all ' + pending + ' pending photo candidate(s) from the active queue? ' +
+      'Their image URLs, source details and review reason will be preserved in the photo review history. ' +
+      'Products without an approved photo will become eligible for a fresh strict-match lookup. ' +
+      'Previously approved photos will remain published.'
+    )
+    if (!confirmed) return
+
+    setRetiring(true)
+    setError('')
+    setNotice('')
+    try {
+      const result = await apiRequest<RetirementResult>(
+        '/api/admin/catalogue/photo-review-queue/retire-unverified',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            reason: 'Legacy pending candidate retired for Phase 3B refresh; source image and rights did not meet the current Apniko product-photo standard.',
+            confirmRetirement: true,
+          }),
+        },
+        token,
+      )
+      setNotice(
+        result.retiredCandidates + ' legacy candidate(s) retired. ' +
+        result.preservedPreviouslyApprovedPhotos + ' previously approved photo(s) preserved.'
+      )
+      await loadQueue(true)
+    } catch (retireError) {
+      setError(messageFor(retireError))
+    } finally {
+      setRetiring(false)
+    }
+  }
 
   async function review(item: ProductPhotoReviewItem, status: 'APPROVED' | 'REJECTED') {
     const reason = (reasons[item.productId] ?? '').trim()
@@ -127,11 +196,32 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
           <h3 id="product-photo-review-heading">Product photo review</h3>
           <p>Check the exact barcode, product name and pack before approving a photograph.</p>
         </div>
-        <button type="button" className="operations-button operations-button--secondary"
-          disabled={loading} onClick={() => void loadQueue()}>
-          {loading ? 'Refreshing…' : 'Refresh photos ↻'}
-        </button>
+        <div className="product-photo-review__toolbar">
+          <button type="button" className="operations-button operations-button--secondary"
+            disabled={loading} onClick={() => void loadQueue()}>
+            {loading ? 'Refreshing…' : 'Refresh photos ↻'}
+          </button>
+          <button type="button" className="operations-button operations-button--secondary"
+            disabled={loading || retiring || !report?.pendingCandidates}
+            onClick={() => void retireLegacyCandidates()}>
+            {retiring ? 'Retiring…' : 'Retire old candidates for fresh lookup'}
+          </button>
+        </div>
       </div>
+      {report && (
+        <div className="product-photo-rollout">
+          <div><span>Total catalogue</span><strong>{report.totalCatalogueProducts.toLocaleString('en-IN')}</strong></div>
+          <div><span>Barcode field present</span><strong>{report.productsWithBarcodeField.toLocaleString('en-IN')}</strong></div>
+          <div><span>Approved photographs</span><strong>{report.productsWithApprovedPhoto.toLocaleString('en-IN')}</strong></div>
+          <div><span>Awaiting review</span><strong>{report.pendingCandidates.toLocaleString('en-IN')}</strong></div>
+          <div><span>Eligible for fresh lookup</span><strong>{report.productsEligibleForFreshLookup.toLocaleString('en-IN')}</strong></div>
+          <div><span>Retired candidates (audited)</span><strong>{report.retiredCandidates.toLocaleString('en-IN')}</strong></div>
+          <p>
+            Approved sources: {report.approvedOpenFactsPhotos} Open Facts · {report.approvedManufacturerAuthorizedPhotos} manufacturer/supplier-authorised.
+            {report.productsWithoutApprovedPhoto} catalogue product(s) still have no approved image.
+          </p>
+        </div>
+      )}
       {error && <div className="operations-alert operations-alert--error" role="alert">{error}</div>}
       {notice && <div className="operations-alert operations-alert--success" role="status">{notice}</div>}
       {loading ? (

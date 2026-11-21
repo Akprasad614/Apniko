@@ -7,9 +7,11 @@ import com.localcart.dto.ProductPhotoReviewResponse;
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductImageReviewStatus;
 import com.localcart.entity.ProductPhoto;
+import com.localcart.entity.ProductPhotoReviewHistory;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.ProductPhotoRepository;
+import com.localcart.repository.ProductPhotoReviewHistoryRepository;
 import com.localcart.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -56,10 +58,15 @@ public class ProductPhotoService {
 
     private final ProductRepository productRepository;
     private final ProductPhotoRepository photoRepository;
+    private final ProductPhotoReviewHistoryRepository historyRepository;
 
-    public ProductPhotoService(ProductRepository productRepository, ProductPhotoRepository photoRepository) {
+    public ProductPhotoService(
+            ProductRepository productRepository,
+            ProductPhotoRepository photoRepository,
+            ProductPhotoReviewHistoryRepository historyRepository) {
         this.productRepository = productRepository;
         this.photoRepository = photoRepository;
+        this.historyRepository = historyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -81,6 +88,76 @@ public class ProductPhotoService {
                         product.getId(), product.getName(), product.getBrand(),
                         product.getBarcode(), product.getPackSize()));
     }
+
+    @Transactional(readOnly = true)
+    public ProductPhotoRolloutReportResponse getRolloutReport() {
+        long totalProducts = productRepository.count();
+        long productsWithBarcode = productRepository.countProductsWithBarcode();
+        long approvedPhotos = photoRepository.countByReviewStatusAndApprovedImageUrlIsNotNull(
+                ProductImageReviewStatus.APPROVED);
+        long pending = photoRepository.countByReviewStatus(ProductImageReviewStatus.PENDING);
+        long rejected = photoRepository.countByReviewStatus(ProductImageReviewStatus.REJECTED);
+        long openFacts = photoRepository.countApprovedOpenFactsPhotos(ProductImageReviewStatus.APPROVED);
+        long supplierAuthorized = photoRepository.countByReviewStatusAndLicense(
+                ProductImageReviewStatus.APPROVED, "MANUFACTURER_AUTHORIZED");
+        long eligibleWithBarcode = productRepository.countProductsWithBarcodeMissingApprovedPhoto(
+                ProductImageReviewStatus.REJECTED);
+        return new ProductPhotoRolloutReportResponse(
+                totalProducts,
+                productsWithBarcode,
+                Math.max(0, totalProducts - approvedPhotos),
+                approvedPhotos,
+                pending,
+                rejected,
+                openFacts,
+                supplierAuthorized,
+                eligibleWithBarcode,
+                historyRepository.countByOutcome("RETIRED")
+        );
+    }
+
+    public ProductPhotoCandidateRetirementResponse retirePendingCandidates(
+            String reason, String adminEmail, boolean confirmation) {
+        if (!confirmation) {
+            throw new BadRequestException("Explicit confirmation is required before retiring pending photo candidates");
+        }
+        String normalizedReason = requiredText(reason, 500, "Retirement reason");
+        String reviewer = adminEmail == null || adminEmail.isBlank() ? "admin" : adminEmail.trim();
+        int retired = 0;
+        int preservedApproved = 0;
+        Instant now = Instant.now();
+
+        // Always process page zero: each batch is moved out of PENDING before the next fetch.
+        while (true) {
+            Page<ProductPhoto> batch = photoRepository.findByReviewStatus(
+                    ProductImageReviewStatus.PENDING,
+                    PageRequest.of(0, MAX_PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id")));
+            if (batch.isEmpty()) break;
+
+            for (ProductPhoto photo : batch.getContent()) {
+                historyRepository.save(ProductPhotoReviewHistory.from(
+                        photo, "RETIRED", normalizedReason, reviewer, now));
+                boolean hasApprovedPhoto = photo.getApprovedImageUrl() != null
+                        && !photo.getApprovedImageUrl().isBlank();
+                photo.setReviewStatus(hasApprovedPhoto
+                        ? ProductImageReviewStatus.APPROVED
+                        : ProductImageReviewStatus.REJECTED);
+                photo.setReviewReason(normalizedReason);
+                photo.setReviewedAt(now);
+                photo.setReviewedBy(reviewer);
+                photo.clearCandidate();
+                if (hasApprovedPhoto) preservedApproved++;
+                retired++;
+            }
+            photoRepository.saveAll(batch.getContent());
+        }
+
+        return new ProductPhotoCandidateRetirementResponse(
+                retired,
+                preservedApproved,
+                "Pending candidates retired with an audit record. Products without an approved image are eligible for a fresh lookup.");
+    }
+
 
     public ProductPhotoReviewResponse submitCandidate(Long productId, ProductPhotoCandidateRequest request) {
         Product product = productRepository.findById(productId)
@@ -192,6 +269,13 @@ public class ProductPhotoService {
         if (request.status() == ProductImageReviewStatus.REJECTED && reason.isBlank()) {
             throw new BadRequestException("A reason is required when rejecting a product photo");
         }
+
+        historyRepository.save(ProductPhotoReviewHistory.from(
+                photo,
+                request.status().name(),
+                reason,
+                adminEmail == null || adminEmail.isBlank() ? "admin" : adminEmail.trim(),
+                Instant.now()));
 
         if (request.status() == ProductImageReviewStatus.APPROVED) {
             photo.setApprovedImageUrl(photo.getCandidateImageUrl());
