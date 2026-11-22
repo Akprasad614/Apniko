@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.text.Normalizer;
 import java.time.Instant;
@@ -50,8 +51,9 @@ public class ProductPhotoService {
     private static final Pattern PACK_SIZE_PATTERN = Pattern.compile(
             "(?:(?<count>\\d+(?:[.,]\\d+)?)\\s*[x×]\\s*)?"
                     + "(?<amount>\\d+(?:[.,]\\d+)?)\\s*"
-                    + "(?<unit>milligrams?|mg|micrograms?|mcg|kilograms?|kg|grams?|gm|g|"
-                    + "milliliters?|millilitres?|ml|liters?|litres?|l|pieces?|pcs|counts?|ct)\\b",
+                    + "(?<unit>fluid\\s*ounces?|fl\\.?\\s*oz\\.?|milligrams?|mg|micrograms?|mcg|"
+                    + "kilograms?|kg|grams?|gm|g|milliliters?|millilitres?|ml|liters?|litres?|l|"
+                    + "pieces?|pcs|counts?|ct)\\b",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -397,6 +399,7 @@ public class ProductPhotoService {
         String unit = matcher.group("unit").toLowerCase(Locale.ROOT);
         String dimension;
         BigDecimal factor;
+        boolean usFluidOunce = unit.matches("fl\\.?\\s*oz\\.?") || unit.startsWith("fluid");
         if (unit.equals("mg") || unit.startsWith("milligram")) {
             dimension = "mass";
             factor = new BigDecimal("0.001");
@@ -409,6 +412,9 @@ public class ProductPhotoService {
         } else if (unit.equals("kg") || unit.startsWith("kilogram")) {
             dimension = "mass";
             factor = new BigDecimal("1000");
+        } else if (usFluidOunce) {
+            dimension = "volume";
+            factor = new BigDecimal("29.5735295625");
         } else if (unit.equals("ml") || unit.startsWith("milliliter") || unit.startsWith("millilitre")) {
             dimension = "volume";
             factor = BigDecimal.ONE;
@@ -423,7 +429,12 @@ public class ProductPhotoService {
             return null;
         }
 
-        return new NormalizedPackSize(dimension, amount.multiply(factor).stripTrailingZeros());
+        BigDecimal normalizedAmount = amount.multiply(factor);
+        if (usFluidOunce) {
+            // Keep three decimal places so 16 US fl oz equals its 473.176 ml metric equivalent.
+            normalizedAmount = normalizedAmount.setScale(3, RoundingMode.HALF_UP);
+        }
+        return new NormalizedPackSize(dimension, normalizedAmount.stripTrailingZeros());
     }
 
     private boolean isAuthorizedImageHost(String imageHost, String sourceHost) {
