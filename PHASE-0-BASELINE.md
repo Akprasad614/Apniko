@@ -73,10 +73,16 @@ database, or rebuild the frontend.
 
 ## Safety boundaries
 
-- The local catalogue reset helper is a separate, destructive operation. It
-  must be reviewed and run by the project owner on the local machine after
-  stopping the backend. Phase 0 did not run it and did not access the local
-  MySQL instance.
+- The local catalogue reset helper was reviewed and run by the project owner
+  on 2026-11-22 after the backend was stopped. The operator supplied the exact
+  confirmation phrase. The script created a full SQL backup under
+  `~/Desktop/apniko-catalogue-reset-20261122-165627/` before executing the
+  reset. The owner reported the final verification counts as zero for
+  products, product photos, photo history, catalogue source records, product
+  categories, shop inventory, cart items, order items and orders.
+- The local reset is confirmed from the operator's terminal output; this
+  repository audit does not independently connect to or inspect the local
+  MySQL instance or backup file.
 - No production database, remote data, credentials or customer records were
   changed.
 - No pull request was merged and no deployment was made.
@@ -90,8 +96,8 @@ database, or rebuild the frontend.
 
 ## Validation status
 
-The latest PR #56 head is
-`ce1ecc4e02530ed4e5f172b8a07a9f7a86e4077e`. GitHub reported 13 check runs
+The latest PR #56 head at this audit update is
+`94b652daba9b1228e9a97aff1af6a62f49c94553`. GitHub reported 13 check runs
 against this exact commit. The frontend lint/typecheck/Vitest/build workflow,
 backend Maven and catalogue safety verification, Gitleaks, Semgrep, CodeQL,
 passive DAST, dependency scan and Maven dependency inventory completed
@@ -120,13 +126,14 @@ No production deployment or database operation was part of these workflows.
       Semgrep, dependency scan and SBOM generation passed on the current PR
       head.
 - [x] CodeQL and passive DAST completed successfully on the current PR head.
-- [ ] Review and run the local owner-operated catalogue backup/reset.
+- [x] Owner-reported local backup-first catalogue reset completed; all nine
+      reported verification counters are zero.
 - [ ] Run a local working-tree scan, including ignored and untracked files.
-- [ ] Delete the legacy remote branch only after the owner confirms their local
-      clone is safely switched to `chore/phase-0-foundation-cleanup`.
+- [ ] Delete the legacy remote branch after the owner confirms the local scan
+      is clean and no other working copy still depends on that branch.
 
-Repository implementation and automated verification are complete enough for
-review. Phase 0 is **not yet fully closed** until the three owner-controlled
-local/branch-cleanup items above are completed. Do not import the planned
-BigBasket dataset during Phase 0; its reuse permission remains unverified.
-No database reset, branch deletion, merge or deployment is claimed.
+Phase 0 implementation, automated verification and the local catalogue reset
+are complete. The remaining closure items are the local ignored/untracked
+filesystem scan and legacy branch retirement. BigBasket import remains blocked
+until written reuse permission is verified. No branch deletion, merge or
+deployment is claimed.
