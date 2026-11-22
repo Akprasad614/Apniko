@@ -31,6 +31,21 @@ const QUICK_CATEGORIES = [
 const CATEGORY_FALLBACK_ICONS = ['🥬', '🥛', '🍪', '🌾', '🧽', '🥤', '🧴', '🍼']
 const CATEGORY_FALLBACK_TONES = ['mint', 'sky', 'peach', 'sun', 'lavender', 'sky', 'rose', 'peach']
 
+const CATEGORY_PAGE_FALLBACK = [
+  { label: 'Fruits & Vegetables', category: 'Fruits & Vegetables', icon: '🥬', tone: 'mint' },
+  { label: 'Spices & Herbs', category: 'Spices & Herbs', icon: '🌶️', tone: 'sun' },
+  { label: 'Meat, Fish & Eggs', category: 'Meat, Fish & Eggs', icon: '🐟', tone: 'peach' },
+  { label: 'Water & Drinks', category: 'Beverages', icon: '🥤', tone: 'sky' },
+  { label: 'Plant-based & Organic', category: 'Organic & Plant Based', icon: '🌿', tone: 'mint' },
+  { label: 'Snacks & Sweets', category: 'Snacks', icon: '🍪', tone: 'rose' },
+  { label: 'Ready Meals', category: 'Ready Meals', icon: '🍱', tone: 'peach' },
+  { label: 'Kids & Baby', category: 'Baby & Kids', icon: '🍼', tone: 'lavender' },
+  { label: 'Bakery', category: 'Bakery', icon: '🥐', tone: 'sun' },
+  { label: 'Personal Care', category: 'Personal Care', icon: '🧴', tone: 'lavender' },
+  { label: 'Dairy', category: 'Dairy & Bakery', icon: '🥛', tone: 'sky' },
+  { label: 'Home & Pets', category: 'Home & Household', icon: '🏡', tone: 'mint' },
+]
+
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Your session has expired. Sign in again to continue.'
@@ -93,6 +108,17 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     if (matched.length >= 3) return matched
 
     return categories.slice(0, 8).map((category, index) => ({
+      label: category,
+      category,
+      icon: CATEGORY_FALLBACK_ICONS[index % CATEGORY_FALLBACK_ICONS.length],
+      tone: CATEGORY_FALLBACK_TONES[index % CATEGORY_FALLBACK_TONES.length],
+    }))
+  }, [categories])
+
+  const categoryPageItems = useMemo(() => {
+    if (categories.length === 0) return CATEGORY_PAGE_FALLBACK
+
+    return categories.map((category, index) => ({
       label: category,
       category,
       icon: CATEGORY_FALLBACK_ICONS[index % CATEGORY_FALLBACK_ICONS.length],
@@ -376,7 +402,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
               </div>
             </div>
             <div className="customer-category-grid" aria-label="Product categories">
-              {quickCategories.map((item) => (
+              {categoryPageItems.map((item) => (
                 <button
                   className={`customer-category-card customer-category-card--${item.tone}${activeCategory === item.category ? ' is-selected' : ''}`}
                   key={item.label}
