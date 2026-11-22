@@ -90,24 +90,21 @@ database, or rebuild the frontend.
 
 ## Validation status
 
-The following GitHub Actions checks were observed against the PR #56 head
-commit:
+The latest PR #56 head is
+`ce1ecc4e02530ed4e5f172b8a07a9f7a86e4077e`. GitHub reported 13 check runs
+against this exact commit. The frontend lint/typecheck/Vitest/build workflow,
+backend Maven and catalogue safety verification, Gitleaks, Semgrep, CodeQL,
+passive DAST, dependency scan and Maven dependency inventory completed
+successfully. CycloneDX SBOM generation also completed successfully.
 
-| Check | Result |
-|---|---|
-| Frontend CI — ESLint, TypeScript, Vitest and production build | **Passed** |
-| Backend CI — Phase 10, catalogue safety scripts, Maven verify and Java tests | **Passed** |
-| Gitleaks secret scan | **Passed** |
-| Semgrep security audit | **Passed** |
-| OSV dependency scan | **Passed** |
-| CycloneDX SBOM generation | **Passed** |
-| CodeQL Java analysis | **Passed** |
-| OWASP ZAP passive baseline scan | **Passed** |
+The separate OSV dependency-scan workflow passed. GitHub's OSV code-scanning
+integration reported **neutral**, not failed: it could not find the older
+scheduled-workflow configuration on the PR branch, so it could not compare
+alerts for that configuration. This is recorded as a configuration warning,
+not as a successful code-scanning result.
 
-All seven listed automated workflows completed successfully against commit
-`d387438434f5e5241b4a582f22108a199a9822b5`. The only commit after that tested
-head changes this audit document; the comparison confirms no source code or
-workflow files changed after the successful checks.
+These checks are against the current PR head, not merely an earlier commit.
+No production deployment or database operation was part of these workflows.
 
 ## Phase 0 exit criteria
 
@@ -119,14 +116,17 @@ workflow files changed after the successful checks.
 - [x] Root documentation and ownership metadata aligned with the current
       Apniko repository.
 - [x] Backend and frontend CI configured for the new branch and PR.
-- [x] Frontend CI, backend CI, Gitleaks, Semgrep, OSV and SBOM checks passed.
-- [x] CodeQL and OWASP ZAP complete successfully.
-- [ ] Local owner-run catalogue backup/reset is reviewed and completed.
-- [ ] Local working-tree scan confirms no ignored local tool directory or
-      untracked references remain.
-- [ ] The legacy remote branch reference is deleted after the owner confirms
-      their local clone is safely switched to the clean branch.
+- [x] Frontend CI, backend CI, catalogue reset safety tests, Gitleaks,
+      Semgrep, dependency scan and SBOM generation passed on the current PR
+      head.
+- [x] CodeQL and passive DAST completed successfully on the current PR head.
+- [ ] Review and run the local owner-operated catalogue backup/reset.
+- [ ] Run a local working-tree scan, including ignored and untracked files.
+- [ ] Delete the legacy remote branch only after the owner confirms their local
+      clone is safely switched to `chore/phase-0-foundation-cleanup`.
 
-Phase 0 implementation and repository CI are substantially complete. Final
-closure is pending the in-progress security scans and the explicitly local
-cleanup items. These items are not simulated or claimed as complete.
+Repository implementation and automated verification are complete enough for
+review. Phase 0 is **not yet fully closed** until the three owner-controlled
+local/branch-cleanup items above are completed. Do not import the planned
+BigBasket dataset during Phase 0; its reuse permission remains unverified.
+No database reset, branch deletion, merge or deployment is claimed.
