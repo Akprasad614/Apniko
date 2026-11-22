@@ -31,7 +31,6 @@ import java.text.Normalizer;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,13 +38,6 @@ import java.util.regex.Pattern;
 @Transactional
 public class ProductPhotoService {
     private static final int MAX_PAGE_SIZE = 100;
-    private static final Map<String, String> SOURCES = Map.of(
-            "world.openfoodfacts.org", "Open Food Facts",
-            "world.openbeautyfacts.org", "Open Beauty Facts",
-            "world.openpetfoodfacts.org", "Open Pet Food Facts",
-            "world.openproductsfacts.org", "Open Products Facts"
-    );
-
     private static final String AUTHORIZED_BRAND_SOURCE = "Brand / supplier authorised catalogue";
 
     private static final Pattern PACK_SIZE_PATTERN = Pattern.compile(
@@ -192,7 +184,6 @@ public class ProductPhotoService {
         URI sourceUri = parseHttpsUri(request.sourceUrl(), "Source page");
         String requestedSource = request.sourceName().trim();
         String sourceHost = sourceUri.getHost().toLowerCase(Locale.ROOT);
-        String sourceName = SOURCES.get(sourceHost);
         URI imageUri = parseHttpsUri(request.imageUrl(), "Image");
         String license = request.license().trim()
                 .replace('-', ' ').replace('_', ' ').replaceAll("\\s+", " ");
@@ -201,50 +192,24 @@ public class ProductPhotoService {
             throw new BadRequestException("Source product URL must not contain a query string or fragment");
         }
 
-        if (AUTHORIZED_BRAND_SOURCE.equals(requestedSource)) {
-            if (!"MANUFACTURER AUTHORIZED".equalsIgnoreCase(license)) {
-                throw new BadRequestException("Brand/supplier photos require the MANUFACTURER_AUTHORIZED permission record");
-            }
-            requiredText(request.authorizationReference(), 500, "Manufacturer/supplier permission reference");
-            String sourceBrand = requiredText(request.sourceProductBrand(), 100, "Source product brand");
-            String sourcePack = requiredText(request.sourcePackSize(), 80, "Source pack size");
-            if (!sameBrand(sourceBrand, product.getBrand())
-                    || !samePackSize(sourcePack, product.getPackSize())) {
-                throw new BadRequestException("Supplier brand and pack size must exactly match the Apniko catalogue product");
-            }
-            if (!isAuthorizedImageHost(imageUri.getHost(), sourceHost)
-                    || imageUri.getQuery() != null || imageUri.getFragment() != null) {
-                throw new BadRequestException("Brand/supplier image must use the product source domain or a configured authorised image host");
-            }
-            sourceName = AUTHORIZED_BRAND_SOURCE;
-        } else {
-            if (sourceName == null || !sourceName.equals(requestedSource)
-                    || !("/product/" + barcode).equals(sourceUri.getPath())
-                    || sourceUri.getQuery() != null || sourceUri.getFragment() != null) {
-                throw new BadRequestException("Use the canonical Open Facts product page for the exact barcode");
-            }
-            String sourceBrand = requiredText(request.sourceProductBrand(), 100, "Source product brand");
-            String sourcePack = requiredText(request.sourcePackSize(), 80, "Source pack size");
-            if (!sameBrand(sourceBrand, product.getBrand())
-                    || !samePackSize(sourcePack, product.getPackSize())) {
-                throw new BadRequestException("Open Facts brand and pack size must exactly match the Apniko catalogue product");
-            }
-            String imageHost = "images." + sourceHost.substring("world.".length());
-            // Open Facts pads GTINs shorter than 13 digits before splitting
-            // them into image-directory segments.
-            String expectedImageBarcode = barcode.length() < 13
-                    ? "0".repeat(13 - barcode.length()) + barcode
-                    : barcode;
-            String imageDigits = imageUri.getPath().replaceAll("[^0-9]", "");
-            if (!imageHost.equalsIgnoreCase(imageUri.getHost())
-                    || !imageUri.getPath().contains("/images/products/")
-                    || !imageDigits.startsWith(expectedImageBarcode)
-                    || imageUri.getQuery() != null || imageUri.getFragment() != null) {
-                throw new BadRequestException("Image must be hosted by the matching Open Facts image server and barcode");
-            }
-            if (!"CC BY SA".equalsIgnoreCase(license)) {
-                throw new BadRequestException("Open Facts product images must use the CC BY-SA licence");
-            }
+        if (!AUTHORIZED_BRAND_SOURCE.equals(requestedSource)) {
+            throw new BadRequestException(
+                    "Open Facts and third-party catalogue photo sources are disabled. "
+                            + "Only manufacturer or supplier images with explicit written permission are accepted.");
+        }
+        if (!"MANUFACTURER AUTHORIZED".equalsIgnoreCase(license)) {
+            throw new BadRequestException("Brand/supplier photos require the MANUFACTURER_AUTHORIZED permission record");
+        }
+        requiredText(request.authorizationReference(), 500, "Manufacturer/supplier permission reference");
+        String sourceBrand = requiredText(request.sourceProductBrand(), 100, "Source product brand");
+        String sourcePack = requiredText(request.sourcePackSize(), 80, "Source pack size");
+        if (!sameBrand(sourceBrand, product.getBrand())
+                || !samePackSize(sourcePack, product.getPackSize())) {
+            throw new BadRequestException("Supplier brand and pack size must exactly match the Apniko catalogue product");
+        }
+        if (!isAuthorizedImageHost(imageUri.getHost(), sourceHost)
+                || imageUri.getQuery() != null || imageUri.getFragment() != null) {
+            throw new BadRequestException("Brand/supplier image must use the product source domain or a configured authorised image host");
         }
 
         if (historyRepository.existsByProductIdAndCandidateImageUrlAndOutcomeIn(
@@ -260,7 +225,7 @@ public class ProductPhotoService {
         photo.setProduct(product);
         product.setPhoto(photo);
         photo.setCandidateImageUrl(imageUri.toString());
-        photo.setCandidateSourceName(sourceName);
+        photo.setCandidateSourceName(AUTHORIZED_BRAND_SOURCE);
         photo.setCandidateSourceUrl(sourceUri.toString());
         photo.setCandidateLicense(license.equalsIgnoreCase("MANUFACTURER AUTHORIZED")
                 ? "MANUFACTURER_AUTHORIZED" : "CC BY-SA");
