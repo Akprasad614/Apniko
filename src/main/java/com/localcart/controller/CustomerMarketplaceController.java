@@ -2,7 +2,7 @@ package com.localcart.controller;
 
 import com.localcart.dto.InventoryResponse;
 import com.localcart.dto.PriceComparisonResponse;
-import com.localcart.dto.ShopResponse;
+import com.localcart.dto.CustomerMarketplaceShopResponse;
 import com.localcart.service.CustomerMarketplaceService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +22,12 @@ public class CustomerMarketplaceController {
     }
 
     @GetMapping("/shops")
-    public ResponseEntity<List<ShopResponse>> getActiveShops() {
+    public ResponseEntity<List<CustomerMarketplaceShopResponse>> getActiveShops() {
         return ResponseEntity.ok(marketplaceService.getActiveShops());
     }
 
     @GetMapping("/shops/{shopId}")
-    public ResponseEntity<ShopResponse> getActiveShop(
+    public ResponseEntity<CustomerMarketplaceShopResponse> getActiveShop(
             @PathVariable Long shopId) {
         return ResponseEntity.ok(marketplaceService.getActiveShop(shopId));
     }
