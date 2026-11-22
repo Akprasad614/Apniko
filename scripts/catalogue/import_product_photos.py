@@ -173,9 +173,12 @@ def image_url_rejection_reason(value: str | None, barcode: str) -> str | None:
         return "image URL contains user information or a nonstandard port"
     if not parsed.path.startswith("/images/products/"):
         return f"image path is outside /images/products/: {parsed.path[:120]}"
+    # Open Facts pads GTINs shorter than 13 digits with leading zeroes
+    # before splitting the barcode into image-directory segments.
+    expected_path_barcode = barcode.zfill(13) if len(barcode) < 13 else barcode
     path_digits = re.sub(r"[^0-9]", "", parsed.path)
-    if not path_digits.startswith(barcode):
-        return "image path does not contain the exact matching barcode"
+    if not path_digits.startswith(expected_path_barcode):
+        return "image path does not contain the normalized matching barcode"
     if parsed.query or parsed.fragment:
         return "image URL must not contain a query string or fragment"
     return None
