@@ -28,6 +28,20 @@ class FakeResponse:
 
 
 class FullPhotoRefreshTests(unittest.TestCase):
+    def test_prioritize_targets_puts_strict_matchable_products_first(self):
+        targets = [
+            {"productId": 1, "barcode": "8901234567890", "brand": "", "packSize": "1 kg"},
+            {"productId": 2, "barcode": "8901234567890", "brand": "Brand", "packSize": ""},
+            {"productId": 3, "barcode": "8901234567890", "brand": "Brand", "packSize": "500 g"},
+            {"productId": 4, "barcode": "invalid", "brand": "Brand", "packSize": "500 g"},
+        ]
+
+        ordered = refresh.prioritize_targets(targets)
+
+        self.assertEqual([item["productId"] for item in ordered], [3, 1, 2, 4])
+        self.assertTrue(refresh.has_strict_match_metadata(ordered[0]))
+        self.assertFalse(refresh.has_strict_match_metadata(ordered[-1]))
+
     def test_metadata_coverage_counts_brand_pack_and_valid_gtin(self):
         targets = [
             {
