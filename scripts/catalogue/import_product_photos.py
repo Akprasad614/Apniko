@@ -198,10 +198,10 @@ PACK_SIZE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# Reject additive bundle quantities such as "5+1 kg". A partial regex match
-# would otherwise read only the final "1 kg" and could accept the wrong SKU.
+# Reject ambiguous multi-quantity strings such as "5+1 kg" and "2 , 25g".
+# A partial regex match could otherwise ignore part of the declared quantity.
 ADDITIVE_PACK_SIZE_PATTERN = re.compile(
-    r"(?<![\w.])\d+(?:[.,]\d+)?\s*\+\s*\d+(?:[.,]\d+)?\s*"
+    r"(?<![\w.])\d+(?:[.,]\d+)?(?:\s*\+\s*|\s+,\s+)\d+(?:[.,]\d+)?\s*"
     r"(?:fluid\s*ounces?|fl\.?\s*oz\.?|milligrams?|mg|micrograms?|mcg|"
     r"kilograms?|kg|grams?|gm|g|milliliters?|millilitres?|ml|liters?|litres?|l|"
     r"pieces?|pcs|counts?|ct)\b",
