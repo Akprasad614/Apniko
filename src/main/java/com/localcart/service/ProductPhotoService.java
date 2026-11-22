@@ -220,10 +220,15 @@ public class ProductPhotoService {
                 throw new BadRequestException("Open Facts brand and pack size must exactly match the Apniko catalogue product");
             }
             String imageHost = "images." + sourceHost.substring("world.".length());
+            // Open Facts pads GTINs shorter than 13 digits before splitting
+            // them into image-directory segments.
+            String expectedImageBarcode = barcode.length() < 13
+                    ? "0".repeat(13 - barcode.length()) + barcode
+                    : barcode;
             String imageDigits = imageUri.getPath().replaceAll("[^0-9]", "");
             if (!imageHost.equalsIgnoreCase(imageUri.getHost())
                     || !imageUri.getPath().contains("/images/products/")
-                    || !imageDigits.startsWith(barcode)
+                    || !imageDigits.startsWith(expectedImageBarcode)
                     || imageUri.getQuery() != null || imageUri.getFragment() != null) {
                 throw new BadRequestException("Image must be hosted by the matching Open Facts image server and barcode");
             }
