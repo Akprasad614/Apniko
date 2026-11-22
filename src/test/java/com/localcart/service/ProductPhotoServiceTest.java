@@ -148,6 +148,29 @@ class ProductPhotoServiceTest {
     }
 
     @Test
+    void openFactsCandidateAcceptsZeroPaddedUpcImageDirectory() {
+        String upc = "036000291452";
+        String paddedImage = "https://images.openfoodfacts.org/images/products/003/600/029/1452/front_en.2.400.jpg";
+        String upcSource = "https://world.openfoodfacts.org/product/" + upc;
+        Product product = product();
+        product.setBarcode(upc);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
+        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
+
+        ProductPhotoCandidateRequest request = new ProductPhotoCandidateRequest(
+                paddedImage, upcSource, "Open Food Facts", "Test grocery pack",
+                "Test Brand", "1 kg", "CC BY-SA",
+                "Open Food Facts contributors", null, upc);
+
+        var result = service.submitCandidate(10L, request);
+
+        assertEquals(ProductImageReviewStatus.PENDING, result.status());
+        assertEquals(paddedImage, result.candidateImageUrl());
+        verify(photoRepository).save(any(ProductPhoto.class));
+    }
+
+    @Test
     void openFactsCandidateStillRejectsMultipackTotalThatDiffersFromCatalogue() {
         Product product = product();
         product.setPackSize("100 g");
