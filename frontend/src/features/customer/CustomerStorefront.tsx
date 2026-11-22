@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { ApprovedProductImage } from './ApprovedProductImage'
+import { CustomerDiscoverySearch } from './CustomerDiscoverySearch'
 import {
   buildMarketplaceSearchPath,
   formatRupees,
@@ -189,6 +190,30 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     }
   }, [selectedShopId, token])
 
+  function selectDiscoveredShop(shopId: number) {
+    setSelectedShopId(shopId)
+    setActiveCategory('')
+    setSearchInput('')
+    setAppliedSearch('')
+    setAppliedMinPrice(undefined)
+    setAppliedMaxPrice(undefined)
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setNotice('')
+  }
+
+  function selectDiscoveredProduct(product: MarketplaceInventoryItem, query: string) {
+    setSelectedShopId(product.shopId)
+    setActiveCategory('')
+    setSearchInput(query)
+    setAppliedSearch(query)
+    setAppliedMinPrice(undefined)
+    setAppliedMaxPrice(undefined)
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setNotice(`Showing “${product.productName}” at ${product.shopName}. Add it from that shop's current shelf.`)
+  }
+
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAppliedSearch(searchInput.trim())
@@ -294,6 +319,13 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         )}
 
 
+
+        <CustomerDiscoverySearch
+          shops={shops}
+          token={token}
+          onShopSelect={selectDiscoveredShop}
+          onProductSelect={selectDiscoveredProduct}
+        />
 
         <section className="shop-section" aria-labelledby="shop-section-title">
           <div className="customer-section-heading">
