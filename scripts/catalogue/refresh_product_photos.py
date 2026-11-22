@@ -22,6 +22,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--limit", type=int, default=100)
     result.add_argument("--page", type=int, default=0)
     result.add_argument("--delay-seconds", type=float, default=4.1)
+    result.add_argument("--max-retries", type=int, default=3)
     result.add_argument("--apply", action="store_true", help="Submit strict-match candidates to the pending admin review queue")
     result.add_argument("--product-ids", help="Optional comma-separated Apniko product IDs")
     return result
@@ -29,8 +30,8 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = parser().parse_args()
-    if not 1 <= args.limit <= 100 or args.page < 0 or args.delay_seconds < 4.0:
-        print("Use --limit 1..100, non-negative --page and --delay-seconds >= 4.", file=sys.stderr)
+    if not 1 <= args.limit <= 100 or args.page < 0 or args.delay_seconds < 4.0 or not 0 <= args.max_retries <= 6:
+        print("Use --limit 1..100, non-negative --page, --delay-seconds >= 4 and --max-retries 0..6.", file=sys.stderr)
         return 2
 
     email = input("Administrator email: ").strip()
@@ -63,6 +64,7 @@ def main() -> int:
             "--limit", str(args.limit),
             "--page", str(args.page),
             "--delay-seconds", str(args.delay_seconds),
+            "--max-retries", str(args.max_retries),
         ]
         if args.product_ids:
             importer_args.extend(["--product-ids", args.product_ids])
