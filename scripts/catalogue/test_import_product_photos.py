@@ -290,81 +290,6 @@ class ProductPhotoImporterTests(unittest.TestCase):
                 "selected_images": {},
             }}, API_URL))
 
-    def test_product_id_allowlist_only_submits_selected_candidate(self):
-        other_barcode = "8901234567891"
-        targets = FakeResponse(200, {
-            "content": [
-                {"productId": 26, "barcode": other_barcode, "name": "Do not submit",
-                 "brand": "Sample Brand", "packSize": "1 kg"},
-                {"productId": 29, "barcode": BARCODE, "name": "Selected grocery",
-                 "brand": "Sample Brand", "packSize": "1 kg"},
-            ],
-            "last": True,
-        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
-        found = FakeResponse(200, {"product": {
-            "code": BARCODE,
-            "countries_tags": ["en:india"],
-            "product_name": "Selected grocery",
-            "brands": "Sample Brand",
-            "quantity": "1 kg",
-            "selected_images": {"front": {"display": {"en": IMAGE}}},
-        }}, API_URL)
-        saved = FakeResponse(200, {"status": "PENDING"},
-                             "http://localhost:8080/api/admin/catalogue/products/29/photo-candidate")
-
-        session = Mock()
-        session.get.side_effect = [targets, found, valid_image_response()]
-        session.post.return_value = saved
-        args = argparse.Namespace(
-            api_url="http://localhost:8080",
-            limit=100,
-            page=0,
-            delay_seconds=4.1,
-            apply=True,
-            product_ids={29},
-        )
-        output = StringIO()
-        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
-            with patch("import_product_photos.time.sleep"), redirect_stdout(output):
-                result = run(args, session=session)
-
-        self.assertEqual(result, 0)
-        self.assertIn("Product ID allowlist: 29", output.getvalue())
-        self.assertIn("CANDIDATE product #29", output.getvalue())
-        self.assertNotIn("CANDIDATE product #26", output.getvalue())
-        self.assertIn("Inspected: 1; candidates: 1; submitted: 1", output.getvalue())
-        session.post.assert_called_once()
-        self.assertTrue(session.post.call_args.args[0].endswith("/api/admin/catalogue/products/29/photo-candidate"))
-        self.assertNotIn("qualityImageUrl", session.post.call_args.kwargs["json"])
-
-    def test_product_id_allowlist_fails_when_id_is_not_in_target_page(self):
-        targets = FakeResponse(200, {
-            "content": [
-                {"productId": 26, "barcode": BARCODE, "name": "Grocery",
-                 "brand": "Sample Brand", "packSize": "1 kg"},
-            ],
-            "last": True,
-        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
-        session = Mock()
-        session.get.return_value = targets
-        args = argparse.Namespace(
-            api_url="http://localhost:8080",
-            limit=10,
-            page=0,
-            delay_seconds=4.1,
-            apply=True,
-            product_ids={999},
-        )
-        output = StringIO()
-        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
-            with redirect_stdout(output), redirect_stderr(output):
-                result = run(args, session=session)
-
-        self.assertEqual(result, 2)
-        self.assertIn("999", output.getvalue())
-        self.assertEqual(session.get.call_count, 1)
-        session.post.assert_not_called()
-
     def test_parse_product_ids_requires_unique_positive_integers(self):
         self.assertEqual(parse_product_ids("26,29,31"), {26, 29, 31})
         for invalid in ("", "26,,29", "26,zero", "0,29", "26,26"):
@@ -372,91 +297,18 @@ class ProductPhotoImporterTests(unittest.TestCase):
                 with self.assertRaises(argparse.ArgumentTypeError):
                     parse_product_ids(invalid)
 
-    def test_previously_retired_image_conflict_is_skipped_without_aborting_batch(self):
-        targets = FakeResponse(200, {
-            "content": [{
-                "productId": 42, "barcode": BARCODE, "name": "Grocery",
-                "brand": "Sample Brand", "packSize": "1 kg",
-            }],
-            "last": True,
-        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
-        found = FakeResponse(200, {"product": {
-            "code": BARCODE,
-            "countries_tags": ["en:india"],
-            "product_name": "Grocery pack",
-            "brands": "Sample Brand",
-            "quantity": "1 kg",
-            "selected_images": {"front": {"display": {"en": IMAGE}}},
-        }}, API_URL)
-        conflict = FakeResponse(
-            409, {"error": "This exact image URL was previously rejected or retired"},
-            "http://localhost:8080/api/admin/catalogue/products/42/photo-candidate",
-        )
+
+
+    def test_legacy_open_facts_import_run_is_disabled_without_network_access(self):
         session = Mock()
-        session.get.side_effect = [targets, found, valid_image_response()]
-        session.post.return_value = conflict
-        args = argparse.Namespace(
-            api_url="http://localhost:8080",
-            limit=10,
-            page=0,
-            delay_seconds=4.1,
-            apply=True,
-            product_ids=None,
-        )
         output = StringIO()
-        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
-            with patch("import_product_photos.time.sleep"), redirect_stdout(output):
-                result = run(args, session=session)
+        with redirect_stdout(output), redirect_stderr(output):
+            result = run(argparse.Namespace(), session=session)
 
-        self.assertEqual(result, 0)
-        self.assertIn("already rejected or retired", output.getvalue())
-        self.assertIn("Inspected: 1; candidates: 1; submitted: 0", output.getvalue())
-        session.post.assert_called_once()
-
-    def test_unknown_open_facts_barcode_is_skipped_and_batch_continues(self):
-        missing_barcode = "00000604"
-        targets = FakeResponse(200, {
-            "content": [
-                {"productId": 1, "barcode": missing_barcode, "name": "Unknown product"},
-                {"productId": 2, "barcode": BARCODE, "name": "Grocery",
-                 "brand": "Sample Brand", "packSize": "1 kg"},
-            ],
-            "last": True,
-        }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
-        not_found = FakeResponse(
-            404, {}, "https://world.openfoodfacts.org/api/v3/product/00000604.json"
-        )
-        found = FakeResponse(200, {"product": {
-            "code": BARCODE,
-            "countries_tags": ["en:india"],
-            "product_name": "Grocery pack",
-            "brands": "Sample Brand",
-            "quantity": "1 kg",
-            "selected_images": {"front": {"display": {"en": IMAGE}}},
-        }}, API_URL)
-
-        session = Mock()
-        session.get.side_effect = [targets, not_found, found, valid_image_response()]
-        args = argparse.Namespace(
-            api_url="http://localhost:8080",
-            limit=10,
-            page=0,
-            delay_seconds=4.1,
-            apply=False,
-        )
-        output = StringIO()
-        with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-admin-token"}):
-            with patch("import_product_photos.time.sleep"), redirect_stdout(output):
-                result = run(args, session=session)
-
-        self.assertEqual(result, 0)
-        self.assertIn("SKIP 00000604: no Open Facts product record", output.getvalue())
-        self.assertIn("CANDIDATE product #2 · GTIN " + BARCODE, output.getvalue())
-        self.assertIn("Apniko : Grocery · Sample Brand · 1 kg", output.getvalue())
-        self.assertIn("Source : Grocery pack · Sample Brand · 1 kg", output.getvalue())
-        self.assertIn("Inspected: 2; candidates: 1; submitted: 0", output.getvalue())
+        self.assertEqual(result, 2)
+        self.assertIn("Open Facts image ingestion is disabled", output.getvalue())
+        session.get.assert_not_called()
         session.post.assert_not_called()
-
 
 if __name__ == "__main__":
     unittest.main()
