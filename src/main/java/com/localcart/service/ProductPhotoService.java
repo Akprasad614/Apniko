@@ -57,10 +57,10 @@ public class ProductPhotoService {
             Pattern.CASE_INSENSITIVE
     );
 
-    // Prevent a partial match from treating promo bundles such as "5+1 kg"
-    // as only the final "1 kg" and accepting a different catalogue SKU.
+    // Prevent partial matches from ignoring composite quantities such as "5+1 kg"
+    // or malformed multi-quantity strings such as "2 , 25g".
     private static final Pattern ADDITIVE_PACK_SIZE_PATTERN = Pattern.compile(
-            "\\b\\d+(?:[.,]\\d+)?\\s*\\+\\s*\\d+(?:[.,]\\d+)?\\s*"
+            "\\b\\d+(?:[.,]\\d+)?(?:\\s*\\+\\s*|\\s+,\\s+)\\d+(?:[.,]\\d+)?\\s*"
                     + "(?:fluid\\s*ounces?|fl\\.?\\s*oz\\.?|milligrams?|mg|micrograms?|mcg|"
                     + "kilograms?|kg|grams?|gm|g|milliliters?|millilitres?|ml|liters?|litres?|l|"
                     + "pieces?|pcs|counts?|ct)\\b",
