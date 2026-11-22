@@ -25,16 +25,25 @@ discover local shops and order everyday essentials.
 
 See `PHASE10-README.md` for the backend, Swagger, and isolated database
 workflow. See `frontend/README.md` for frontend setup and checks.
-See `PHASE-0-BASELINE.md` for the verified project foundation and Phase 0
+See `PHASE-0-BASELINE.md` for the verified project foundation and phase
 acceptance boundaries.
 
 ## Catalogue and product media
 
-Apniko starts from an empty catalogue. Open Food Facts and its related
-catalogues are not permitted sources. BigBasket is the planned initial dataset
-only if written reuse permission covering Apniko's intended use is verified.
-See `CATALOGUE-DATA-SOURCES.md` and `PRODUCT-PHOTOS.md` before importing
-catalogue data or submitting product photographs.
+Apniko's development catalogue has been reset to an empty state. Open Food
+Facts and BigBasket are excluded. No external product dataset is currently
+approved or imported.
+
+The Indian Packaged Foods Nutritional Composition Dataset (2026) on Mendeley
+Data is the proposed Phase 2 seed dataset only. Its actual CSV, README,
+field-level provenance and licence scope must be inspected before an importer
+is implemented or any row is applied. It is a packaged-food dataset, not a
+complete grocery catalogue, and it is not a product-image source.
+
+Do not add sample products, synthetic product photographs, guessed barcodes,
+pack sizes, live prices, ratings or stock. Shopkeepers remain responsible for
+shop-specific prices and stock. See `CATALOGUE-DATA-SOURCES.md` and
+`PRODUCT-PHOTOS.md` before changing catalogue intake or product media.
 
 ## Project rights
 

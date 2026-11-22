@@ -1,84 +1,75 @@
-# Apniko master catalogue — BigBasket dataset intake
+# Apniko master catalogue — source policy
 
-## Empty-by-default policy
+## Current state: empty and no active source
 
-A new Apniko environment starts with **zero master products, zero product photos, zero product-photo candidates, zero catalogue source records and zero seeded product categories**. The product, catalogue, inventory and photo schemas remain available, but they contain no catalogue content until an authorised import is deliberately run.
+The reset development catalogue is intended to contain **zero master products,
+zero product photos, zero product-photo candidates, zero source records and
+zero seeded product categories** until a reviewed source is deliberately
+approved and imported.
 
-## Sole planned dataset: BigBasket Entire Product List
+Open Food Facts and its related catalogues are excluded. BigBasket is also
+excluded; do not use its website, product listings, Kaggle copy, undocumented
+APIs or product images as an Apniko source. No external dataset is currently
+approved or imported.
 
-The planned reference dataset is [BigBasket Entire Product List (~28K datapoints)](https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints).
+## Proposed Phase 2 seed dataset — not yet activated
 
-The commonly circulated CSV schema contains fields such as:
+The proposed first data source for Phase 2 is
+[Indian Packaged Foods Nutritional Composition Dataset (2026)](https://data.mendeley.com/datasets/rhswn9z9xr/1),
+Mendeley Data, DOI [10.17632/rhswn9z9xr.1](https://doi.org/10.17632/rhswn9z9xr.1),
+Version 1.
 
-- product
-- category
-- sub_category
-- brand
-- type
-- description
-- sale_price, market_price and rating
+The repository landing page identifies a CC BY 4.0 licence and describes
+852 packaged-food records. This is a candidate packaged-food seed, not a
+complete grocery catalogue and not an image feed. Before implementation, the
+actual downloaded CSV and README must be inspected to confirm the exact
+headers, row count, data types, provenance notes, attribution requirements
+and any content excluded from the dataset licence. Preserve the source
+citation and record all normalization or other changes. Do not imply that
+Mendeley or the dataset contributors endorse Apniko.
 
-The current Apniko importer intentionally maps only product name, brand, category, subcategory, type/variant label and description. It does **not** import retailer sale prices, market prices, ratings, image URLs or guessed barcodes. It does not infer pack sizes from product titles. The reference CSV does not provide a verified GTIN or an authorised product-image feed.
+No Phase 2 import has been applied. Until the source files have been inspected
+and a tested importer is approved, the dataset must remain outside the
+application database.
 
-## Permission gate — required before applying data
+## Field and data-quality boundaries
 
-The fact that a CSV is available on Kaggle does not establish that BigBasket's underlying catalogue data is licensed for reproduction or commercial reuse. The Apache 2.0 label shown on Kaggle notebook pages applies to the notebook code; it is not evidence of a licence for the underlying BigBasket dataset.
+- Import only source fields that are present and understood in the inspected
+  file. Retain source row identifiers and dataset/version provenance where
+  available.
+- Do not invent GTINs, barcodes, pack sizes, variants, product photographs,
+  MRP, current shop prices, ratings or stock.
+- A nutritional serving size is not automatically the retail pack size.
+- Any dataset price is not a current shop-specific selling price or a verified
+  current MRP. Shopkeepers set their own selling price and stock.
+- Do not turn missing data into guesses. Send ambiguous or low-quality rows
+  to admin review rather than silently promoting them.
+- A master product does not automatically become inventory at any shop.
 
-BigBasket's published terms restrict copying, collection and commercial/derivative use of product listings and website content without express written consent. See [BigBasket terms and conditions](https://www.bigbasket.com/fp/web/terms-and-conditions/).
+## Importer status
 
-Therefore:
+The existing BigBasket-specific CLI importer and backend source validation
+are legacy implementation, not an approved source path. Do not run that
+importer or submit BigBasket records. Phase 2 must replace the source-specific
+mapping and validation with a Mendeley-file importer only after the actual
+CSV and README have been inspected. The new importer must default to dry-run,
+validate and deduplicate rows, retain attribution/provenance, and require
+admin review before customer visibility.
 
-1. Apniko does not scrape BigBasket, call undocumented BigBasket APIs, download product images, or crawl product pages.
-2. A CSV must be supplied locally by the project owner from a source that has explicitly granted the required reuse rights.
-3. Before --apply, the operator must provide the written permission/licence reference and explicitly confirm that it covers product catalogue reuse in Apniko.
-4. The backend independently requires the source name 'BigBasket authorised dataset', the permission classification 'BIGBASKET-WRITTEN-PERMISSION', and a permission reference in the source attribution.
-5. If the permission cannot be verified, keep the CSV in dry-run mode and do not import it.
+## Product images
 
-## Product identity and prices
-
-The reference dataset does not contain verified GTINs. Apniko uses a stable identity derived from source product name, brand, category and variant/type fields when the barcode is absent. Such records are provisional identities; a shopkeeper still needs to verify exact pack/variant before creating a shop listing.
-
-Historical BigBasket sale/market price values are deliberately ignored. They are not a shopkeeper's live selling price and are not assumed to be current MRP. Each shopkeeper sets their own selling price, quantity, availability and low-stock threshold.
-
-A master product does not automatically become inventory at any shop.
-
-## Images
-
-The BigBasket product-list CSV is not treated as an image feed. New products import with no image. Apniko must show its neutral no-photo state until an authorised manufacturer, brand, distributor, supplier or shopkeeper image grant is provided. No Open Food Facts, Open Beauty Facts, Open Pet Food Facts, Open Products Facts, retailer scraping, or guessed/generated product packaging is used.
-
-Photo submission is limited to manufacturer/supplier images with explicit written permission, matching product identity, and administrator review. A candidate remains pending until approved.
-
-## Download, validate and preview
-
-Place an authorised CSV in a local, ignored data folder such as data/catalogue/source/BigBasket.csv. The importer never downloads the file for you.
-
-```bash
-python3 -m venv .venv-catalogue
-source .venv-catalogue/bin/activate
-python -m pip install -r scripts/catalogue/requirements.txt
-
-python scripts/catalogue/import_catalogue.py data/catalogue/source/BigBasket.csv
-```
-
-The default is a local dry run. It reports rows, duplicates, skipped products and sample product identities; it makes no API calls and no database changes.
-
-## Apply after permission is verified
-
-1. Start the backend against the intended local database.
-2. Obtain an administrator JWT and place it in APNIKO_ADMIN_TOKEN.
-3. Confirm the actual written permission covers the dataset and Apniko's intended use.
-4. Run the importer with --apply, --permission-reference and --permission-confirmed.
-
-```bash
-export APNIKO_ADMIN_TOKEN='YOUR_ADMIN_JWT'
-python scripts/catalogue/import_catalogue.py data/catalogue/source/BigBasket.csv \
-  --apply \
-  --permission-reference 'YOUR-WRITTEN-GRANT-REFERENCE' \
-  --permission-confirmed
-```
-
-Batches are limited to 500 rows. Each imported record retains source name, source record ID, source URL, permission classification and attribution. Rejected rows are reported; validation is not weakened to increase the import count.
+The proposed Mendeley dataset is not a product-image source. Products remain
+text-first and use the neutral no-photo state. No Open Food Facts or BigBasket
+images, retailer scraping, stock placeholders or generated package imagery
+may be used. Any future manufacturer/supplier photograph requires separate
+written rights for Apniko's intended use, exact product/variant matching and
+administrator approval. See `PRODUCT-PHOTOS.md`.
 
 ## Resetting the local development catalogue
 
-Run bash scripts/catalogue/reset-local-catalogue.sh from the repository root only after stopping the backend. The helper creates a full MySQL dump on the Desktop before clearing product/catalogue/photo/inventory/cart and development order/payment records. User, role, administrator and shop accounts are retained. The reset is local-only and does not change Git history or any remote database.
+The backup-first reset helper is
+`scripts/catalogue/reset-local-catalogue.sh`. It is a local-only operation
+and must not be pointed at production or a remote database. The project owner
+ran it on 2026-11-22 and reported a full SQL backup plus zero catalogue/order
+verification counts. Do not rerun the destructive reset merely to verify this
+record; confirm the existing backup file instead.
