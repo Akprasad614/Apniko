@@ -128,6 +128,26 @@ class ProductPhotoServiceTest {
     }
 
     @Test
+    void openFactsCandidateAcceptsEquivalentUsFluidOunceAndMetricPackSize() {
+        Product product = product();
+        product.setPackSize("473.176 ml");
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
+        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
+
+        ProductPhotoCandidateRequest equivalent = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Open Food Facts", "Apple Cider Vinegar",
+                "Test Brand", "16 FL OZ (473 ml)", "CC BY-SA",
+                "Open Food Facts contributors", null, BARCODE);
+
+        var result = service.submitCandidate(10L, equivalent);
+
+        assertEquals(ProductImageReviewStatus.PENDING, result.status());
+        assertEquals("16 FL OZ (473 ml)", result.sourcePackSize());
+        verify(photoRepository).save(any(ProductPhoto.class));
+    }
+
+    @Test
     void openFactsCandidateStillRejectsMultipackTotalThatDiffersFromCatalogue() {
         Product product = product();
         product.setPackSize("100 g");
