@@ -1,6 +1,8 @@
 # Apniko — Phase 0 Foundation Audit
 
 **Audit date:** 2026-11-22  
+**Current branch:** `chore/phase-0-foundation-cleanup`  
+**Current review:** Draft PR #56  
 **Scope:** Repository architecture, development conventions, catalogue policy,
 automation entry points and safe starting conditions.
 
@@ -38,7 +40,7 @@ database, or rebuild the frontend.
 
 1. Created the clean development branch
    `chore/phase-0-foundation-cleanup` from the existing unmerged catalogue
-   work, preserving that work without rewriting its commits.
+   work, preserving the implementation and its history.
 2. Removed the obsolete tooling-specific comment from
    `frontend/.gitattributes`; retained the useful LF normalization rule.
 3. Removed the obsolete hidden-tool directory ignore entry from
@@ -46,10 +48,12 @@ database, or rebuild the frontend.
 4. Corrected the ownership record to point to the current Apniko repository.
 5. Updated the root README with the verified stack, project layout and
    catalogue-source guardrails.
-6. Updated backend CI branch filters so `chore/**` branches receive push and
-   pull-request verification.
+6. Updated backend and frontend CI branch filters so the new chore branch
+   receives verification on pushes and pull requests.
 7. Added this baseline record so later phases have a stable architecture and
    acceptance boundary.
+8. Opened draft PR #56. The previous catalogue-reset PR #55 was closed as
+   superseded; none of its changes were merged.
 
 ## Catalogue and image guardrails
 
@@ -78,40 +82,49 @@ database, or rebuild the frontend.
 - No pull request was merged and no deployment was made.
 - Existing catalogue work from the prior unmerged pull request is preserved
   on the new clean branch.
+- The old remote branch reference remains temporarily. The available GitHub
+  integration can create branches but cannot delete remote branch refs.
+  Current project files and the PR #56 diff have been scanned and contain no
+  obsolete tool-specific references. Historical PR/commit metadata has not
+  been rewritten.
 
 ## Validation status
 
-Repository content and configuration were inspected through GitHub. The
-following automated checks still need a successful GitHub Actions run against
-this branch before Phase 0 can be called fully verified:
+The following GitHub Actions checks were observed against the PR #56 head
+commit:
 
-- Backend workflow: catalogue scripts, Phase 10 assets, Maven verification
-  and Java tests.
-- Frontend workflow: lint, TypeScript, unit tests and production build.
-- Security workflows: confirm the current branch/PR is included in their
-  configured triggers and inspect the latest results.
+| Check | Result |
+|---|---|
+| Frontend CI — ESLint, TypeScript, Vitest and production build | **Passed** |
+| Backend CI — Phase 10, catalogue safety scripts, Maven verify and Java tests | **Passed** |
+| Gitleaks secret scan | **Passed** |
+| Semgrep security audit | **Passed** |
+| OSV dependency scan | **Passed** |
+| CycloneDX SBOM generation | **Passed** |
+| CodeQL Java analysis | In progress at last check |
+| OWASP ZAP passive baseline scan | In progress at last check |
 
-A workflow configuration or a previously passing run is not evidence that the
-current branch has passed. Report each check as passed, failed or not run
-using the actual run result.
+Do not treat an in-progress scan as a pass. Check the PR's latest status
+before marking the remaining security verification complete.
 
 ## Phase 0 exit criteria
 
 - [x] Existing Java/Spring Boot + MySQL and React/TypeScript/Vite architecture
       recorded without migration.
-- [x] A cleanly named working branch created from the unmerged catalogue work.
-- [x] Obsolete tool-specific repository references removed from the files
-      identified in the current pull-request diff.
+- [x] Cleanly named working branch created from the unmerged catalogue work.
+- [x] Obsolete tool-specific references removed from the current project files
+      identified in the PR diff.
 - [x] Root documentation and ownership metadata aligned with the current
       Apniko repository.
-- [x] Backend CI configured to run on the new chore branch pattern.
-- [ ] GitHub Actions verification passes on this branch.
+- [x] Backend and frontend CI configured for the new branch and PR.
+- [x] Frontend CI, backend CI, Gitleaks, Semgrep, OSV and SBOM checks passed.
+- [ ] CodeQL and OWASP ZAP complete successfully.
 - [ ] Local owner-run catalogue backup/reset is reviewed and completed.
-- [ ] Full repository and local working-tree scan confirms no remaining
-      obsolete tool directory or references outside the inspected GitHub
-      content.
+- [ ] Local working-tree scan confirms no ignored local tool directory or
+      untracked references remain.
+- [ ] The legacy remote branch reference is deleted after the owner confirms
+      their local clone is safely switched to the clean branch.
 
-Phase 0 is implementation-complete but remains verification-pending until the
-unchecked items are completed. The local reset and local filesystem scan
-require the project owner's Mac; they are intentionally not simulated or
-claimed as complete here.
+Phase 0 implementation and repository CI are substantially complete. Final
+closure is pending the in-progress security scans and the explicitly local
+cleanup items. These items are not simulated or claimed as complete.
