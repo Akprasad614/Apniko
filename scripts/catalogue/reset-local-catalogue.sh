@@ -34,10 +34,7 @@ echo "Creating full database backup..."
 mysqldump --single-transaction --routines --triggers -u "$MYSQL_USER" -p "$DB_NAME" > "$BACKUP_FILE"
 test -s "$BACKUP_FILE"
 
-if [[ -d "$ROOT_DIR/data/catalogue" ]]; then
-  echo "Moving old downloaded catalogue files into the backup folder..."
-  mv "$ROOT_DIR/data/catalogue" "$BACKUP_DIR/catalogue-files"
-fi
+# Preserve any locally supplied BigBasket CSV. The reset touches database rows only.
 
 echo "Clearing local catalogue and product-linked development data..."
 mysql -u "$MYSQL_USER" -p "$DB_NAME" < scripts/catalogue/reset-local-catalogue.sql
