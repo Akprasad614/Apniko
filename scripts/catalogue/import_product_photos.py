@@ -188,7 +188,7 @@ def safe_image_url(value: str | None, barcode: str) -> bool:
 PACK_SIZE_PATTERN = re.compile(
     r"(?:(?P<count>\d+(?:[.,]\d+)?)\s*[x×]\s*)?"
     r"(?P<amount>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>fluid\\s*ounces?|fl\\.?\\s*oz\\.?|milligrams?|mg|micrograms?|mcg|"
+    r"(?P<unit>fluid\s*ounces?|fl\.?\s*oz\.?|milligrams?|mg|micrograms?|mcg|"
     r"kilograms?|kg|grams?|gm|g|"
     r"milliliters?|millilitres?|ml|liters?|litres?|l|pieces?|pcs|counts?|ct)\b",
     re.IGNORECASE,
