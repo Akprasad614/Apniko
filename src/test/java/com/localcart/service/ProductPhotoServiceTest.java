@@ -96,17 +96,17 @@ class ProductPhotoServiceTest {
                 "Different Brand", "1 kg", "CC BY-SA",
                 "Third-party catalogue contributors", null, BARCODE);
         ProductPhotoCandidateRequest wrongPack = new ProductPhotoCandidateRequest(
-                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                IMAGE, SOURCE, "Third-party catalogue", "Test grocery pack",
                 "Test Brand", "500 g", "CC BY-SA",
-                "Open Food Facts contributors", null, BARCODE);
+                "Third-party catalogue contributors", null, BARCODE);
         ProductPhotoCandidateRequest ambiguousPromoPack = new ProductPhotoCandidateRequest(
-                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                IMAGE, SOURCE, "Third-party catalogue", "Test grocery pack",
                 "Test Brand", "5+1 kg", "CC BY-SA",
-                "Open Food Facts contributors", null, BARCODE);
+                "Third-party catalogue contributors", null, BARCODE);
         ProductPhotoCandidateRequest ambiguousCommaPack = new ProductPhotoCandidateRequest(
-                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                IMAGE, SOURCE, "Third-party catalogue", "Test grocery pack",
                 "Test Brand", "2 , 25g", "CC BY-SA",
-                "Open Food Facts contributors", null, BARCODE);
+                "Third-party catalogue contributors", null, BARCODE);
 
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, wrongBrand));
@@ -120,38 +120,38 @@ class ProductPhotoServiceTest {
     }
 
     @Test
-    void openFactsSourceIsRejectedEvenWhenBarcodeBrandAndPackSizeMatch() {
+    void thirdPartyCatalogueSourceIsRejectedEvenWhenBarcodeBrandAndPackSizeMatch() {
         Product product = product();
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
-        ProductPhotoCandidateRequest openFacts = new ProductPhotoCandidateRequest(
-                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+        ProductPhotoCandidateRequest thirdPartyCatalogue = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Third-party catalogue", "Test grocery pack",
                 "Test Brand", "1 kg", "CC BY-SA",
-                "Open Food Facts contributors", null, BARCODE);
+                "Third-party catalogue contributors", null, BARCODE);
 
         assertThrows(BadRequestException.class,
-                () -> service.submitCandidate(10L, openFacts));
+                () -> service.submitCandidate(10L, thirdPartyCatalogue));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
     @Test
-    void openFactsSourceIsRejectedRegardlessOfPackSizeRepresentation() {
+    void thirdPartyCatalogueSourceIsRejectedRegardlessOfPackSizeRepresentation() {
         Product product = product();
         product.setPackSize("473.176 ml");
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
-        ProductPhotoCandidateRequest openFacts = new ProductPhotoCandidateRequest(
-                IMAGE, SOURCE, "Open Food Facts", "Apple Cider Vinegar",
+        ProductPhotoCandidateRequest thirdPartyCatalogue = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Third-party catalogue", "Apple Cider Vinegar",
                 "Test Brand", "16 FL OZ (473 ml)", "CC BY-SA",
-                "Open Food Facts contributors", null, BARCODE);
+                "Third-party catalogue contributors", null, BARCODE);
 
         assertThrows(BadRequestException.class,
-                () -> service.submitCandidate(10L, openFacts));
+                () -> service.submitCandidate(10L, thirdPartyCatalogue));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
     @Test
-    void openFactsSourceIsRejectedForZeroPaddedBarcodeImagePathsToo() {
+    void thirdPartyCatalogueSourceIsRejectedForZeroPaddedBarcodeImagePathsToo() {
         String upc = "036000291452";
         String paddedImage = "https://images.openfoodfacts.org/images/products/003/600/029/1452/front_en.2.400.jpg";
         String upcSource = "https://world.openfoodfacts.org/product/" + upc;
@@ -160,9 +160,9 @@ class ProductPhotoServiceTest {
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
         ProductPhotoCandidateRequest request = new ProductPhotoCandidateRequest(
-                paddedImage, upcSource, "Open Food Facts", "Test grocery pack",
+                paddedImage, upcSource, "Third-party catalogue", "Test grocery pack",
                 "Test Brand", "1 kg", "CC BY-SA",
-                "Open Food Facts contributors", null, upc);
+                "Third-party catalogue contributors", null, upc);
 
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, request));
@@ -170,15 +170,15 @@ class ProductPhotoServiceTest {
     }
 
     @Test
-    void openFactsCandidateStillRejectsMultipackTotalThatDiffersFromCatalogue() {
+    void thirdPartyCatalogueCandidateStillRejectsMultipackTotalThatDiffersFromCatalogue() {
         Product product = product();
         product.setPackSize("100 g");
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
         ProductPhotoCandidateRequest wrongPack = new ProductPhotoCandidateRequest(
-                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                IMAGE, SOURCE, "Third-party catalogue", "Test grocery pack",
                 "Test Brand", "2 x 100gm", "CC BY-SA",
-                "Open Food Facts contributors", null, BARCODE);
+                "Third-party catalogue contributors", null, BARCODE);
 
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, wrongPack));
@@ -301,7 +301,7 @@ class ProductPhotoServiceTest {
         Product product = product();
         ProductPhoto photo = pendingPhoto(product);
         photo.setApprovedImageUrl("https://images.brand.example/products/previous-approved.jpg");
-        photo.setSourceName("Open Food Facts");
+        photo.setSourceName(BRAND_SOURCE);
         when(photoRepository.findByProductId(10L)).thenReturn(Optional.of(photo));
         when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
