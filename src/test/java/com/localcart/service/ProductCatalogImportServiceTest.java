@@ -76,7 +76,7 @@ class ProductCatalogImportServiceTest {
                         && product.getSubcategory().equals("Tea, Coffee & Cocoa")
                         && product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.ACTIVE));
         verify(sourceRecordRepository).save(argThat(source ->
-                source.getSourceName().equals("PackSense India / Open Food Facts")
+                source.getSourceName().equals("BigBasket authorised dataset")
                         && source.getSourceLicense().equals("BIGBASKET-WRITTEN-PERMISSION")
                         && source.getSourceRecordId().equals("4006381333931")
                         && source.getProduct().getId().equals(44L)));
@@ -94,7 +94,7 @@ class ProductCatalogImportServiceTest {
         product.setNetQuantityUnit("g");
         product.setCategory("Beverages");
         product.setSubcategory("Tea, Coffee & Cocoa");
-        product.setCatalogueSource("PackSense India / Open Food Facts");
+        product.setCatalogueSource("BigBasket authorised dataset");
         product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
         product.setCatalogueReviewReason("Please verify packaging");
         product.setCatalogueReviewedAt(java.time.Instant.now());
@@ -103,7 +103,7 @@ class ProductCatalogImportServiceTest {
         when(productRepository.findByBarcode("4006381333931"))
                 .thenReturn(Optional.of(product));
         when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
-                "PackSense India / Open Food Facts", "4006381333931"))
+                "BigBasket authorised dataset", "4006381333931"))
                 .thenReturn(Optional.of(new ProductCatalogueSourceRecord()));
         when(productRepository.save(any(Product.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -145,7 +145,7 @@ class ProductCatalogImportServiceTest {
     @Test
     void rejectsSourceWithoutSecureUrlOrApprovedLicence() {
         ProductImportBatchRequest insecure = new ProductImportBatchRequest(
-                "Test", "http://example.com/catalogue.csv", "ODbL-1.0",
+                "Test", "http://example.com/catalogue.csv", "BIGBASKET-WRITTEN-PERMISSION",
                 "Test attribution", java.util.List.of(item(
                         "4006381333931", "Sample Tea", "Brand", "250 g", null, null)));
         assertThrows(BadRequestException.class, () -> service.importBatch(insecure));
@@ -213,10 +213,10 @@ class ProductCatalogImportServiceTest {
 
     private ProductImportBatchRequest batch(ProductImportItem item) {
         return new ProductImportBatchRequest(
-                "PackSense India / Open Food Facts",
+                "BigBasket authorised dataset",
                 "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
-                "ODbL-1.0",
-                "PackSense India, derived from Open Food Facts; ODbL-1.0.",
+                "BIGBASKET-WRITTEN-PERMISSION",
+                "BigBasket CSV dataset; Permission reference: TEST-BIGBASKET-GRANT.",
                 java.util.List.of(item));
     }
 
