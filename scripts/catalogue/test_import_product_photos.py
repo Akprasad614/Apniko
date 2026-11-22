@@ -254,7 +254,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
 
         mismatched_pairs = (
             ("100 g", "200 g"), ("100 g", "100 ml"), ("100 g", "2 x 100 g"),
-            ("1000 g", "5+1 kg"),
+            ("1000 g", "5+1 kg"), ("25 g", "2 , 25g"),
         )
         for local_pack, source_pack in mismatched_pairs:
             with self.subTest(local_pack=local_pack, source_pack=source_pack):
