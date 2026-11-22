@@ -137,6 +137,10 @@ class BigBasketImportTests(unittest.TestCase):
         payload = session.post.call_args.kwargs["json"]
         self.assertEqual(payload["sourceName"], "BigBasket authorised dataset")
         self.assertEqual(payload["sourceLicense"], "BIGBASKET-WRITTEN-PERMISSION")
+        self.assertTrue(payload["reuseRightsVerified"])
+        self.assertTrue(payload["commercialUsePermitted"])
+        self.assertEqual(payload["permissionReference"], "SUPPLIER-GRANT-2026-01")
+        self.assertIn("Commercial use: authorised", payload["attribution"])
         self.assertIn("Permission reference: SUPPLIER-GRANT-2026-01", payload["attribution"])
         product = payload["products"][0]
         self.assertIsNone(product["barcode"])
