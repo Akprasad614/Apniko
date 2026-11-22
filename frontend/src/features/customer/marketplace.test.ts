@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildMarketplaceSearchPath, formatRupees, getPublicShopHeading } from './marketplace'
+import { buildMarketplaceSearchPath, formatRupees, getPublicShopHeading, searchMarketplaceShops } from './marketplace'
 
 describe('customer marketplace helpers', () => {
   it('exposes only the public shop name and address in the customer heading', () => {
@@ -59,6 +59,33 @@ describe('customer marketplace helpers', () => {
     expect(url.searchParams.get('shopId')).toBe('21')
     expect(url.searchParams.get('minPrice')).toBe('25')
     expect(url.searchParams.get('maxPrice')).toBe('150')
+  })
+
+  it('searches shop names and addresses without matching private owner or phone fields', () => {
+    const shops = [
+      {
+        id: 1,
+        name: 'Green Basket',
+        ownerName: 'Private Contact',
+        phone: '9000000000',
+        address: 'Indiranagar, Bengaluru',
+        active: true,
+      },
+      {
+        id: 2,
+        name: 'Daily Needs',
+        ownerName: 'Another Contact',
+        phone: '9111111111',
+        address: 'Whitefield, Bengaluru',
+        active: true,
+      },
+    ]
+
+    expect(searchMarketplaceShops(shops, '  GREEN ')).toHaveLength(1)
+    expect(searchMarketplaceShops(shops, 'whitefield').map((shop) => shop.id)).toEqual([2])
+    expect(searchMarketplaceShops(shops, 'Private Contact')).toHaveLength(0)
+    expect(searchMarketplaceShops(shops, '9000000000')).toHaveLength(0)
+    expect(searchMarketplaceShops(shops, '   ')).toHaveLength(0)
   })
 
   it('formats prices in Indian rupees', () => {
