@@ -122,6 +122,29 @@ class CustomerMarketplaceServiceTest {
         );
     }
 
+
+    @Test
+    void searchWithoutShopIdQueriesAcrossActiveShops() {
+        when(inventoryRepository.searchMarketplace(
+                eq("milk"), isNull(), isNull(), isNull(), isNull(),
+                eq(ProductCatalogueReviewStatus.ACTIVE), any(Pageable.class)))
+                .thenAnswer(invocation -> new PageImpl<>(
+                        List.of(), invocation.getArgument(6), 0));
+
+        Page<?> result = service.searchProducts(
+                " milk ", null, null, null, null,
+                0, 8, "name", "asc");
+
+        assertTrue(result.isEmpty());
+        verify(inventoryRepository).searchMarketplace(
+                eq("milk"), isNull(), isNull(), isNull(), isNull(),
+                eq(ProductCatalogueReviewStatus.ACTIVE),
+                argThat(pageable -> pageable.getPageNumber() == 0
+                        && pageable.getPageSize() == 8)
+        );
+        verifyNoInteractions(shopRepository);
+    }
+
     @Test
     void priceComparisonRejectsUnknownProduct() {
         when(productRepository.existsById(999L)).thenReturn(false);
