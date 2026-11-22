@@ -1,159 +1,148 @@
+import csv
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
-from import_catalogue import (
-    api_quantity,
-    category_for,
-    load_packSense,
-    pack_size,
-    packsense_item,
-    valid_gtin,
-)
+from import_catalogue import load_bigbasket_csv, normalize_row, run
 
 
-class CatalogueImportTests(unittest.TestCase):
-    def test_gtin_check_digit_validation(self):
-        self.assertTrue(valid_gtin("4006381333931"))
-        self.assertFalse(valid_gtin("4006381333932"))
-        self.assertFalse(valid_gtin("12345"))
-
-    def test_pack_size_normalization(self):
-        self.assertEqual(pack_size("500.00", "grams"), "500 g")
-        self.assertEqual(pack_size("1", "litre"), "1 l")
-        self.assertIsNone(pack_size("500", "unknown"))
-
-    def test_api_quantity_respects_database_precision_and_preserves_pack_size(self):
-        self.assertEqual(api_quantity("250.0000", "g"), (250.0, "g"))
-        self.assertEqual(api_quantity("0.125", "kg"), (0.125, "kg"))
-        self.assertEqual(api_quantity("0.12345", "g"), (None, None))
-        self.assertEqual(pack_size("0.12345", "g"), "0.12345 g")
-        self.assertEqual(api_quantity("1000001", "g"), (None, None))
-
-    def test_packsense_quantity_selects_a_complete_amount_unit_pair(self):
-        row = {
-            "code": "4006381333931",
-            "product_name": "Kachi Ghani Mustard Oil",
-            "brands": "Dhara",
-            "product_quantity": "1000",
-            "product_quantity_unit": "",
-            "quantity_amount": "1",
-            "quantity_unit": "l",
-            "existence_status": "present_in_snapshot",
-            "open_error_flags": "0",
+class BigBasketImportTests(unittest.TestCase):
+    def row(self, **overrides):
+        value = {
+            "index": "19",
+            "product": "Fresho Bhendi",
+            "category": "Fruits & Vegetables",
+            "sub_category": "Fresh Vegetables",
+            "brand": "Fresho",
+            "type": "Regular",
+            "description": "Fresh okra",
+            "sale_price": "48.00",
+            "market_price": "59.00",
+            "rating": "4.2",
         }
+        value.update(overrides)
+        return value
 
-        item = packsense_item(row)
+    def test_bigbasket_row_imports_only_catalogue_identity_fields(self):
+        item = normalize_row(self.row(), 2)
 
-        self.assertIsNotNone(item)
-        self.assertEqual(item["packSize"], "1 l")
-        self.assertEqual(item["netQuantity"], 1.0)
-        self.assertEqual(item["netQuantityUnit"], "l")
-
-    def test_packsense_quantity_does_not_mix_amount_and_unit_columns(self):
-        row = {
-            "code": "4006381333931",
-            "product_name": "Sample Product",
-            "product_quantity": "1000",
-            "product_quantity_unit": "",
-            "quantity_amount": "",
-            "quantity_unit": "l",
-            "existence_status": "present_in_snapshot",
-            "open_error_flags": "0",
-        }
-
-        item = packsense_item(row)
-
-        self.assertIsNotNone(item)
+        self.assertEqual(item["name"], "Fresho Bhendi")
+        self.assertEqual(item["brand"], "Fresho")
+        self.assertEqual(item["category"], "Fruits & Vegetables")
+        self.assertEqual(item["subcategory"], "Fresh Vegetables")
+        self.assertEqual(item["variantGroupKey"], "Regular")
+        self.assertEqual(item["description"], "Fresh okra")
+        self.assertTrue(item["sourceRecordId"].startswith("bigbasket:"))
+        self.assertIsNone(item["barcode"])
         self.assertIsNone(item["packSize"])
-        self.assertIsNone(item["netQuantity"])
-        self.assertIsNone(item["netQuantityUnit"])
-
-    def test_specific_product_name_overrides_broad_taxonomy(self):
-        self.assertEqual(
-            category_for("Poha", "Beverages", "en:water"),
-            ("Foodgrains, Oil & Masala", "Rice & Rice Products"),
-        )
-        self.assertEqual(
-            category_for("Britannia Treat croissant mixed fruit", "Fruits and Vegetables"),
-            ("Dairy, Bakery & Eggs", "Bread & Bakery"),
-        )
-        self.assertEqual(
-            category_for("Kachi Ghani Mustard Oil", "Fruits and Vegetables"),
-            ("Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
-        )
-
-    def test_india_retail_category_mapping_for_observed_unclassified_products(self):
-        self.assertEqual(
-            category_for("(Suhana) SCHEZWAN CHUTNEY"),
-            ("Gourmet & World Food", "Sauces, Spreads & Condiments"),
-        )
-        self.assertEqual(
-            category_for("10 inch Tortilla Wrap"),
-            ("Dairy, Bakery & Eggs", "Bread & Bakery"),
-        )
-        self.assertEqual(
-            category_for("15g Blueberry", brand_hint="Epigamia Greek Yogurt"),
-            ("Dairy, Bakery & Eggs", "Curd, Paneer & Cheese"),
-        )
-        self.assertEqual(
-            category_for("0.3% Retinol Serum"),
-            ("Beauty & Hygiene", "Skin Care"),
-        )
-        self.assertEqual(
-            category_for("Smoothing Hair Conditioner"),
-            ("Beauty & Hygiene", "Hair Care"),
-        )
-        self.assertEqual(
-            category_for("20g Protein Bar Cranberry Blast"),
-            ("Snacks & Branded Foods", "Breakfast & Cereals"),
-        )
-
-    def test_india_retail_category_mapping(self):
-        self.assertEqual(category_for("Beverages", "Tea - coffee"), ("Beverages", "Tea, Coffee & Cocoa"))
-        self.assertEqual(category_for("Dairy", "Milk"), ("Dairy, Bakery & Eggs", "Milk & Dairy"))
-        self.assertEqual(category_for("unknown"), ("Other Essentials", "Unclassified Packaged Goods"))
-
-    def test_packsense_row_requires_name_valid_gtin_and_clean_status(self):
-        valid_row = {
-            "code": "4006381333931",
-            "product_name": "Sample Tea",
-            "brands": "Sample Brand",
-            "product_quantity": "250",
-            "product_quantity_unit": "g",
-            "pnns_groups_1": "Beverages",
-            "pnns_groups_2": "Tea and coffee",
-            "existence_status": "present_in_snapshot",
-            "open_error_flags": "0",
-            "last_modified_t": "1793700000",
-        }
-        item = packsense_item(valid_row)
-        self.assertIsNotNone(item)
-        self.assertEqual(item["category"], "Beverages")
-        self.assertEqual(item["subcategory"], "Tea, Coffee & Cocoa")
-        self.assertEqual(item["packSize"], "250 g")
         self.assertIsNone(item["mrp"])
+        self.assertNotIn("imageUrl", item)
+        self.assertNotIn("sale_price", item)
+        self.assertNotIn("market_price", item)
+        self.assertNotIn("rating", item)
 
-        invalid = dict(valid_row, existence_status="unverified")
-        self.assertIsNone(packsense_item(invalid))
-        invalid = dict(valid_row, open_error_flags="1")
-        self.assertIsNone(packsense_item(invalid))
-        invalid = dict(valid_row, code="4006381333932")
-        self.assertIsNone(packsense_item(invalid))
+    def test_row_without_bigbasket_index_gets_stable_hash_record_id(self):
+        row = self.row()
+        row.pop("index")
+        first = normalize_row(row, 2)
+        second = normalize_row(row, 99)
+        self.assertEqual(first["sourceRecordId"], second["sourceRecordId"])
 
-    def test_load_packsense_deduplicates_by_gtin(self):
-        row = (
-            "code,product_name,brands,product_quantity,product_quantity_unit,"
-            "pnns_groups_1,pnns_groups_2,existence_status,open_error_flags,last_modified_t\n"
-            "4006381333931,Sample Tea,Sample Brand,250,g,Beverages,Tea and coffee,present_in_snapshot,0,1793700000\n"
-            "4006381333931,Sample Tea Duplicate,Sample Brand,250,g,Beverages,Tea and coffee,present_in_snapshot,0,1793700000\n"
-        )
+    def test_csv_loader_counts_duplicates_and_missing_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "BigBasket.csv"
+            fields = [
+                "index", "product", "category", "sub_category",
+                "brand", "type", "description", "sale_price",
+                "market_price", "rating",
+            ]
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=fields)
+                writer.writeheader()
+                writer.writerow(self.row())
+                writer.writerow(self.row())
+                writer.writerow(self.row(index="20", product=""))
+            rows, stats = load_bigbasket_csv(path)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(stats, {
+            "received": 3,
+            "eligible": 1,
+            "skipped_missing_name": 1,
+            "duplicate_source_rows": 1,
+        })
+
+    def args(self, path, **overrides):
+        values = {
+            "file": path,
+            "api_url": "http://localhost:8080",
+            "source_url": "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
+            "permission_reference": None,
+            "permission_confirmed": False,
+            "limit": 0,
+            "batch_size": 250,
+            "apply": False,
+        }
+        values.update(overrides)
+        from argparse import Namespace
+        return Namespace(**values)
+
+    def make_csv(self, folder):
+        path = Path(folder) / "BigBasket.csv"
+        fields = list(self.row().keys())
+        with path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            writer.writeheader()
+            writer.writerow(self.row())
+        return path
+
+    def test_dry_run_never_calls_api_or_needs_a_permission_reference(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "catalogue.csv"
-            path.write_text(row, encoding="utf-8")
-            items, stats = load_packSense(path)
-        self.assertEqual(len(items), 1)
-        self.assertEqual(stats["duplicate_rows"], 1)
+            path = self.make_csv(folder)
+            session = Mock()
+            result = run(self.args(path), session=session)
+
+        self.assertEqual(result, 0)
+        session.post.assert_not_called()
+
+    def test_apply_is_blocked_without_explicit_permission_confirmation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = self.make_csv(folder)
+            with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
+                result = run(self.args(path, apply=True), session=Mock())
+
+        self.assertEqual(result, 2)
+
+    def test_apply_posts_only_bigbasket_identity_fields_and_permission_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = self.make_csv(folder)
+            session = Mock()
+            response = Mock()
+            response.json.return_value = {
+                "inserted": 1, "updated": 0, "unchanged": 0, "rejected": 0, "errors": []
+            }
+            response.raise_for_status.return_value = None
+            session.post.return_value = response
+            args = self.args(
+                path,
+                apply=True,
+                permission_reference="SUPPLIER-GRANT-2026-01",
+                permission_confirmed=True,
+            )
+            with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
+                result = run(args, session=session)
+
+        self.assertEqual(result, 0)
+        payload = session.post.call_args.kwargs["json"]
+        self.assertEqual(payload["sourceName"], "BigBasket authorised dataset")
+        self.assertEqual(payload["sourceLicense"], "BIGBASKET-WRITTEN-PERMISSION")
+        self.assertIn("Permission reference: SUPPLIER-GRANT-2026-01", payload["attribution"])
+        product = payload["products"][0]
+        self.assertIsNone(product["barcode"])
+        self.assertIsNone(product["packSize"])
+        self.assertIsNone(product["mrp"])
+        self.assertNotIn("imageUrl", product)
 
 
 if __name__ == "__main__":
