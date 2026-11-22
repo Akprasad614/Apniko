@@ -57,7 +57,7 @@ Target image presentation: square 1:1 canvas, neutral/white background, containe
 3. Open datasets whose specific image licence permits Apniko's intended use, with required attribution and share-alike obligations
 4. No image rather than an unlicensed, unrelated, low-quality or guessed image
 
-Retailer catalogue photographs are not a default source. Do not scrape BigBasket or copy BigBasket images, prices, descriptions or product databases. A retailer's public product page is not itself a permission grant to reproduce its imagery.
+Retailer catalogue photographs are not a default source. Do not scrape BigBasket or copy BigBasket images, prices, descriptions or product databases. The BigBasket dataset importer requires a written permission reference before applying catalogue rows; a public Kaggle copy or notebook licence is not, by itself, proof of reuse rights.
 
 ### Matching and moderation
 
@@ -71,9 +71,7 @@ For a packaged product, match at minimum:
 
 A barcode match by itself is not enough to approve a photograph. Loose produce uses an accurate photograph of the produce category/item and must not be shown as a branded packaged product.
 
-For Open Facts family photo candidates (Open Food Facts, Open Beauty Facts, Open Pet Food Facts and Open Products Facts), the automated India-market screen requires the source record's `countries_tags` to include `en:india` (or its exact `countries` value to include India). The importer tries these family databases sequentially and retains the database/source URL used for the image. This is community-contributed evidence that the record is marked as sold in India; it is not proof of current stock or current retail availability. Before approval, an administrator must independently verify that the exact product/variant is currently offered in India. Imported brands are allowed when sold in India; country of origin and country of sale are different facts.
-
-Before a candidate enters the review queue, the importer downloads the selected front image's full-size variant for quality checks: a minimum 600 px short side, a neutral/white or transparent background in at least three image corners, and a basic edge-detail check to reject obviously blurred/blank files. The candidate submitted to Apniko retains the source's smaller display derivative for mobile catalogue performance; the full-size quality-check URL is never sent to the review API. These checks do not understand product identity, variant, cropping, text legibility, watermarks or rights. Administrator visual review remains mandatory; failing the automated screen means no candidate is submitted.
+BigBasket dataset import is file-based and permission-gated. It imports no images, GTINs, pack sizes, ratings or retailer prices from the commonly circulated CSV schema. The CSV itself must be supplied from a source that grants written reuse permission. Apniko does not scrape BigBasket pages or use third-party catalogue aggregators.
 
 Each photo candidate carries source name, source page, image URL, licence / permission classification, attribution, source product name, source brand, source pack size and (for manufacturer/supplier feeds) a permission reference. Only an administrator-approved photo is exposed to the customer and shopkeeper catalogues. Rejection requires a reason and preserves any previously approved image.
 
