@@ -57,6 +57,16 @@ public class ProductPhotoService {
             Pattern.CASE_INSENSITIVE
     );
 
+    // Prevent a partial match from treating promo bundles such as "5+1 kg"
+    // as only the final "1 kg" and accepting a different catalogue SKU.
+    private static final Pattern ADDITIVE_PACK_SIZE_PATTERN = Pattern.compile(
+            "\\b\\d+(?:[.,]\\d+)?\\s*\\+\\s*\\d+(?:[.,]\\d+)?\\s*"
+                    + "(?:fluid\\s*ounces?|fl\\.?\\s*oz\\.?|milligrams?|mg|micrograms?|mcg|"
+                    + "kilograms?|kg|grams?|gm|g|milliliters?|millilitres?|ml|liters?|litres?|l|"
+                    + "pieces?|pcs|counts?|ct)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
     private record NormalizedPackSize(String dimension, BigDecimal amount) {}
 
     @Value("${APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS:${apniko.catalogue.photo-authorized-image-hosts:}}")
@@ -392,7 +402,7 @@ public class ProductPhotoService {
     }
 
     private NormalizedPackSize normalizePackSize(String value) {
-        if (value == null) return null;
+        if (value == null || ADDITIVE_PACK_SIZE_PATTERN.matcher(value).find()) return null;
         Matcher matcher = PACK_SIZE_PATTERN.matcher(value);
         if (!matcher.find()) return null;
 
