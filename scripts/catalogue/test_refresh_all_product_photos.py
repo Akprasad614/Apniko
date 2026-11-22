@@ -97,6 +97,59 @@ class FullPhotoRefreshTests(unittest.TestCase):
         self.assertEqual(session.get.call_count, 2)
         self.assertEqual(inspect.call_args.args[1], BEAUTY_FULL_IMAGE)
 
+    def test_lookup_reports_rejection_reason_from_each_family_database(self):
+        product = {
+            "productId": 203,
+            "barcode": BARCODE,
+            "name": "Sample face cream",
+            "brand": "Expected Brand",
+            "packSize": "50 g",
+        }
+        food_mismatch = FakeResponse(
+            200,
+            {"product": {
+                "code": BARCODE,
+                "countries_tags": ["en:india"],
+                "product_name": "Sample face cream",
+                "brands": "Different Brand",
+                "quantity": "50 g",
+            }},
+            f"https://world.openfoodfacts.org/api/v3/product/{BARCODE}.json",
+        )
+        missing_responses = [
+            FakeResponse(
+                404,
+                {},
+                f"https://{host}/api/v3/product/{BARCODE}.json",
+            )
+            for host in (
+                "world.openbeautyfacts.org",
+                "world.openpetfoodfacts.org",
+                "world.openproductsfacts.org",
+            )
+        ]
+        session = Mock()
+        session.get.side_effect = [food_mismatch, *missing_responses]
+
+        candidate, quality, reason, service_unavailable = (
+            refresh.lookup_candidate_across_sources(
+                session,
+                product,
+                BARCODE,
+                delay_seconds=0,
+                max_retries=0,
+            )
+        )
+
+        self.assertIsNone(candidate)
+        self.assertIsNone(quality)
+        self.assertFalse(service_unavailable)
+        self.assertIn("world.openfoodfacts.org: brand mismatch", reason)
+        self.assertIn("world.openbeautyfacts.org: no record", reason)
+        self.assertIn("world.openpetfoodfacts.org: no record", reason)
+        self.assertIn("world.openproductsfacts.org: no record", reason)
+        self.assertEqual(session.get.call_count, 4)
+
     def test_open_facts_family_lookup_includes_all_four_databases(self):
         hosts = [url.split("/")[2] for url in (
             f"https://{host}/api/v3/product/{{barcode}}.json" for host in refresh.SOURCES
