@@ -367,6 +367,57 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
           </>
         )}
 
+        {view === 'categories' && (
+          <section className="customer-category-explorer" aria-label="Browse grocery categories">
+            <div className="customer-catalogue-section-heading">
+              <div>
+                <p className="customer-eyebrow">BROWSE THE AISLES</p>
+                <h2>Find your everyday essentials</h2>
+              </div>
+            </div>
+            <div className="customer-category-grid" aria-label="Product categories">
+              {quickCategories.map((item) => (
+                <button
+                  className={`customer-category-card customer-category-card--${item.tone}${activeCategory === item.category ? ' is-selected' : ''}`}
+                  key={item.label}
+                  type="button"
+                  aria-pressed={activeCategory === item.category}
+                  onClick={() => chooseCategory(item.category)}
+                >
+                  <span className="customer-category-card__symbol" aria-hidden="true">{item.icon}</span>
+                  <strong>{item.label}</strong>
+                  <span>Explore products <span aria-hidden="true">→</span></span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {view === 'home' && (
+          <section className="customer-featured-categories" aria-label="Featured grocery categories">
+            <button
+              className="customer-featured-category customer-featured-category--fresh"
+              type="button"
+              onClick={() => chooseCategory(quickCategories.find((item) => item.label === 'Fruits')?.category ?? 'Fruits & Vegetables')}
+            >
+              <span className="customer-featured-category__eyebrow">FRUITS &amp; VEG</span>
+              <strong>Everyday freshness</strong>
+              <span className="customer-featured-category__copy">Fresh picks for your kitchen</span>
+              <span className="customer-featured-category__art" aria-hidden="true">🥬</span>
+            </button>
+            <button
+              className="customer-featured-category customer-featured-category--treats"
+              type="button"
+              onClick={() => chooseCategory(quickCategories.find((item) => item.label === 'Snacks')?.category ?? 'Snacks')}
+            >
+              <span className="customer-featured-category__eyebrow">SNACKS</span>
+              <strong>Little treats</strong>
+              <span className="customer-featured-category__copy">Something for every craving</span>
+              <span className="customer-featured-category__art" aria-hidden="true">🍪</span>
+            </button>
+          </section>
+        )}
+
         <section className="shop-section" aria-labelledby="shop-section-title">
           <div className="customer-section-heading">
             <div>
@@ -474,47 +525,6 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
 
             <div className="marketplace-content marketplace-content--full">
               <section className="product-area" aria-label="Products">
-                {view === 'categories' && (
-                  <div className="customer-category-grid" aria-label="Product categories">
-                    {quickCategories.map((item) => (
-                      <button
-                        className={`customer-category-card customer-category-card--${item.tone}${activeCategory === item.category ? ' is-selected' : ''}`}
-                        key={item.label}
-                        type="button"
-                        aria-pressed={activeCategory === item.category}
-                        onClick={() => chooseCategory(item.category)}
-                      >
-                        <span className="customer-category-card__symbol" aria-hidden="true">{item.icon}</span>
-                        <strong>{item.label}</strong>
-                        <span>Explore products <span aria-hidden="true">→</span></span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {view === 'home' && (
-                  <section className="customer-featured-categories" aria-label="Featured grocery categories">
-                    <button
-                      className="customer-featured-category customer-featured-category--fresh"
-                      type="button"
-                      onClick={() => chooseCategory(quickCategories.find((item) => item.label === 'Fruits')?.category ?? 'Fruits & Vegetables')}
-                    >
-                      <span className="customer-featured-category__eyebrow">FRUITS &amp; VEG</span>
-                      <strong>Everyday freshness</strong>
-                      <span className="customer-featured-category__copy">Fresh picks for your kitchen</span>
-                      <span className="customer-featured-category__art" aria-hidden="true">🥬</span>
-                    </button>
-                    <button
-                      className="customer-featured-category customer-featured-category--treats"
-                      type="button"
-                      onClick={() => chooseCategory(quickCategories.find((item) => item.label === 'Snacks')?.category ?? 'Snacks')}
-                    >
-                      <span className="customer-featured-category__eyebrow">SNACKS</span>
-                      <strong>Little treats</strong>
-                      <span className="customer-featured-category__copy">Something for every craving</span>
-                      <span className="customer-featured-category__art" aria-hidden="true">🍪</span>
-                    </button>
-                  </section>
-                )}
                 <div className="category-row" aria-label="Filter by category">
                   <button
                     type="button"
