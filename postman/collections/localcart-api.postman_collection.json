@@ -7564,6 +7564,132 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Catalogue import safety (admin)",
+      "description": "Negative tests only. These requests must never create or modify catalogue rows. Set adminToken to an administrator JWT in the private environment.",
+      "item": [
+        {
+          "name": "Reject BigBasket import when reuse rights are not verified (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceName\": \"BigBasket authorised dataset\",\n  \"sourceUrl\": \"https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints\",\n  \"sourceLicense\": \"BIGBASKET-WRITTEN-PERMISSION\",\n  \"attribution\": \"Commercial use: authorised by written permission. Permission reference: POSTMAN-NEGATIVE-TEST.\",\n  \"reuseRightsVerified\": false,\n  \"commercialUsePermitted\": true,\n  \"permissionReference\": \"POSTMAN-NEGATIVE-TEST\",\n  \"products\": [\n    {\n      \"name\": \"Negative test product\",\n      \"brand\": \"Test\",\n      \"barcode\": null,\n      \"packSize\": null,\n      \"netQuantity\": null,\n      \"netQuantityUnit\": null,\n      \"variantGroupKey\": \"Test\",\n      \"description\": \"Must not be imported\",\n      \"category\": \"Test\",\n      \"subcategory\": \"Test\",\n      \"mrp\": null,\n      \"mrpSource\": null,\n      \"sourceRecordId\": \"postman-negative-permission-test\",\n      \"sourceModifiedAt\": null\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/catalogue/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "catalogue",
+                "import"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unverified commercial reuse is denied with HTTP 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject BigBasket import when commercial permission is not granted (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceName\": \"BigBasket authorised dataset\",\n  \"sourceUrl\": \"https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints\",\n  \"sourceLicense\": \"BIGBASKET-WRITTEN-PERMISSION\",\n  \"attribution\": \"Commercial use: authorised by written permission. Permission reference: POSTMAN-NEGATIVE-TEST.\",\n  \"reuseRightsVerified\": true,\n  \"commercialUsePermitted\": false,\n  \"permissionReference\": \"POSTMAN-NEGATIVE-TEST\",\n  \"products\": [\n    {\n      \"name\": \"Negative test product\",\n      \"brand\": \"Test\",\n      \"barcode\": null,\n      \"packSize\": null,\n      \"netQuantity\": null,\n      \"netQuantityUnit\": null,\n      \"variantGroupKey\": \"Test\",\n      \"description\": \"Must not be imported\",\n      \"category\": \"Test\",\n      \"subcategory\": \"Test\",\n      \"mrp\": null,\n      \"mrpSource\": null,\n      \"sourceRecordId\": \"postman-negative-commercial-test\",\n      \"sourceModifiedAt\": null\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/catalogue/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "catalogue",
+                "import"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Commercial permission is required and denied with HTTP 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "auth": {
