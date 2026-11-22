@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - "chore/**"
   schedule:
     - cron: "23 3 * * 1"
   workflow_dispatch:
