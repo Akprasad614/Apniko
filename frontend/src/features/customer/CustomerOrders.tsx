@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { formatRupees } from './marketplace'
-import { ApprovedProductImage } from './ApprovedProductImage'
+import { CategoryMark } from './CategoryMark'
 import {
   canCancelCustomerOrder,
   formatOrderStatus,
@@ -255,15 +255,7 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
                       <h4>In this order</h4>
                       {order.items?.map((item) => (
                         <div className="customer-order__item" key={item.id}>
-                          <ApprovedProductImage
-                            imageUrl={item.product?.imageUrl}
-                            productName={item.product?.name || 'Product'}
-                            sourceName={item.product?.imageSourceName}
-                            sourceUrl={item.product?.imageSourceUrl}
-                            license={item.product?.imageLicense}
-                            attribution={item.product?.imageAttribution}
-                            variant="thumbnail"
-                          />
+                          <CategoryMark category={item.product?.category} size="thumbnail" />
                           <span>{item.product?.name || 'Product'} <small>× {item.quantity}</small></span>
                           <strong>{formatRupees(item.price * item.quantity)}</strong>
                         </div>
