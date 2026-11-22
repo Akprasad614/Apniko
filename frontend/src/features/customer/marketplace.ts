@@ -1,7 +1,7 @@
 export interface MarketplaceShop {
   id: number
   name: string
-  address: string
+  address: string | null
   active: boolean
 }
 
