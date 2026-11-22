@@ -10,5 +10,6 @@ python3 -m venv "$PHASE2_VENV"
 (
   cd scripts/catalogue
   "$PHASE2_VENV/bin/python" -m unittest -v test_import_catalogue
+  "$PHASE2_VENV/bin/python" -m unittest -v test_reset_catalogue
 )
 "$PHASE2_VENV/bin/python" -m py_compile scripts/catalogue/import_catalogue.py
