@@ -5,10 +5,13 @@ on:
     branches:
       - main
       - "automation/**"
+      - "chore/**"
+      - "feature/**"
   pull_request:
     branches:
       - main
       - "chore/**"
+      - "feature/**"
   schedule:
     - cron: "23 3 * * 1"
   workflow_dispatch:
