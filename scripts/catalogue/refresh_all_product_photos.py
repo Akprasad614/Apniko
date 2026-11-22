@@ -197,7 +197,7 @@ def lookup_candidate_across_sources(
 
         quality, quality_reason = inspect_image_quality(
             session,
-            candidate["imageUrl"],
+            candidate["qualityImageUrl"],
             barcode,
             max_retries=max_retries,
         )
@@ -349,7 +349,8 @@ def main() -> int:
                 f"  Source: {result['sourceProductName']} · "
                 f"{result['sourceProductBrand']} · {result['sourcePackSize']}"
             )
-            print(f"  Image:  {result['imageUrl']}")
+            print(f"  Display image: {result['imageUrl']}")
+            print(f"  Quality source: {result['qualityImageUrl']}")
             print(
                 f"  Quality: {quality['width']}x{quality['height']} px, "
                 f"{quality['bytes']} bytes, {quality['cleanBackgroundCorners']}/4 clean corners, "
@@ -361,9 +362,12 @@ def main() -> int:
             )
 
             if args.apply:
+                submission = {
+                    key: value for key, value in result.items() if key != "qualityImageUrl"
+                }
                 saved = session.post(
                     base + f"/api/admin/catalogue/products/{product_id}/photo-candidate",
-                    json=result,
+                    json=submission,
                     headers=headers,
                     timeout=(5, 20),
                 )
