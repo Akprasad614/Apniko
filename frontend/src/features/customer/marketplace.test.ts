@@ -88,6 +88,18 @@ describe('customer marketplace helpers', () => {
     expect(searchMarketplaceShops(shops, '   ')).toHaveLength(0)
   })
 
+  it('searches across all active shops when no shop is selected', () => {
+    const url = new URL(buildMarketplaceSearchPath({
+      query: 'milk',
+      page: 0,
+      size: 8,
+    }), 'http://localhost')
+
+    expect(url.searchParams.get('q')).toBe('milk')
+    expect(url.searchParams.get('size')).toBe('8')
+    expect(url.searchParams.has('shopId')).toBe(false)
+  })
+
   it('formats prices in Indian rupees', () => {
     expect(formatRupees(1250)).toContain('1,250')
     expect(formatRupees(1250)).toContain('₹')
