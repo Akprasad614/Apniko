@@ -169,6 +169,25 @@ def metadata_coverage(targets: list[dict]) -> dict[str, int]:
     }
 
 
+def has_strict_match_metadata(item: dict) -> bool:
+    return (
+        valid_gtin(str(item.get("barcode") or "").strip())
+        and bool(str(item.get("brand") or "").strip())
+        and bool(str(item.get("packSize") or "").strip())
+    )
+
+
+def prioritize_targets(targets: list[dict]) -> list[dict]:
+    """Inspect matchable packaged products first; retain incomplete rows for audit."""
+    return sorted(
+        targets,
+        key=lambda item: (
+            not has_strict_match_metadata(item),
+            int(item.get("productId") or 0),
+        ),
+    )
+
+
 def print_metadata_coverage(targets: list[dict]) -> None:
     summary = metadata_coverage(targets)
     print("\nPHOTO-SOURCE METADATA COVERAGE")
@@ -339,10 +358,15 @@ def main() -> int:
             print("\nAudit only: no Open Facts lookups, photo downloads, submissions or checkpoint updates.")
             return 0
 
-        todo = [
+        todo = prioritize_targets([
             item for item in targets
             if state.get(str(item["productId"])) != fingerprint(item)
-        ]
+        ])
+        strict_ready = sum(1 for item in targets if has_strict_match_metadata(item))
+        print(
+            f"Strict packaged-product match metadata ready: {strict_ready}; "
+            f"incomplete/invalid metadata: {len(targets) - strict_ready}"
+        )
         if args.max_products:
             todo = todo[:args.max_products]
         print(
@@ -367,6 +391,22 @@ def main() -> int:
                     state[str(product_id)] = fingerprint(item)
                     save_checkpoint(state)
                 print(f"[{inspected + 1}/{len(todo)}] SKIP product #{product_id} · {name}: invalid or missing GTIN")
+                continue
+
+            if not str(item.get("brand") or "").strip():
+                counters["missing Apniko brand; source lookup not attempted"] += 1
+                if args.apply:
+                    state[str(product_id)] = fingerprint(item)
+                    save_checkpoint(state)
+                print(f"[{inspected + 1}/{len(todo)}] SKIP product #{product_id} · {name}: Apniko brand is missing; source lookup not attempted")
+                continue
+
+            if not str(item.get("packSize") or "").strip():
+                counters["missing Apniko pack size; source lookup not attempted"] += 1
+                if args.apply:
+                    state[str(product_id)] = fingerprint(item)
+                    save_checkpoint(state)
+                print(f"[{inspected + 1}/{len(todo)}] SKIP product #{product_id} · {name}: Apniko pack size is missing; source lookup not attempted")
                 continue
 
             if inspected:
