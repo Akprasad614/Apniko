@@ -98,6 +98,9 @@ public class ProductCatalogImportService {
                 sourceRecord.setSourceUrl(request.sourceUrl().trim());
                 sourceRecord.setSourceLicense(request.sourceLicense().trim());
                 sourceRecord.setAttribution(request.attribution().trim());
+                sourceRecord.setReuseRightsVerified(request.reuseRightsVerified());
+                sourceRecord.setCommercialUsePermitted(request.commercialUsePermitted());
+                sourceRecord.setPermissionReference(request.permissionReference().trim());
                 sourceRecord.setSourceModifiedAt(item.sourceModifiedAt());
                 sourceRecord.setReportedMrp(item.mrp());
                 sourceRecord.setReportedMrpSource(normalizeMrpSource(item.mrpSource()));
@@ -141,26 +144,48 @@ public class ProductCatalogImportService {
             throw new BadRequestException("Source URL must be a valid HTTPS URL");
         }
         String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        String path = uri.getPath() == null ? "" : uri.getPath();
         String expectedPath = "/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints";
         boolean kaggleDataset = (host.equals("www.kaggle.com") || host.equals("kaggle.com"))
-                && uri.getPath() != null && uri.getPath().startsWith(expectedPath);
-        boolean bigBasketExport = (host.equals("www.bigbasket.com") || host.equals("bigbasket.com"));
-        if (!"https".equalsIgnoreCase(uri.getScheme()) || (!kaggleDataset && !bigBasketExport)) {
-            throw new BadRequestException("BigBasket source URL must be the approved BigBasket dataset page or an authorised BigBasket export");
+                && (path.equals(expectedPath) || path.equals(expectedPath + "/"));
+        boolean officialBigBasketRoot = (host.equals("www.bigbasket.com") || host.equals("bigbasket.com"))
+                && (path.isEmpty() || path.equals("/"));
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getUserInfo() != null
+                || (uri.getPort() != -1 && uri.getPort() != 443)
+                || uri.getQuery() != null || uri.getFragment() != null
+                || (!kaggleDataset && !officialBigBasketRoot)) {
+            throw new BadRequestException("Source URL must be the approved BigBasket dataset page or official BigBasket source");
         }
         if (!BIGBASKET_SOURCE.equals(request.sourceName().trim())
                 || !BIGBASKET_PERMISSION.equals(request.sourceLicense().trim())) {
             throw new BadRequestException("Only the permission-gated BigBasket dataset source is accepted");
         }
+        if (!Boolean.TRUE.equals(request.reuseRightsVerified())
+                || !Boolean.TRUE.equals(request.commercialUsePermitted())) {
+            throw new BadRequestException("Commercial import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
+        }
+        String permissionReference = requiredText(request.permissionReference(), "permissionReference", 500);
         String attribution = requiredText(request.attribution(), "attribution", 500);
-        if (!attribution.toLowerCase(Locale.ROOT).contains("permission reference:")) {
-            throw new BadRequestException("BigBasket imports require a written permission reference in attribution");
+        String normalizedAttribution = attribution.toLowerCase(Locale.ROOT);
+        if (!normalizedAttribution.contains("commercial use: authorised")
+                || !normalizedAttribution.contains("permission reference: "
+                        + permissionReference.toLowerCase(Locale.ROOT))) {
+            throw new BadRequestException("Attribution must state authorised commercial use and include the exact written permission reference");
         }
     }
 
     private void validateItem(ProductImportItem item) {
         if (item == null) {
             throw new IllegalArgumentException("product row is empty");
+        }
+        if ((item.barcode() != null && !item.barcode().isBlank())
+                || (item.packSize() != null && !item.packSize().isBlank())
+                || item.netQuantity() != null
+                || (item.netQuantityUnit() != null && !item.netQuantityUnit().isBlank())
+                || item.mrp() != null
+                || (item.mrpSource() != null && !item.mrpSource().isBlank())) {
+            throw new IllegalArgumentException(
+                    "BigBasket reference rows must not include unverified barcode, pack-size, quantity or price fields");
         }
         requiredText(item.name(), "name", 120);
         requiredText(item.category(), "category", 80);
