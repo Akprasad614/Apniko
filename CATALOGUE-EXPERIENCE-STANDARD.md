@@ -71,6 +71,10 @@ For a packaged product, match at minimum:
 
 A barcode match by itself is not enough to approve a photograph. Loose produce uses an accurate photograph of the produce category/item and must not be shown as a branded packaged product.
 
+For Open Food Facts photo candidates, the automated India-market screen requires the source record's `countries_tags` to include `en:india` (or its exact `countries` value to include India). This is community-contributed evidence that the record is marked as sold in India; it is not proof of current stock or current retail availability. Before approval, an administrator must independently verify that the exact product/variant is currently offered in India. Imported brands are allowed when sold in India; country of origin and country of sale are different facts.
+
+Before a candidate enters the review queue, the importer downloads the selected front image's full-size variant and applies conservative technical checks: a minimum 600 px short side, a neutral/white or transparent background in at least three image corners, and a basic edge-detail check to reject obviously blurred/blank files. These checks do not understand product identity, variant, cropping, text legibility, watermarks or rights. Administrator visual review remains mandatory; failing the automated screen means no candidate is submitted.
+
 Each photo candidate carries source name, source page, image URL, licence / permission classification, attribution, source product name, source brand, source pack size and (for manufacturer/supplier feeds) a permission reference. Only an administrator-approved photo is exposed to the customer and shopkeeper catalogues. Rejection requires a reason and preserves any previously approved image.
 
 Manufacturer-authorised image records use the `MANUFACTURER_AUTHORIZED` permission classification and must include an internal permission reference. If images are served from a separate CDN, add its exact hostname to `APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS` (comma-separated) or the Spring property `apniko.catalogue.photo-authorized-image-hosts`. Do not allow wildcard hosts.
