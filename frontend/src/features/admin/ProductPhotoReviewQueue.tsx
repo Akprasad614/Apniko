@@ -34,7 +34,6 @@ interface PhotoRolloutReport {
   productsWithApprovedPhoto: number
   pendingCandidates: number
   rejectedCandidates: number
-  approvedOpenFactsPhotos: number
   approvedManufacturerAuthorizedPhotos: number
   productsEligibleForFreshLookup: number
   retiredCandidates: number
@@ -217,7 +216,7 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
           <div><span>Eligible for fresh lookup</span><strong>{report.productsEligibleForFreshLookup.toLocaleString('en-IN')}</strong></div>
           <div><span>Retired candidates (audited)</span><strong>{report.retiredCandidates.toLocaleString('en-IN')}</strong></div>
           <p>
-            Approved sources: {report.approvedOpenFactsPhotos} Open Facts · {report.approvedManufacturerAuthorizedPhotos} manufacturer/supplier-authorised.
+            Approved photos: {report.approvedManufacturerAuthorizedPhotos} manufacturer/supplier-authorised.
             {report.productsWithoutApprovedPhoto} catalogue product(s) still have no approved image.
           </p>
         </div>
@@ -271,9 +270,7 @@ export function ProductPhotoReviewQueue({ token }: { token: string }) {
                     )}
                   </dl>
                   <div className="product-photo-review-card__source-note">
-                    {item.candidateSourceName === 'Brand / supplier authorised catalogue'
-                      ? 'Supplier-authorised source: verify the recorded permission reference covers Apniko’s intended commercial display.'
-                      : 'Community-contributed source: inspect the actual packaging and verify that the image licence and visible artwork rights are suitable for Apniko.'}
+                    Supplier-authorised source: verify the recorded permission reference covers Apniko’s intended commercial display.
                   </div>
                   {item.candidateSourceUrl && (
                     <a href={item.candidateSourceUrl} target="_blank" rel="noreferrer">Open source product record ↗</a>
