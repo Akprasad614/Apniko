@@ -14,6 +14,18 @@ export function getPublicShopHeading(shop: Pick<MarketplaceShop, 'name' | 'addre
   }
 }
 
+export function searchMarketplaceShops(
+  shops: MarketplaceShop[],
+  query: string,
+): MarketplaceShop[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  if (!normalizedQuery) return []
+
+  return shops.filter((shop) => (
+    `${shop.name} ${shop.address}`.toLocaleLowerCase().includes(normalizedQuery)
+  ))
+}
+
 export interface MarketplaceInventoryItem {
   id: number
   shopId: number
