@@ -7,7 +7,6 @@ public record ProductPhotoRolloutReportResponse(
         long productsWithApprovedPhoto,
         long pendingCandidates,
         long rejectedCandidates,
-        long approvedOpenFactsPhotos,
         long approvedManufacturerAuthorizedPhotos,
         long productsEligibleForFreshLookup,
         long retiredCandidates
