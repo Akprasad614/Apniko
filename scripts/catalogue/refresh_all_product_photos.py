@@ -146,6 +146,64 @@ def get_all_targets(
     return list(unique.values())
 
 
+def metadata_coverage(targets: list[dict]) -> dict[str, int]:
+    """Count metadata needed for reliable exact product-photo matching."""
+    total = len(targets)
+    with_brand = sum(bool(str(item.get("brand") or "").strip()) for item in targets)
+    with_pack = sum(bool(str(item.get("packSize") or "").strip()) for item in targets)
+    with_valid_gtin = sum(
+        valid_gtin(str(item.get("barcode") or "").strip()) for item in targets
+    )
+    return {
+        "total": total,
+        "with_valid_gtin": with_valid_gtin,
+        "with_brand": with_brand,
+        "missing_brand": total - with_brand,
+        "with_pack_size": with_pack,
+        "missing_pack_size": total - with_pack,
+        "with_brand_and_pack_size": sum(
+            bool(str(item.get("brand") or "").strip())
+            and bool(str(item.get("packSize") or "").strip())
+            for item in targets
+        ),
+    }
+
+
+def print_metadata_coverage(targets: list[dict]) -> None:
+    summary = metadata_coverage(targets)
+    print("\nPHOTO-SOURCE METADATA COVERAGE")
+    print(f"  Eligible targets: {summary['total']}")
+    print(f"  Valid GTIN: {summary['with_valid_gtin']}")
+    print(f"  Brand present: {summary['with_brand']}; missing: {summary['missing_brand']}")
+    print(
+        f"  Pack size present: {summary['with_pack_size']}; "
+        f"missing: {summary['missing_pack_size']}"
+    )
+    print(
+        "  Have both brand and pack size for strict packaged-product matching: "
+        f"{summary['with_brand_and_pack_size']}"
+    )
+
+    incomplete = [
+        item for item in targets
+        if not str(item.get("brand") or "").strip()
+        or not str(item.get("packSize") or "").strip()
+    ]
+    if incomplete:
+        print("  Examples needing another source or catalogue metadata completion:")
+        for item in incomplete[:12]:
+            missing = []
+            if not str(item.get("brand") or "").strip():
+                missing.append("brand")
+            if not str(item.get("packSize") or "").strip():
+                missing.append("pack size")
+            name = str(item.get("name") or "(unnamed)")[:70]
+            print(
+                f"    product #{item.get('productId')} · {name} "
+                f"(missing {', '.join(missing)})"
+            )
+
+
 def lookup_candidate_across_sources(
     session: requests.Session,
     item: dict,
@@ -239,6 +297,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Submit verified candidates to the pending administrator queue",
     )
+    parser.add_argument(
+        "--audit-only",
+        action="store_true",
+        help="Report catalogue metadata coverage without querying external photo sources",
+    )
     return parser.parse_args()
 
 
@@ -271,6 +334,10 @@ def main() -> int:
         print("Current Indian retail availability and rights still require administrator verification.")
         print("\nFetching all eligible product targets before processing...")
         targets = get_all_targets(session, base, headers, args.max_retries)
+        print_metadata_coverage(targets)
+        if args.audit_only:
+            print("\nAudit only: no Open Facts lookups, photo downloads, submissions or checkpoint updates.")
+            return 0
 
         todo = [
             item for item in targets
