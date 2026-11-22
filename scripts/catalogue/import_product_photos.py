@@ -27,7 +27,7 @@ IMAGE_HOSTS = {"images." + host.removeprefix("world.") for host in SOURCES}
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 MAX_IMAGE_BYTES = 12 * 1024 * 1024
 MIN_IMAGE_SIDE = 600
-PHOTO_POLICY_VERSION = "india-market-clean-background-v2"
+PHOTO_POLICY_VERSION = "india-market-clean-background-multi-source-v3"
 
 
 def get_with_retries(

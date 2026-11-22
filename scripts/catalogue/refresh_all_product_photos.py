@@ -17,12 +17,13 @@ import sys
 import time
 from collections import Counter
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
 from import_product_photos import (
-    API_URL,
     PHOTO_POLICY_VERSION,
+    SOURCES,
     explain_candidate,
     get_with_retries,
     inspect_image_quality,
@@ -145,6 +146,72 @@ def get_all_targets(
     return list(unique.values())
 
 
+def lookup_candidate_across_sources(
+    session: requests.Session,
+    item: dict,
+    barcode: str,
+    *,
+    delay_seconds: float,
+    max_retries: int,
+) -> tuple[dict | None, dict | None, str | None, bool]:
+    """Try the four Open Facts family databases sequentially.
+
+    An exact barcode match must still pass the India tag, brand, pack-size,
+    image URL and image-byte quality checks. A 404 or unsuitable record in one
+    family does not prevent a match in another family.
+    """
+    source_urls = [
+        f"https://{host}/api/v3/product/{{barcode}}.json"
+        for host in SOURCES
+    ]
+    last_reason = "no matching record in any Open Facts family database"
+
+    for index, template in enumerate(source_urls):
+        if index:
+            time.sleep(delay_seconds)
+
+        response = get_with_retries(
+            session,
+            template.format(barcode=barcode),
+            params={
+                "fields": "code,product_name,brands,quantity,countries,countries_tags,selected_images,photographers_tags",
+            },
+            headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+            timeout=(5, 25),
+            max_retries=max_retries,
+        )
+
+        if response.status_code == 404:
+            last_reason = f"{urlparse(template).hostname}: no record"
+            continue
+        if response.status_code in (429, 503):
+            return None, None, (
+                f"{urlparse(template).hostname}: rate limit/service unavailable after retries"
+            ), True
+
+        response.raise_for_status()
+        candidate, reason = explain_candidate(item, response.json(), response.url)
+        if not candidate:
+            last_reason = f"{urlparse(template).hostname}: {reason}"
+            continue
+
+        quality, quality_reason = inspect_image_quality(
+            session,
+            candidate["imageUrl"],
+            barcode,
+            max_retries=max_retries,
+        )
+        if not quality:
+            last_reason = (
+                f"{urlparse(template).hostname}: image-quality check failed: {quality_reason}"
+            )
+            continue
+
+        return candidate, quality, None, False
+
+    return None, None, last_reason, False
+
+
 def format_report(label: str, report: dict) -> None:
     print(f"\n{label}")
     for key, title in (
@@ -210,7 +277,8 @@ def main() -> int:
             "APPLY (submits PENDING candidates only)"
             if args.apply else "DRY RUN (no Apniko changes)",
         )
-        print("Market filter: Open Food Facts countries_tags must include en:india.")
+        print("Market filter: an Open Facts family database record must include en:india.")
+        print("Sources: Open Food Facts, Open Beauty Facts, Open Pet Food Facts and Open Products Facts.")
         print("Image filter: full-size image, >=600 px short side, clean neutral corners and sharpness.")
         print("Current Indian retail availability and rights still require administrator verification.")
         print("\nFetching all eligible product targets before processing...")
@@ -250,54 +318,26 @@ def main() -> int:
                 time.sleep(args.delay_seconds)
             inspected += 1
 
-            response = get_with_retries(
+            result, quality, reason, service_unavailable = lookup_candidate_across_sources(
                 session,
-                API_URL.format(barcode=barcode),
-                params={
-                    "fields": "code,product_name,brands,quantity,countries,countries_tags,selected_images,photographers_tags",
-                    "product_type": "all",
-                },
-                headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
-                timeout=(5, 25),
+                item,
+                barcode,
+                delay_seconds=args.delay_seconds,
                 max_retries=args.max_retries,
             )
-            if response.status_code == 404:
-                result, reason = None, "no Open Facts record"
-            elif response.status_code in (429, 503):
+            if service_unavailable:
                 print(
-                    "\nOpen Facts rate limit/service unavailable after retries. "
-                    "Stopping safely; completed progress is checkpointed.",
+                    f"\n{reason}. Stopping safely; completed progress is checkpointed.",
                     file=sys.stderr,
                 )
                 return 3
-            else:
-                response.raise_for_status()
-                result, reason = explain_candidate(item, response.json(), response.url)
 
-            if not result:
+            if not result or not quality:
                 counters[reason or "no acceptable image"] += 1
                 if args.apply:
                     state[str(product_id)] = fingerprint(item)
                     save_checkpoint(state)
                 print(f"[{inspected}/{len(todo)}] SKIP product #{product_id} · {name}: {reason}")
-                continue
-
-            quality, quality_reason = inspect_image_quality(
-                session,
-                result["imageUrl"],
-                barcode,
-                max_retries=args.max_retries,
-            )
-            if not quality:
-                counters["image-quality rejected"] += 1
-                counters[quality_reason or "image-quality failure"] += 1
-                if args.apply:
-                    state[str(product_id)] = fingerprint(item)
-                    save_checkpoint(state)
-                print(
-                    f"[{inspected}/{len(todo)}] SKIP product #{product_id} · {name}: "
-                    f"image-quality check failed: {quality_reason}"
-                )
                 continue
 
             counters["India-tagged, image-quality-passing candidates"] += 1
