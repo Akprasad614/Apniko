@@ -198,6 +198,16 @@ PACK_SIZE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Reject additive bundle quantities such as "5+1 kg". A partial regex match
+# would otherwise read only the final "1 kg" and could accept the wrong SKU.
+ADDITIVE_PACK_SIZE_PATTERN = re.compile(
+    r"(?<![\\w.])\\d+(?:[.,]\\d+)?\\s*\\+\\s*\\d+(?:[.,]\\d+)?\\s*"
+    r"(?:fluid\\s*ounces?|fl\\.?\\s*oz\\.?|milligrams?|mg|micrograms?|mcg|"
+    r"kilograms?|kg|grams?|gm|g|milliliters?|millilitres?|ml|liters?|litres?|l|"
+    r"pieces?|pcs|counts?|ct)\\b",
+    re.IGNORECASE,
+)
+
 PACK_SIZE_UNITS = {
     "mg": ("mass", Decimal("0.001")), "milligram": ("mass", Decimal("0.001")),
     "milligrams": ("mass", Decimal("0.001")), "mcg": ("mass", Decimal("0.000001")),
@@ -231,7 +241,10 @@ def normalize_brand(value: object) -> str:
 
 
 def normalize_pack_size(value: object) -> tuple[str, Decimal] | None:
-    match = PACK_SIZE_PATTERN.search(str(value or ""))
+    raw = str(value or "")
+    if ADDITIVE_PACK_SIZE_PATTERN.search(raw):
+        return None
+    match = PACK_SIZE_PATTERN.search(raw)
     if not match:
         return None
     unit = re.sub(r"[^a-z]", "", match.group("unit").casefold())
