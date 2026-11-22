@@ -196,6 +196,7 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
     attribution = (
         "BigBasket dataset fields: product, category, sub_category, brand, type, description. "
         "Retailer prices/ratings and images were excluded. "
+        "Commercial use: authorised by written permission. "
         "Permission reference: " + args.permission_reference.strip()
     )
     client = session or requests.Session()
@@ -211,6 +212,9 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
                     "sourceUrl": source_url,
                     "sourceLicense": SOURCE_LICENSE,
                     "attribution": attribution,
+                    "reuseRightsVerified": True,
+                    "commercialUsePermitted": True,
+                    "permissionReference": args.permission_reference.strip(),
                     "products": batch,
                 },
                 headers=headers,
