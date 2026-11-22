@@ -84,12 +84,15 @@ For the isolated E2E collection on port `8081`:
 The collection checks that:
 
 - the selected shop is active and the configured product is available;
+- customer checkout leaves fulfilment undecided;
+- the shopkeeper's acceptance attempt is rejected until a per-order fulfilment choice has been saved;
+- the shopkeeper saves `PLATFORM_DELIVERY` against that order before accepting it;
 - the quantity before adding is recorded;
 - the immediate POST response contains the product with `quantityBefore + quantityAdded`;
 - the GET cart response has the same quantity;
 - checkout creates a `PLACED` platform-delivery order containing the expected item and quantity;
 - successful checkout clears the cart;
-- the shopkeeper moves the order through `ACCEPTED`, `PREPARING`, and `READY`;
+- the shopkeeper moves the order through `ACCEPTED`, `PREPARING`, and `READY` after saving fulfilment;
 - the delivery partner accepts, picks up, and delivers the order;
 - the assigned delivery partner records COD collection; and
 - the customer can retrieve the delivered order, its status history, and the paid COD payment.
@@ -101,3 +104,16 @@ Checkout deducts inventory in `localcart_test`. The clone script intentionally r
 ## 7. Git safety
 
 The private Postman environment and generated Postman reports are ignored by `.gitignore`. Commit the example environment, collections, OpenAPI snapshot, scripts, and Phase 10 source configuration. Keep `pom-phase10-backup.xml` and `SecurityConfig-phase10-backup.java` as local comparison copies; do not commit those backup copies.
+
+
+## Per-order fulfilment contract
+
+Customer checkout does not select the fulfilment mode. The order is created as `PLACED` with fulfilment undecided. The shopkeeper must use:
+
+```http
+PUT /api/shopkeeper/orders/{orderId}/fulfilment?deliveryMode=PLATFORM_DELIVERY
+```
+
+before calling the ordinary status endpoint to move the order to `ACCEPTED`. The isolated E2E collection now verifies that acceptance is rejected before the save, that saving the choice leaves the order `PLACED`, and that the subsequent acceptance retains the saved mode.
+
+Shop Delivery and Customer Pickup transitions are covered by the backend `OrderServiceWorkflowTest` suite. Platform Delivery's partner accept/pickup/deliver flow is exercised by the Postman E2E collection.
