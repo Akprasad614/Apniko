@@ -55,10 +55,10 @@ class CatalogueResetSafetyTests(unittest.TestCase):
 
     def test_reset_does_not_drop_database_or_user_accounts(self):
         self.assertNotIn("DROP DATABASE", self.sql.upper())
-        self.assertNotIn("DELETE FROM users", self.sql.lower())
-        self.assertNotIn("DELETE FROM roles", self.sql.lower())
-        self.assertNotIn("DELETE FROM shops", self.sql.lower())
-        self.assertNotIn("DELETE FROM customer_addresses", self.sql.lower())
+        self.assertNotIn("delete from users", self.sql.lower())
+        self.assertNotIn("delete from roles", self.sql.lower())
+        self.assertNotIn("delete from shops", self.sql.lower())
+        self.assertNotIn("delete from customer_addresses", self.sql.lower())
 
 
 if __name__ == "__main__":
