@@ -1,9 +1,7 @@
 export interface MarketplaceShop {
   id: number
   name: string
-  ownerName: string
-  phone: string
-  address: string
+  address: string | null
   active: boolean
 }
 
@@ -12,6 +10,18 @@ export function getPublicShopHeading(shop: Pick<MarketplaceShop, 'name' | 'addre
     name: shop.name,
     address: shop.address || 'Local shop',
   }
+}
+
+export function searchMarketplaceShops(
+  shops: MarketplaceShop[],
+  query: string,
+): MarketplaceShop[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  if (!normalizedQuery) return []
+
+  return shops.filter((shop) => (
+    `${shop.name} ${shop.address}`.toLocaleLowerCase().includes(normalizedQuery)
+  ))
 }
 
 export interface MarketplaceInventoryItem {

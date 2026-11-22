@@ -6,6 +6,7 @@ on:
       - main
       - "automation/**"
       - "chore/**"
+      - "feature/**"
   pull_request:
     branches:
       - main

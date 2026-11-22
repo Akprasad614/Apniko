@@ -1,0 +1,50 @@
+.apniko-category-mark {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 16px;
+  line-height: 1;
+}
+
+.apniko-category-mark > span {
+  display: block;
+  transform: translateY(-1px);
+}
+
+.apniko-category-mark--product {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px 18px 18px 6px;
+  font-size: 2rem;
+}
+
+.apniko-category-mark--thumbnail {
+  width: 48px;
+  height: 52px;
+  border-radius: 14px 14px 14px 5px;
+  font-size: 1.45rem;
+}
+
+.apniko-category-mark--tile {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  font-size: 1.65rem;
+}
+
+.apniko-category-mark--mint { color: #285c39; background: #dff2cf; }
+.apniko-category-mark--sky { color: #285d91; background: #dceeff; }
+.apniko-category-mark--peach { color: #99502d; background: #ffe1ca; }
+.apniko-category-mark--sun { color: #896116; background: #fff0b8; }
+.apniko-category-mark--lavender { color: #604a92; background: #eadfff; }
+.apniko-category-mark--rose { color: #8e4760; background: #f9dfe8; }
+
+@media (max-width: 600px) {
+  .apniko-category-mark--product {
+    width: 56px;
+    height: 56px;
+    border-radius: 15px 15px 15px 5px;
+    font-size: 1.7rem;
+  }
+}

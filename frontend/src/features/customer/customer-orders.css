@@ -1,5 +1,7 @@
 .customer-orders {
-  padding-top: 3.6rem;
+  width: min(1040px, calc(100% - 64px));
+  margin-inline: auto;
+  padding-block: 2.7rem 4rem;
   scroll-margin-top: 1.2rem;
 }
 
@@ -412,6 +414,11 @@
 }
 
 @media (max-width: 760px) {
+  .customer-orders {
+    width: calc(100% - 36px);
+    padding-block: 1.8rem 3rem;
+  }
+
   .customer-orders__heading {
     align-items: flex-start;
     flex-direction: column;
@@ -464,4 +471,47 @@
   .customer-header__orders-link {
     font-size: 0.64rem;
   }
+}
+
+
+/* Color Pop order cards and timeline. */
+.customer-orders__heading h2 {
+  color: #173d2b;
+  font-family: var(--lc-font-body);
+  font-weight: 900;
+}
+
+.customer-orders__refresh {
+  border-color: #24563a;
+  color: #24563a;
+}
+
+.customer-order {
+  border-color: #eee4d4;
+  border-radius: 17px;
+  background: #fffefa;
+  box-shadow: 0 3px 14px rgb(50 54 38 / 4%);
+}
+
+.customer-order__top h3,
+.customer-order__amount > strong {
+  color: #173d2b;
+}
+
+.customer-order__status {
+  color: #24563a;
+  background: #e4f3d8;
+}
+
+.customer-order__item {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  border-bottom-color: #f0e7d8;
+}
+
+.customer-order__item strong {
+  color: #24563a;
+}
+
+.customer-order__details {
+  border-top-color: #f0e7d8;
 }

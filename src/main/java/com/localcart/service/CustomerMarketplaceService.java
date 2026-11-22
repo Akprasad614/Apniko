@@ -2,7 +2,7 @@ package com.localcart.service;
 
 import com.localcart.dto.InventoryResponse;
 import com.localcart.dto.PriceComparisonResponse;
-import com.localcart.dto.ShopResponse;
+import com.localcart.dto.CustomerMarketplaceShopResponse;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.ShopInventory;
@@ -41,16 +41,16 @@ public class CustomerMarketplaceService {
         this.productRepository = productRepository;
     }
 
-    public List<ShopResponse> getActiveShops() {
+    public List<CustomerMarketplaceShopResponse> getActiveShops() {
 
         return shopRepository.findAll()
                 .stream()
                 .filter(Shop::isActive)
-                .map(this::toShopResponse)
+                .map(this::toCustomerShopResponse)
                 .toList();
     }
 
-    public ShopResponse getActiveShop(Long shopId) {
+    public CustomerMarketplaceShopResponse getActiveShop(Long shopId) {
 
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() ->
@@ -60,7 +60,7 @@ public class CustomerMarketplaceService {
             throw new ResourceNotFoundException("Shop is not active");
         }
 
-        return toShopResponse(shop);
+        return toCustomerShopResponse(shop);
     }
 
     public List<InventoryResponse> getShopProducts(Long shopId) {
@@ -205,17 +205,14 @@ public class CustomerMarketplaceService {
         return value.trim();
     }
 
-    private ShopResponse toShopResponse(Shop shop) {
-
-        ShopResponse response = new ShopResponse();
-        response.setId(shop.getId());
-        response.setName(shop.getName());
-        response.setOwnerName(shop.getOwnerName());
-        response.setPhone(shop.getPhone());
-        response.setAddress(shop.getAddress());
-        response.setActive(shop.isActive());
-        response.setDeliveryMode(shop.getDeliveryMode());
-        return response;
+    private CustomerMarketplaceShopResponse toCustomerShopResponse(Shop shop) {
+        return new CustomerMarketplaceShopResponse(
+                shop.getId(),
+                shop.getName(),
+                shop.getAddress(),
+                shop.isActive(),
+                shop.getDeliveryMode()
+        );
     }
 
     private InventoryResponse toInventoryResponse(ShopInventory inventory) {
