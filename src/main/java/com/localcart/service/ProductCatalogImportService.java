@@ -11,6 +11,9 @@ import com.localcart.exception.BadRequestException;
 import com.localcart.repository.ProductCatalogueSourceRecordRepository;
 import com.localcart.repository.ProductCategoryRepository;
 import com.localcart.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,7 @@ import java.util.*;
 @Transactional
 public class ProductCatalogImportService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductCatalogImportService.class);
     private static final String BIGBASKET_SOURCE = "BigBasket authorised dataset";
     private static final String BIGBASKET_PERMISSION = "BIGBASKET-WRITTEN-PERMISSION";
     private static final Set<String> SUPPORTED_MRP_SOURCES = Set.of("pack", "brand", "gov");
@@ -120,6 +124,7 @@ public class ProductCatalogImportService {
                     unchanged++;
                 }
             } catch (IllegalArgumentException | IllegalStateException exception) {
+                LOGGER.warn("Rejected BigBasket catalogue row {}: {}", index + 1, exception.getMessage());
                 errors.add("Row " + (index + 1) + ": " + exception.getMessage());
             }
         }
@@ -162,7 +167,9 @@ public class ProductCatalogImportService {
         }
         if (!Boolean.TRUE.equals(request.reuseRightsVerified())
                 || !Boolean.TRUE.equals(request.commercialUsePermitted())) {
-            throw new BadRequestException("Commercial import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
+            LOGGER.warn("Blocked BigBasket catalogue import because commercial reuse rights were not verified");
+            throw new AccessDeniedException(
+                    "Commercial import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
         }
         String permissionReference = requiredText(request.permissionReference(), "permissionReference", 500);
         String attribution = requiredText(request.attribution(), "attribution", 500);
