@@ -8,8 +8,8 @@ from unittest.mock import Mock, patch
 from PIL import Image, ImageDraw
 
 from import_product_photos import (
-    explain_candidate, find_candidate, inspect_image_quality, parse_product_ids,
-    run, safe_image_url, valid_gtin,
+    explain_candidate, find_candidate, image_url_rejection_reason, inspect_image_quality,
+    parse_product_ids, run, safe_image_url, valid_gtin,
 )
 
 
@@ -67,6 +67,12 @@ class ProductPhotoImporterTests(unittest.TestCase):
         self.assertFalse(safe_image_url(IMAGE.replace("https://", "http://"), BARCODE))
         self.assertFalse(safe_image_url(IMAGE.replace("images.openfoodfacts.org", "example.com"), BARCODE))
         self.assertFalse(safe_image_url(IMAGE.replace("890/123/456/7890", "111/222/333/4444"), BARCODE))
+        wrong_host = IMAGE.replace("images.openfoodfacts.org", "cdn.example.test")
+        self.assertIn("cdn.example.test", image_url_rejection_reason(wrong_host, BARCODE))
+        wrong_path = IMAGE.replace("/images/products/", "/images/other/")
+        self.assertIn("/images/products/", image_url_rejection_reason(wrong_path, BARCODE))
+        wrong_barcode = IMAGE.replace("890/123/456/7890", "111/222/333/4444")
+        self.assertIn("exact matching barcode", image_url_rejection_reason(wrong_barcode, BARCODE))
 
     def test_candidate_requires_india_in_source_countries(self):
         item = {
@@ -230,6 +236,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         equivalent_pairs = (
             ("100 g", "100gm"), ("200 ml", "200ml"), ("1 g", "1000 mg"),
             ("1000 ml", "1 l"), ("90 g", "90 g / 3.2 OZ"), ("200 g", "2 x 100gm"),
+            ("473.176 ml", "16 FL OZ (473 ml)"),
         )
         for local_pack, source_pack in equivalent_pairs:
             with self.subTest(local_pack=local_pack, source_pack=source_pack):
