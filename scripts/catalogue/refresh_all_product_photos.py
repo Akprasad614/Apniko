@@ -151,14 +151,12 @@ def lookup_candidate_across_sources(
     item: dict,
     barcode: str,
     *,
-    delay_seconds: float,
     max_retries: int,
 ) -> tuple[dict | None, dict | None, str | None, bool]:
-    """Try the four Open Facts family databases sequentially.
+    """Use the universal barcode endpoint and follow its family-database redirect.
 
     An exact barcode match must still pass the India tag, brand, pack-size,
-    image URL and image-byte quality checks. A 404 or unsuitable record in one
-    family does not prevent a match in another family.
+    image URL and image-byte quality checks before it can become a candidate.
     """
     # Open Facts supports a universal barcode lookup. product_type=all redirects
     # to the matching Food, Beauty, Pet Food or Products Facts instance.
@@ -312,7 +310,6 @@ def main() -> int:
                 session,
                 item,
                 barcode,
-                delay_seconds=args.delay_seconds,
                 max_retries=args.max_retries,
             )
             if service_unavailable:
