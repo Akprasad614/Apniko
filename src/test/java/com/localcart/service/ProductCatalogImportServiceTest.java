@@ -117,7 +117,8 @@ class ProductCatalogImportServiceTest {
                 attribution("TEST-BIGBASKET-GRANT"),
                 false, true, "TEST-BIGBASKET-GRANT", List.of(item("bigbasket:tea-1")));
 
-        assertThrows(BadRequestException.class, () -> service.importBatch(request));
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.importBatch(request));
         verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
     }
 
