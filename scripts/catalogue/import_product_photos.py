@@ -27,7 +27,7 @@ IMAGE_HOSTS = {"images." + host.removeprefix("world.") for host in SOURCES}
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 MAX_IMAGE_BYTES = 12 * 1024 * 1024
 MIN_IMAGE_SIDE = 600
-PHOTO_POLICY_VERSION = "india-market-clean-background-multi-source-display-v5"
+PHOTO_POLICY_VERSION = "india-market-clean-background-multi-source-display-v6"
 
 
 def get_with_retries(
@@ -77,7 +77,8 @@ def _corner_is_clean_background(image: Image.Image, corner: str) -> bool:
         "bottom-right": (width - patch_width, height - patch_height, width, height),
     }
     patch = image.crop(boxes[corner]).resize((32, 32)).convert("RGBA")
-    pixels = list(patch.getdata())
+    flattened = getattr(patch, 'get_flattened_data', None)
+    pixels = list(flattened() if flattened else patch.getdata())
     transparent = sum(1 for r, g, b, a in pixels if a <= 16) / len(pixels)
     if transparent >= 0.85:
         return True
