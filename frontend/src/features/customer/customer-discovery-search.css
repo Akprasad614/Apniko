@@ -249,3 +249,65 @@
     align-items: flex-start;
   }
 }
+
+
+/* Color Pop search states and result cards. */
+.customer-discovery__form {
+  border-color: #eee2ce;
+  border-radius: 16px;
+  background: #fffefa;
+  box-shadow: 0 3px 12px rgb(75 67 42 / 4%);
+}
+
+.customer-discovery__form > label {
+  color: #244734;
+  font-family: var(--lc-font-body);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.customer-discovery__input-row {
+  border-color: #e7dfd2;
+  border-radius: 13px;
+}
+
+.customer-discovery__input-row > span {
+  color: #ef8051;
+}
+
+.customer-discovery__input-row button {
+  border-radius: 10px;
+  background: #24563a;
+}
+
+.customer-discovery__results {
+  border-color: #eee2ce;
+  border-radius: 17px;
+  background: #fffefa;
+  box-shadow: 0 5px 18px rgb(75 67 42 / 5%);
+}
+
+.customer-discovery__result-heading h2,
+.customer-discovery__group h3 {
+  color: #244734;
+  font-family: var(--lc-font-body);
+  font-weight: 850;
+}
+
+.customer-discovery__shop-list button,
+.customer-discovery__product-list button {
+  border-color: #eee5d7;
+  border-radius: 12px;
+}
+
+.customer-discovery__shop-list button:hover,
+.customer-discovery__product-list button:hover {
+  border-color: #c6ddb7;
+  background: #f4f9ed;
+}
+
+.customer-discovery__shop-mark {
+  border-radius: 11px;
+  color: #24563a;
+  background: #dff2cf;
+}
