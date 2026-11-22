@@ -100,7 +100,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
             }},
         }}
         candidate = find_candidate(item, payload, API_URL)
-        self.assertEqual(candidate["imageUrl"], FULL_IMAGE)
+        self.assertEqual(candidate["imageUrl"], IMAGE)
+        self.assertEqual(candidate["qualityImageUrl"], FULL_IMAGE)
 
     def test_image_quality_gate_accepts_clear_white_background_full_image(self):
         session = Mock()
@@ -316,6 +317,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         self.assertIn("Inspected: 1; candidates: 1; submitted: 1", output.getvalue())
         session.post.assert_called_once()
         self.assertTrue(session.post.call_args.args[0].endswith("/api/admin/catalogue/products/29/photo-candidate"))
+        self.assertNotIn("qualityImageUrl", session.post.call_args.kwargs["json"])
 
     def test_product_id_allowlist_fails_when_id_is_not_in_target_page(self):
         targets = FakeResponse(200, {
