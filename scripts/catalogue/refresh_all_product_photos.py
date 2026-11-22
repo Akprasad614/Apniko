@@ -165,6 +165,7 @@ def lookup_candidate_across_sources(
         for host in SOURCES
     ]
     last_reason = "no matching record in any Open Facts family database"
+    source_reasons: list[str] = []
 
     for index, template in enumerate(source_urls):
         if index:
@@ -182,7 +183,7 @@ def lookup_candidate_across_sources(
         )
 
         if response.status_code == 404:
-            last_reason = f"{urlparse(template).hostname}: no record"
+            source_reasons.append(f"{urlparse(template).hostname}: no record")
             continue
         if response.status_code in (429, 503):
             return None, None, (
@@ -192,7 +193,7 @@ def lookup_candidate_across_sources(
         response.raise_for_status()
         candidate, reason = explain_candidate(item, response.json(), response.url)
         if not candidate:
-            last_reason = f"{urlparse(template).hostname}: {reason}"
+            source_reasons.append(f"{urlparse(template).hostname}: {reason}")
             continue
 
         quality, quality_reason = inspect_image_quality(
@@ -202,14 +203,14 @@ def lookup_candidate_across_sources(
             max_retries=max_retries,
         )
         if not quality:
-            last_reason = (
+            source_reasons.append(
                 f"{urlparse(template).hostname}: image-quality check failed: {quality_reason}"
             )
             continue
 
         return candidate, quality, None, False
 
-    return None, None, last_reason, False
+    return None, None, "; ".join(source_reasons) or last_reason, False
 
 
 def format_report(label: str, report: dict) -> None:
