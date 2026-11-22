@@ -27,7 +27,7 @@ IMAGE_HOSTS = {"images." + host.removeprefix("world.") for host in SOURCES}
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 MAX_IMAGE_BYTES = 12 * 1024 * 1024
 MIN_IMAGE_SIDE = 600
-PHOTO_POLICY_VERSION = "india-market-clean-background-multi-source-v3"
+PHOTO_POLICY_VERSION = "india-market-clean-background-multi-source-display-v4"
 
 
 def get_with_retries(
@@ -308,26 +308,48 @@ def explain_candidate(
         return None, "source record has no product name"
 
     front = (product.get("selected_images") or {}).get("front") or {}
-    variants = front.get("full") or front.get("display") or front.get("small") or {}
-    image_url = variants.get("en") or next(iter(variants.values()), None)
-    if not image_url:
+    display_variants = front.get("display") or front.get("small") or {}
+    display_image_url = (
+        display_variants.get("en") or next(iter(display_variants.values()), None)
+        if isinstance(display_variants, dict)
+        else None
+    )
+    if not display_image_url:
+        full_variants = front.get("full") or {}
+        display_image_url = (
+            full_variants.get("en") or next(iter(full_variants.values()), None)
+            if isinstance(full_variants, dict)
+            else full_variants if isinstance(full_variants, str) else None
+        )
+    if not display_image_url:
         return None, "source record has no front photograph"
 
-    # Open Food Facts provides a documented .full image variant alongside 100/200/400
-    # pixel derivatives. Prefer a full-size file for Apniko's image-quality checks.
-    if not front.get("full"):
-        parsed_image = urlparse(image_url)
+    # Inspect the full-resolution original, but submit the display derivative to Apniko
+    # so mobile product cards do not fetch huge originals.
+    full_variants = front.get("full") or {}
+    quality_image_url = (
+        full_variants.get("en") or next(iter(full_variants.values()), None)
+        if isinstance(full_variants, dict)
+        else full_variants if isinstance(full_variants, str) else None
+    )
+    if not quality_image_url:
+        parsed_image = urlparse(display_image_url)
         full_path = re.sub(
             r"\.(?:100|200|400)\.(?=(?:jpg|jpeg|png|webp)$)",
             ".full.",
             parsed_image.path,
             flags=re.IGNORECASE,
         )
-        if full_path != parsed_image.path:
-            image_url = urlunparse(parsed_image._replace(path=full_path))
+        quality_image_url = (
+            urlunparse(parsed_image._replace(path=full_path))
+            if full_path != parsed_image.path
+            else display_image_url
+        )
 
-    if not safe_image_url(image_url, barcode):
-        return None, "front photograph URL is not on the matching allowlisted image host"
+    if not safe_image_url(display_image_url, barcode):
+        return None, "display photograph URL is not on the matching allowlisted image host"
+    if not safe_image_url(quality_image_url, barcode):
+        return None, "full-size quality-check URL is not on the matching allowlisted image host"
 
     photographers = product.get("photographers_tags") or []
     photographer_names = ", ".join(str(name) for name in photographers[:8] if str(name).strip())
@@ -335,7 +357,8 @@ def explain_candidate(
     if photographer_names:
         attribution += "; photographers: " + photographer_names
     return {
-        "imageUrl": image_url,
+        "imageUrl": display_image_url,
+        "qualityImageUrl": quality_image_url,
         "sourceUrl": f"https://{source_host}/product/{barcode}",
         "sourceName": source_name,
         "sourceProductName": source_product_name,
@@ -480,7 +503,7 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
             continue
 
         quality, quality_reason = inspect_image_quality(
-            client, candidate["imageUrl"], barcode, max_retries=max_retries
+            client, candidate["qualityImageUrl"], barcode, max_retries=max_retries
         )
         if not quality:
             print(f"SKIP {barcode}: image-quality check failed: {quality_reason}")
@@ -492,7 +515,8 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
         print(f"CANDIDATE product #{item.get('productId')} · GTIN {barcode}")
         print(f"  Apniko : {local_name} · {local_brand} · {local_pack}")
         print(f"  Source : {candidate['sourceProductName']} · {candidate['sourceProductBrand']} · {candidate['sourcePackSize']}")
-        print(f"  Image  : {candidate['imageUrl']}")
+        print(f"  Display image : {candidate['imageUrl']}")
+        print(f"  Quality source: {candidate['qualityImageUrl']}")
         print(
             f"  Quality: {quality['width']}x{quality['height']} px, "
             f"{quality['bytes']} bytes, {quality['cleanBackgroundCorners']}/4 clean corners, "
@@ -500,9 +524,12 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
         )
         print("  Market : India country tag present; current availability still needs administrator verification.")
         if args.apply:
+            submission = {
+                key: value for key, value in candidate.items() if key != "qualityImageUrl"
+            }
             saved = client.post(
                 base + f"/api/admin/catalogue/products/{item['productId']}/photo-candidate",
-                json=candidate, headers=headers, timeout=(5, 20),
+                json=submission, headers=headers, timeout=(5, 20),
             )
             if saved.status_code == 409:
                 print(f"  SKIP product #{item['productId']}: this exact image URL was already rejected or retired")
