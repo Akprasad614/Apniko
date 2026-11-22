@@ -2438,3 +2438,64 @@
     gap: .3rem;
   }
 }
+
+
+/* Screenshot follow-up: keep the basket summary in document flow at every
+   viewport width; it must never cover search, filters, or category tiles. */
+.customer-basket-shortcut {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  margin-top: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+/* Give the category explorer stronger, clearly differentiated colour blocks. */
+.customer-category-grid .customer-category-card.customer-category-card--mint {
+  border-color: #c4e5b3;
+  background: #d8efc9;
+}
+.customer-category-grid .customer-category-card.customer-category-card--sky {
+  border-color: #bfdcf5;
+  background: #d5eaff;
+}
+.customer-category-grid .customer-category-card.customer-category-card--peach {
+  border-color: #f4cdb4;
+  background: #ffdfc7;
+}
+.customer-category-grid .customer-category-card.customer-category-card--sun {
+  border-color: #f0dc93;
+  background: #ffeca8;
+}
+.customer-category-grid .customer-category-card.customer-category-card--lavender {
+  border-color: #d8c8f1;
+  background: #e7d9ff;
+}
+.customer-category-grid .customer-category-card.customer-category-card--rose {
+  border-color: #edc1d0;
+  background: #f7d9e4;
+}
+
+.customer-category-grid .customer-category-card__symbol {
+  border: 1px solid rgb(255 255 255 / 58%);
+  background: rgb(255 255 255 / 68%);
+  box-shadow: 0 2px 5px rgb(48 55 41 / 5%);
+}
+
+.customer-category-grid .customer-category-card:hover {
+  filter: saturate(1.06);
+}
+
+@media (max-width: 760px) {
+  .customer-basket-shortcut {
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 420px) {
+  .customer-basket-shortcut {
+    flex-direction: column;
+  }
+}
