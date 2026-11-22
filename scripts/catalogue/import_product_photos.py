@@ -202,9 +202,9 @@ PACK_SIZE_PATTERN = re.compile(
 # would otherwise read only the final "1 kg" and could accept the wrong SKU.
 ADDITIVE_PACK_SIZE_PATTERN = re.compile(
     r"(?<![\w.])\d+(?:[.,]\d+)?\s*\+\s*\d+(?:[.,]\d+)?\s*"
-    r"(?:fluid\\s*ounces?|fl\\.?\\s*oz\\.?|milligrams?|mg|micrograms?|mcg|"
+    r"(?:fluid\s*ounces?|fl\.?\s*oz\.?|milligrams?|mg|micrograms?|mcg|"
     r"kilograms?|kg|grams?|gm|g|milliliters?|millilitres?|ml|liters?|litres?|l|"
-    r"pieces?|pcs|counts?|ct)\\b",
+    r"pieces?|pcs|counts?|ct)\b",
     re.IGNORECASE,
 )
 
