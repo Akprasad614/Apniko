@@ -50,7 +50,7 @@ class ProductPhotoServiceTest {
         when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
         when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
-        var result = service.submitCandidate(10L, candidate(IMAGE, BARCODE));
+        var result = service.submitCandidate(10L, candidate(BRAND_IMAGE, BARCODE));
 
         assertEquals(ProductImageReviewStatus.PENDING, result.status());
         assertNull(result.approvedImageUrl());
@@ -66,10 +66,10 @@ class ProductPhotoServiceTest {
         Product product = product();
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
         when(historyRepository.existsByProductIdAndCandidateImageUrlAndOutcomeIn(
-                10L, IMAGE, List.of("REJECTED", "RETIRED"))).thenReturn(true);
+                10L, BRAND_IMAGE, List.of("REJECTED", "RETIRED"))).thenReturn(true);
 
         assertThrows(ConflictException.class,
-                () -> service.submitCandidate(10L, candidate(IMAGE, BARCODE)));
+                () -> service.submitCandidate(10L, candidate(BRAND_IMAGE, BARCODE)));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
