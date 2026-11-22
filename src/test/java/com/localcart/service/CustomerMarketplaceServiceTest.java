@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,8 +47,14 @@ class CustomerMarketplaceServiceTest {
         var result = service.getActiveShops();
 
         assertEquals(1, result.size());
-        assertEquals("Local Fresh", result.get(0).getName());
-        assertTrue(result.get(0).isActive());
+        assertEquals("Local Fresh", result.get(0).name());
+        assertTrue(result.get(0).active());
+        assertEquals(
+                List.of("id", "name", "address", "active", "deliveryMode"),
+                Arrays.stream(result.get(0).getClass().getRecordComponents())
+                        .map(component -> component.getName())
+                        .toList()
+        );
     }
 
     @Test
