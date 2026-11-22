@@ -101,6 +101,10 @@ class ProductPhotoServiceTest {
                 IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
                 "Test Brand", "5+1 kg", "CC BY-SA",
                 "Open Food Facts contributors", null, BARCODE);
+        ProductPhotoCandidateRequest ambiguousCommaPack = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                "Test Brand", "2 , 25g", "CC BY-SA",
+                "Open Food Facts contributors", null, BARCODE);
 
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, wrongBrand));
@@ -108,6 +112,8 @@ class ProductPhotoServiceTest {
                 () -> service.submitCandidate(10L, wrongPack));
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, ambiguousPromoPack));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, ambiguousCommaPack));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
