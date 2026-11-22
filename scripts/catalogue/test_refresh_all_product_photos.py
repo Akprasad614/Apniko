@@ -8,8 +8,9 @@ import refresh_all_product_photos as refresh
 
 BARCODE = "8901234567890"
 BEAUTY_IMAGE = (
-    "https://images.openbeautyfacts.org/images/products/890/123/456/7890/front_en.4.full.jpg"
+    "https://images.openbeautyfacts.org/images/products/890/123/456/7890/front_en.4.400.jpg"
 )
+BEAUTY_FULL_IMAGE = BEAUTY_IMAGE.replace(".400.jpg", ".full.jpg")
 
 
 class FakeResponse:
@@ -76,7 +77,7 @@ class FullPhotoRefreshTests(unittest.TestCase):
             "sharpnessScore": 30.0,
         }
 
-        with patch.object(refresh, "inspect_image_quality", return_value=(quality, None)):
+        with patch.object(refresh, "inspect_image_quality", return_value=(quality, None)) as inspect:
             candidate, image_quality, reason, service_unavailable = (
                 refresh.lookup_candidate_across_sources(
                     session,
@@ -91,8 +92,10 @@ class FullPhotoRefreshTests(unittest.TestCase):
         self.assertIsNone(reason)
         self.assertEqual(candidate["sourceName"], "Open Beauty Facts")
         self.assertEqual(candidate["imageUrl"], BEAUTY_IMAGE)
+        self.assertEqual(candidate["qualityImageUrl"], BEAUTY_FULL_IMAGE)
         self.assertEqual(image_quality, quality)
         self.assertEqual(session.get.call_count, 2)
+        self.assertEqual(inspect.call_args.args[1], BEAUTY_FULL_IMAGE)
 
     def test_open_facts_family_lookup_includes_all_four_databases(self):
         hosts = [url.split("/")[2] for url in (
