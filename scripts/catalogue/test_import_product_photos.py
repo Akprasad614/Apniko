@@ -72,7 +72,17 @@ class ProductPhotoImporterTests(unittest.TestCase):
         wrong_path = IMAGE.replace("/images/products/", "/images/other/")
         self.assertIn("/images/products/", image_url_rejection_reason(wrong_path, BARCODE))
         wrong_barcode = IMAGE.replace("890/123/456/7890", "111/222/333/4444")
-        self.assertIn("exact matching barcode", image_url_rejection_reason(wrong_barcode, BARCODE))
+        self.assertIn("normalized matching barcode", image_url_rejection_reason(wrong_barcode, BARCODE))
+
+        # Open Facts requires GTIN-12 / GTIN-8 values to be left-padded to 13
+        # digits before splitting them into image directory segments.
+        upc = "036000291452"
+        padded_upc_image = (
+            "https://images.openfoodfacts.org/images/products/003/600/029/1452/"
+            "front_en.2.400.jpg"
+        )
+        self.assertTrue(safe_image_url(padded_upc_image, upc))
+        self.assertFalse(safe_image_url(padded_upc_image, BARCODE))
 
     def test_candidate_requires_india_in_source_countries(self):
         item = {
