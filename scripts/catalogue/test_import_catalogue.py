@@ -81,7 +81,7 @@ class MendeleyImportTests(unittest.TestCase):
             rows[0].update({
                 "Serving_Size_g": "100",
                 "Price_INR": "39.00",
-                "Ingredients": "Potato, salt",
+                "Ingredients": "  Potato, salt  ",
             })
             path = self.make_csv(folder, rows)
             records, stats = load_mendeley_csv(path)
@@ -101,7 +101,7 @@ class MendeleyImportTests(unittest.TestCase):
         self.assertEqual(stats["eligible"], ROW_COUNT)
 
         metadata = json.loads(item["sourceMetadataJson"])
-        self.assertEqual(metadata["sourceValues"]["Ingredients"], "Potato, salt")
+        self.assertEqual(metadata["sourceValues"]["Ingredients"], "  Potato, salt  ")
         self.assertEqual(metadata["sourceValues"]["Price_INR"], "39.00")
         self.assertEqual(metadata["dataset"]["doi"], DOI)
         self.assertIn("not current shop price", metadata["fieldHandling"]["Price_INR"])

@@ -168,7 +168,7 @@ def load_mendeley_csv(path: Path, limit: int = 0) -> tuple[list[dict], dict]:
         for line_number, row in enumerate(reader, start=2):
             if None in row:
                 raise ValueError(f"CSV row {line_number} contains extra/unmapped columns")
-            rows.append({header: (row.get(header) or "").strip() for header in EXPECTED_HEADERS})
+            rows.append({header: (row.get(header) or "") for header in EXPECTED_HEADERS})
 
     row_count = len(rows)
     if row_count != EXPECTED_ROWS:
