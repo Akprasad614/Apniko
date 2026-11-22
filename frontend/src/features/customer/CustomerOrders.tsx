@@ -96,8 +96,8 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
 
     setExpandedOrderId(orderId)
     setHistoryError('')
-    if (Object.prototype.hasOwnProperty.call(historyByOrder, orderId)) return
-
+    // Reload whenever details are opened so the timeline reflects the latest
+    // status updates received by the customer order polling loop.
     setHistoryLoadingId(orderId)
     try {
       const history = await apiRequest<OrderStatusHistoryEntry[]>(
