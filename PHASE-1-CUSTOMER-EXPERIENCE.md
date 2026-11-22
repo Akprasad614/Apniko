@@ -64,7 +64,7 @@ BigBasket import remains a separately gated data-source activity. No import is p
 - [x] Backend unit test covers cross-shop product search and the public customer shop response shape.
 - [x] Order history detail reloads when reopened.
 - [x] Owner completed local visual review at mobile and desktop widths; customer storefront visuals were confirmed.
-- [ ] Final CI/security checks for the latest privacy-hardening commit (rerun on push).
+- [x] Frontend, backend, catalogue-tooling, CodeQL, static-security, secret, dependency and SBOM checks passed on the reviewed Phase 1 head.
 - [ ] End-to-end checkout, payment-provider and order lifecycle verification using a disposable test environment.
 
 The end-to-end item remains intentionally pending: the production-like catalogue is empty, so real add-to-cart/checkout cannot be exercised without a disposable test fixture and a configured payment-provider test account. CI and local visual review do not substitute for that test. Creating this branch or pull request does not merge to `main` or deploy it.
