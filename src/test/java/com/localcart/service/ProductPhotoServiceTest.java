@@ -310,7 +310,7 @@ class ProductPhotoServiceTest {
                 "admin@example.test");
 
         assertEquals(ProductImageReviewStatus.APPROVED, result.status());
-        assertTrue(result.approvedImageUrl().endsWith("/old.jpg"));
+        assertTrue(result.approvedImageUrl().endsWith("/previous-approved.jpg"));
         assertNull(photo.getCandidateImageUrl());
     }
 
@@ -389,7 +389,6 @@ class ProductPhotoServiceTest {
         photo.setCandidateSourceUrl(BRAND_PAGE);
         photo.setCandidateLicense("MANUFACTURER_AUTHORIZED");
         photo.setCandidateAttribution("Image supplied by an authorised brand or supplier");
-        photo.setCandidateAuthorizationReference("Supplier agreement BR-2026-014");
         photo.setCandidateProductName("Test grocery pack");
         photo.setCandidateProductBrand("Test Brand");
         photo.setCandidatePackSize("1 kg");
