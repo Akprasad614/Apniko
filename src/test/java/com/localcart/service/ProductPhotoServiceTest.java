@@ -97,11 +97,17 @@ class ProductPhotoServiceTest {
                 IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
                 "Test Brand", "500 g", "CC BY-SA",
                 "Open Food Facts contributors", null, BARCODE);
+        ProductPhotoCandidateRequest ambiguousPromoPack = new ProductPhotoCandidateRequest(
+                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                "Test Brand", "5+1 kg", "CC BY-SA",
+                "Open Food Facts contributors", null, BARCODE);
 
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, wrongBrand));
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, wrongPack));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, ambiguousPromoPack));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
