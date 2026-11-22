@@ -157,23 +157,39 @@ def inspect_image_quality(
     }, None
 
 
-def safe_image_url(value: str | None, barcode: str) -> bool:
+def image_url_rejection_reason(value: str | None, barcode: str) -> str | None:
     if not value:
-        return False
-    parsed = urlparse(value)
-    if (parsed.scheme != "https" or parsed.hostname not in IMAGE_HOSTS
-            or parsed.username or parsed.password or parsed.port not in (None, 443)
-            or not parsed.path.startswith("/images/products/")
-            or not re.sub(r"[^0-9]", "", parsed.path).startswith(barcode)
-            or parsed.query or parsed.fragment):
-        return False
-    return True
+        return "image URL is missing"
+    try:
+        parsed = urlparse(value)
+        port = parsed.port
+    except ValueError:
+        return "image URL is malformed"
+    if parsed.scheme != "https":
+        return "image URL must use HTTPS"
+    if parsed.hostname not in IMAGE_HOSTS:
+        return f"image hostname is not allowlisted: {parsed.hostname or '(missing)'}"
+    if parsed.username or parsed.password or port not in (None, 443):
+        return "image URL contains user information or a nonstandard port"
+    if not parsed.path.startswith("/images/products/"):
+        return f"image path is outside /images/products/: {parsed.path[:120]}"
+    path_digits = re.sub(r"[^0-9]", "", parsed.path)
+    if not path_digits.startswith(barcode):
+        return "image path does not contain the exact matching barcode"
+    if parsed.query or parsed.fragment:
+        return "image URL must not contain a query string or fragment"
+    return None
+
+
+def safe_image_url(value: str | None, barcode: str) -> bool:
+    return image_url_rejection_reason(value, barcode) is None
 
 
 PACK_SIZE_PATTERN = re.compile(
     r"(?:(?P<count>\d+(?:[.,]\d+)?)\s*[x×]\s*)?"
     r"(?P<amount>\d+(?:[.,]\d+)?)\s*"
-    r"(?P<unit>milligrams?|mg|micrograms?|mcg|kilograms?|kg|grams?|gm|g|"
+    r"(?P<unit>fluid\\s*ounces?|fl\\.?\\s*oz\\.?|milligrams?|mg|micrograms?|mcg|"
+    r"kilograms?|kg|grams?|gm|g|"
     r"milliliters?|millilitres?|ml|liters?|litres?|l|pieces?|pcs|counts?|ct)\b",
     re.IGNORECASE,
 )
@@ -192,6 +208,9 @@ PACK_SIZE_UNITS = {
     "l": ("volume", Decimal("1000")), "liter": ("volume", Decimal("1000")),
     "liters": ("volume", Decimal("1000")), "litre": ("volume", Decimal("1000")),
     "litres": ("volume", Decimal("1000")),
+    "floz": ("volume", Decimal("29.5735295625")),
+    "fluidounce": ("volume", Decimal("29.5735295625")),
+    "fluidounces": ("volume", Decimal("29.5735295625")),
     "pcs": ("count", Decimal("1")), "piece": ("count", Decimal("1")),
     "pieces": ("count", Decimal("1")), "count": ("count", Decimal("1")),
     "counts": ("count", Decimal("1")), "ct": ("count", Decimal("1")),
@@ -222,7 +241,12 @@ def normalize_pack_size(value: object) -> tuple[str, Decimal] | None:
     except InvalidOperation:
         return None
     dimension, factor = unit_details
-    return dimension, (amount * factor).normalize()
+    converted = amount * factor
+    # Open Facts commonly records US fluid ounces alongside rounded metric
+    # equivalents (e.g. 16 FL OZ / 473 ml). Normalize US fl oz to 0.001 ml.
+    if unit in {"floz", "fluidounce", "fluidounces"}:
+        converted = converted.quantize(Decimal("0.001"))
+    return dimension, converted.normalize()
 
 
 def same_brand(left: object, right: object) -> bool:
@@ -346,10 +370,12 @@ def explain_candidate(
             else display_image_url
         )
 
-    if not safe_image_url(display_image_url, barcode):
-        return None, "display photograph URL is not on the matching allowlisted image host"
-    if not safe_image_url(quality_image_url, barcode):
-        return None, "full-size quality-check URL is not on the matching allowlisted image host"
+    display_url_error = image_url_rejection_reason(display_image_url, barcode)
+    if display_url_error:
+        return None, f"display photograph URL rejected: {display_url_error}"
+    quality_url_error = image_url_rejection_reason(quality_image_url, barcode)
+    if quality_url_error:
+        return None, f"full-size quality-check URL rejected: {quality_url_error}"
 
     photographers = product.get("photographers_tags") or []
     photographer_names = ", ".join(str(name) for name in photographers[:8] if str(name).strip())
