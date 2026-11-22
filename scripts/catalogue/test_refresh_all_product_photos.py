@@ -28,6 +28,38 @@ class FakeResponse:
 
 
 class FullPhotoRefreshTests(unittest.TestCase):
+    def test_metadata_coverage_counts_brand_pack_and_valid_gtin(self):
+        targets = [
+            {
+                "productId": 1,
+                "barcode": "8901234567890",
+                "brand": "Known Brand",
+                "packSize": "1 kg",
+            },
+            {
+                "productId": 2,
+                "barcode": "8901234567890",
+                "brand": "",
+                "packSize": "500 g",
+            },
+            {
+                "productId": 3,
+                "barcode": "invalid",
+                "brand": "Another Brand",
+                "packSize": "",
+            },
+        ]
+
+        self.assertEqual(refresh.metadata_coverage(targets), {
+            "total": 3,
+            "with_valid_gtin": 2,
+            "with_brand": 2,
+            "missing_brand": 1,
+            "with_pack_size": 2,
+            "missing_pack_size": 1,
+            "with_brand_and_pack_size": 1,
+        })
+
     def test_fingerprint_includes_policy_version_and_product_identity(self):
         product = {
             "productId": 101,
