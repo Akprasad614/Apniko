@@ -1,5 +1,7 @@
 .customer-orders {
-  padding-top: 3.6rem;
+  width: min(1040px, calc(100% - 64px));
+  margin-inline: auto;
+  padding-block: 2.7rem 4rem;
   scroll-margin-top: 1.2rem;
 }
 
@@ -412,6 +414,11 @@
 }
 
 @media (max-width: 760px) {
+  .customer-orders {
+    width: calc(100% - 36px);
+    padding-block: 1.8rem 3rem;
+  }
+
   .customer-orders__heading {
     align-items: flex-start;
     flex-direction: column;
