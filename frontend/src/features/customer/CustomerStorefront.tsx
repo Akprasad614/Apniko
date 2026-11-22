@@ -451,8 +451,8 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                     ))}
                     {categories.length === 0 && (
                       <div className="customer-state customer-state--empty">
-                        <strong>Categories are being organised.</strong>
-                        <p>Choose a shop to see the categories currently available in its catalogue.</p>
+                        <strong>No product categories yet.</strong>
+                        <p>Categories will appear here after approved products are added to Apniko’s catalogue. This shelf is intentionally empty for now.</p>
                       </div>
                     )}
                   </div>
