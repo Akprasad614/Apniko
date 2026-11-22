@@ -16,7 +16,6 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Iterable
 
 import requests
 
@@ -30,7 +29,7 @@ MAX_BATCH_SIZE = 500
 
 
 def clean(value: object) -> str:
-    return re.sub(r"\\s+", " ", str(value or "").strip())
+    return re.sub(r"\s+", " ", str(value or "").strip())
 
 
 def pick(row: dict[str, str], *names: str) -> str:
