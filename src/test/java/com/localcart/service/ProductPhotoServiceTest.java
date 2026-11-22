@@ -27,6 +27,8 @@ class ProductPhotoServiceTest {
     private static final String BARCODE = "8901234567890";
     private static final String IMAGE = "https://images.openfoodfacts.org/images/products/890/123/456/7890/front_en.4.400.jpg";
     private static final String SOURCE = "https://world.openfoodfacts.org/product/" + BARCODE;
+    private static final String BRAND_IMAGE = "https://images.brand.example/products/test-grocery/front.jpg";
+    private static final String BRAND_PAGE = "https://brand.example/products/test-grocery";
     private static final String BRAND_SOURCE = "Brand / supplier authorised catalogue";
     private ProductRepository productRepository;
     private ProductPhotoRepository photoRepository;
@@ -118,68 +120,53 @@ class ProductPhotoServiceTest {
     }
 
     @Test
-    void openFactsCandidateAcceptsEquivalentBrandAndPackSizeFormatting() {
+    void openFactsSourceIsRejectedEvenWhenBarcodeBrandAndPackSizeMatch() {
         Product product = product();
-        product.setBrand("Nestle");
-        product.setPackSize("1 g");
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
-        when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
-        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
-        ProductPhotoCandidateRequest equivalent = new ProductPhotoCandidateRequest(
+        ProductPhotoCandidateRequest openFacts = new ProductPhotoCandidateRequest(
                 IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
-                "Nestlé", "1000 mg", "CC BY-SA",
+                "Test Brand", "1 kg", "CC BY-SA",
                 "Open Food Facts contributors", null, BARCODE);
 
-        var result = service.submitCandidate(10L, equivalent);
-
-        assertEquals(ProductImageReviewStatus.PENDING, result.status());
-        assertEquals("Nestlé", result.sourceProductBrand());
-        assertEquals("1000 mg", result.sourcePackSize());
-        verify(photoRepository).save(any(ProductPhoto.class));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, openFacts));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
     @Test
-    void openFactsCandidateAcceptsEquivalentUsFluidOunceAndMetricPackSize() {
+    void openFactsSourceIsRejectedRegardlessOfPackSizeRepresentation() {
         Product product = product();
         product.setPackSize("473.176 ml");
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
-        when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
-        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
-        ProductPhotoCandidateRequest equivalent = new ProductPhotoCandidateRequest(
+        ProductPhotoCandidateRequest openFacts = new ProductPhotoCandidateRequest(
                 IMAGE, SOURCE, "Open Food Facts", "Apple Cider Vinegar",
                 "Test Brand", "16 FL OZ (473 ml)", "CC BY-SA",
                 "Open Food Facts contributors", null, BARCODE);
 
-        var result = service.submitCandidate(10L, equivalent);
-
-        assertEquals(ProductImageReviewStatus.PENDING, result.status());
-        assertEquals("16 FL OZ (473 ml)", result.sourcePackSize());
-        verify(photoRepository).save(any(ProductPhoto.class));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, openFacts));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
     @Test
-    void openFactsCandidateAcceptsZeroPaddedUpcImageDirectory() {
+    void openFactsSourceIsRejectedForZeroPaddedBarcodeImagePathsToo() {
         String upc = "036000291452";
         String paddedImage = "https://images.openfoodfacts.org/images/products/003/600/029/1452/front_en.2.400.jpg";
         String upcSource = "https://world.openfoodfacts.org/product/" + upc;
         Product product = product();
         product.setBarcode(upc);
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
-        when(photoRepository.findByProductId(10L)).thenReturn(Optional.empty());
-        when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
 
         ProductPhotoCandidateRequest request = new ProductPhotoCandidateRequest(
                 paddedImage, upcSource, "Open Food Facts", "Test grocery pack",
                 "Test Brand", "1 kg", "CC BY-SA",
                 "Open Food Facts contributors", null, upc);
 
-        var result = service.submitCandidate(10L, request);
-
-        assertEquals(ProductImageReviewStatus.PENDING, result.status());
-        assertEquals(paddedImage, result.candidateImageUrl());
-        verify(photoRepository).save(any(ProductPhoto.class));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, request));
+        verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
     @Test
@@ -268,10 +255,10 @@ class ProductPhotoServiceTest {
                 "admin@example.test");
 
         assertEquals(ProductImageReviewStatus.APPROVED, result.status());
-        assertEquals(IMAGE, result.approvedImageUrl());
-        assertEquals("Open Food Facts", photo.getSourceName());
-        assertEquals("CC BY-SA", photo.getLicense());
-        assertEquals("Open Food Facts contributors", photo.getAttribution());
+        assertEquals(BRAND_IMAGE, result.approvedImageUrl());
+        assertEquals(BRAND_SOURCE, photo.getSourceName());
+        assertEquals("MANUFACTURER_AUTHORIZED", photo.getLicense());
+        assertEquals("Image supplied by an authorised brand or supplier", photo.getAttribution());
         assertNull(result.authorizationReference());
         assertNull(photo.getCandidateImageUrl());
     }
@@ -397,11 +384,12 @@ class ProductPhotoServiceTest {
     private ProductPhoto pendingPhoto(Product product) {
         ProductPhoto photo = new ProductPhoto();
         photo.setProduct(product);
-        photo.setCandidateImageUrl(IMAGE);
-        photo.setCandidateSourceName("Open Food Facts");
-        photo.setCandidateSourceUrl(SOURCE);
-        photo.setCandidateLicense("CC BY-SA");
-        photo.setCandidateAttribution("Open Food Facts contributors");
+        photo.setCandidateImageUrl(BRAND_IMAGE);
+        photo.setCandidateSourceName(BRAND_SOURCE);
+        photo.setCandidateSourceUrl(BRAND_PAGE);
+        photo.setCandidateLicense("MANUFACTURER_AUTHORIZED");
+        photo.setCandidateAttribution("Image supplied by an authorised brand or supplier");
+        photo.setCandidateAuthorizationReference("Supplier agreement BR-2026-014");
         photo.setCandidateProductName("Test grocery pack");
         photo.setCandidateProductBrand("Test Brand");
         photo.setCandidatePackSize("1 kg");
@@ -412,8 +400,9 @@ class ProductPhotoServiceTest {
 
     private ProductPhotoCandidateRequest candidate(String image, String barcode) {
         return new ProductPhotoCandidateRequest(
-                image, SOURCE, "Open Food Facts", "Test grocery pack",
-                "Test Brand", "1 kg", "CC BY-SA",
-                "Open Food Facts contributors", null, barcode);
+                image, BRAND_PAGE, BRAND_SOURCE, "Test grocery pack",
+                "Test Brand", "1 kg", "MANUFACTURER_AUTHORIZED",
+                "Image supplied by an authorised brand or supplier",
+                "Supplier agreement BR-2026-014", barcode);
     }
 }
