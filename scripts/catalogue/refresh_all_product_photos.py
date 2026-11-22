@@ -160,57 +160,46 @@ def lookup_candidate_across_sources(
     image URL and image-byte quality checks. A 404 or unsuitable record in one
     family does not prevent a match in another family.
     """
-    source_urls = [
-        f"https://{host}/api/v3/product/{{barcode}}.json"
-        for host in SOURCES
-    ]
-    last_reason = "no matching record in any Open Facts family database"
-    source_reasons: list[str] = []
+    # Open Facts supports a universal barcode lookup. product_type=all redirects
+    # to the matching Food, Beauty, Pet Food or Products Facts instance.
+    lookup_url = f"https://world.openfoodfacts.org/api/v3/product/{barcode}.json"
+    response = get_with_retries(
+        session,
+        lookup_url,
+        params={
+            "product_type": "all",
+            "fields": "code,product_name,brands,quantity,countries,countries_tags,selected_images,photographers_tags",
+        },
+        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+        timeout=(5, 25),
+        max_retries=max_retries,
+    )
 
-    for index, template in enumerate(source_urls):
-        if index:
-            time.sleep(delay_seconds)
+    source_host = urlparse(response.url or lookup_url).hostname or "world.openfoodfacts.org"
+    if response.status_code == 404:
+        return None, None, "no record in any Open Facts family database", False
+    if response.status_code in (429, 503):
+        return None, None, (
+            f"{source_host}: rate limit/service unavailable after retries"
+        ), True
 
-        response = get_with_retries(
-            session,
-            template.format(barcode=barcode),
-            params={
-                "fields": "code,product_name,brands,quantity,countries,countries_tags,selected_images,photographers_tags",
-            },
-            headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
-            timeout=(5, 25),
-            max_retries=max_retries,
-        )
+    response.raise_for_status()
+    candidate, reason = explain_candidate(item, response.json(), response.url)
+    if not candidate:
+        return None, None, f"{source_host}: {reason}", False
 
-        if response.status_code == 404:
-            source_reasons.append(f"{urlparse(template).hostname}: no record")
-            continue
-        if response.status_code in (429, 503):
-            return None, None, (
-                f"{urlparse(template).hostname}: rate limit/service unavailable after retries"
-            ), True
+    quality, quality_reason = inspect_image_quality(
+        session,
+        candidate["qualityImageUrl"],
+        barcode,
+        max_retries=max_retries,
+    )
+    if not quality:
+        return None, None, (
+            f"{source_host}: image-quality check failed: {quality_reason}"
+        ), False
 
-        response.raise_for_status()
-        candidate, reason = explain_candidate(item, response.json(), response.url)
-        if not candidate:
-            source_reasons.append(f"{urlparse(template).hostname}: {reason}")
-            continue
-
-        quality, quality_reason = inspect_image_quality(
-            session,
-            candidate["qualityImageUrl"],
-            barcode,
-            max_retries=max_retries,
-        )
-        if not quality:
-            source_reasons.append(
-                f"{urlparse(template).hostname}: image-quality check failed: {quality_reason}"
-            )
-            continue
-
-        return candidate, quality, None, False
-
-    return None, None, "; ".join(source_reasons) or last_reason, False
+    return candidate, quality, None, False
 
 
 def format_report(label: str, report: dict) -> None:
