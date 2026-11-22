@@ -19,18 +19,16 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.text.Normalizer;
 import java.util.*;
 
 @Service
 @Transactional
 public class ProductCatalogImportService {
 
-    private static final Set<String> SUPPORTED_MRP_SOURCES =
-            Set.of("pack", "brand", "gov", "off");
-    private static final Set<String> SUPPORTED_LICENSES = Set.of(
-            "ODbL-1.0", "DbCL-1.0", "CC0-1.0", "CC-BY-4.0",
-            "CC-BY-SA-4.0", "CC-BY-SA-3.0", "Public-Domain"
-    );
+    private static final String BIGBASKET_SOURCE = "BigBasket authorised dataset";
+    private static final String BIGBASKET_PERMISSION = "BIGBASKET-WRITTEN-PERMISSION";
+    private static final Set<String> SUPPORTED_MRP_SOURCES = Set.of("pack", "brand", "gov");
 
     private final ProductRepository productRepository;
     private final ProductCategoryRepository categoryRepository;
@@ -142,14 +140,22 @@ public class ProductCatalogImportService {
         } catch (RuntimeException exception) {
             throw new BadRequestException("Source URL must be a valid HTTPS URL");
         }
-        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null) {
-            throw new BadRequestException("Source URL must use HTTPS");
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        String expectedPath = "/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints";
+        boolean kaggleDataset = (host.equals("www.kaggle.com") || host.equals("kaggle.com"))
+                && uri.getPath() != null && uri.getPath().startsWith(expectedPath);
+        boolean bigBasketExport = (host.equals("www.bigbasket.com") || host.equals("bigbasket.com"));
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || (!kaggleDataset && !bigBasketExport)) {
+            throw new BadRequestException("BigBasket source URL must be the approved BigBasket dataset page or an authorised BigBasket export");
         }
-        if (!SUPPORTED_LICENSES.contains(request.sourceLicense().trim())) {
-            throw new BadRequestException("Unsupported licence identifier; document the licence before importing");
+        if (!BIGBASKET_SOURCE.equals(request.sourceName().trim())
+                || !BIGBASKET_PERMISSION.equals(request.sourceLicense().trim())) {
+            throw new BadRequestException("Only the permission-gated BigBasket dataset source is accepted");
         }
-        requiredText(request.sourceName(), "sourceName", 80);
-        requiredText(request.attribution(), "attribution", 500);
+        String attribution = requiredText(request.attribution(), "attribution", 500);
+        if (!attribution.toLowerCase(Locale.ROOT).contains("permission reference:")) {
+            throw new BadRequestException("BigBasket imports require a written permission reference in attribution");
+        }
     }
 
     private void validateItem(ProductImportItem item) {
@@ -199,20 +205,34 @@ public class ProductCatalogImportService {
         }
         String normalized = value.trim().toLowerCase(Locale.ROOT);
         if (!SUPPORTED_MRP_SOURCES.contains(normalized)) {
-            throw new IllegalArgumentException("MRP source must be pack, brand, gov or off");
+            throw new IllegalArgumentException("MRP source must be pack, brand or gov");
         }
         return normalized;
     }
 
     private ProductCategory findCategory(String categoryName, String subcategoryName) {
+        String parentName = requiredText(categoryName, "category", 80);
+        String childName = requiredText(subcategoryName, "subcategory", 100);
         ProductCategory parent = categoryRepository
-                .findByNameIgnoreCaseAndParentIsNull(categoryName.trim())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "unknown category '" + categoryName + "'"));
+                .findByNameIgnoreCaseAndParentIsNull(parentName)
+                .orElseGet(() -> {
+                    ProductCategory created = new ProductCategory(
+                            parentName, categorySlug(parentName), null);
+                    return categoryRepository.save(created);
+                });
         return categoryRepository.findByNameIgnoreCaseAndParent_Id(
-                        subcategoryName.trim(), parent.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "subcategory '" + subcategoryName + "' does not belong to " + categoryName));
+                        childName, parent.getId())
+                .orElseGet(() -> categoryRepository.save(new ProductCategory(
+                        childName, categorySlug(parent.getSlug() + "-" + childName), parent)));
+    }
+
+    private String categorySlug(String value) {
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        String slug = normalized.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "");
+        return slug.length() > 120 ? slug.substring(0, 120) : slug;
     }
 
     private boolean applyProductData(Product product,
