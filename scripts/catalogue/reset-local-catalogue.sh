@@ -9,6 +9,7 @@ MYSQL_USER="${MYSQL_USER:-root}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="$HOME/Desktop/apniko-catalogue-reset-$STAMP"
 BACKUP_FILE="$BACKUP_DIR/$DB_NAME-before-reset.sql"
+UPLOADS_DIR="$ROOT_DIR/uploads/products"
 
 if ! command -v mysql >/dev/null 2>&1 || ! command -v mysqldump >/dev/null 2>&1; then
   echo "mysql and mysqldump must be installed and available on PATH." >&2
@@ -37,6 +38,12 @@ test -s "$BACKUP_FILE"
 if [[ -d "$ROOT_DIR/data/catalogue" ]]; then
   echo "Archiving previous local catalogue snapshots and reports..."
   mv "$ROOT_DIR/data/catalogue" "$BACKUP_DIR/catalogue-files"
+fi
+
+if [[ -d "$UPLOADS_DIR" ]]; then
+  echo "Archiving old physical product image uploads..."
+  mkdir -p "$BACKUP_DIR"
+  mv "$UPLOADS_DIR" "$BACKUP_DIR/product-uploads"
 fi
 
 
