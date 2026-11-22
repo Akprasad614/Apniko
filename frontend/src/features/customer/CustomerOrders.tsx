@@ -3,6 +3,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { formatRupees } from './marketplace'
 import { ApprovedProductImage } from './ApprovedProductImage'
+import { ProductPhotoCredit } from '../../components/ProductPhotoCredit'
 import {
   canCancelCustomerOrder,
   formatOrderStatus,
@@ -263,8 +264,18 @@ export function CustomerOrders({ refreshKey }: CustomerOrdersProps) {
                             license={item.product?.imageLicense}
                             attribution={item.product?.imageAttribution}
                             variant="thumbnail"
+                            showCredit={false}
                           />
-                          <span>{item.product?.name || 'Product'} <small>× {item.quantity}</small></span>
+                          <div className="customer-order__item-copy">
+                            <span>{item.product?.name || 'Product'} <small>× {item.quantity}</small></span>
+                            <ProductPhotoCredit
+                              sourceName={item.product?.imageSourceName}
+                              sourceUrl={item.product?.imageSourceUrl}
+                              license={item.product?.imageLicense}
+                              attribution={item.product?.imageAttribution}
+                              className="customer-order__item-credit"
+                            />
+                          </div>
                           <strong>{formatRupees(item.price * item.quantity)}</strong>
                         </div>
                       ))}

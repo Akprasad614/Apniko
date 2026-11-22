@@ -359,6 +359,19 @@
   font-size: 0.65rem;
 }
 
+.customer-cart-item__photo-credit {
+  display: block;
+  color: var(--lc-muted);
+  font-size: 0.52rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.customer-cart-item__photo-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .customer-cart-item__actions {
   display: flex;
   align-items: center;

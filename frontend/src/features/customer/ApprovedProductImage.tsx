@@ -11,6 +11,7 @@ interface ApprovedProductImageProps {
   license?: string | null
   attribution?: string | null
   variant?: 'thumbnail' | 'card'
+  showCredit?: boolean
 }
 
 export function ApprovedProductImage({
@@ -21,6 +22,7 @@ export function ApprovedProductImage({
   license,
   attribution,
   variant = 'thumbnail',
+  showCredit = true,
 }: ApprovedProductImageProps) {
   const [failed, setFailed] = useState(false)
 
@@ -46,7 +48,7 @@ export function ApprovedProductImage({
           )}
         </div>
       )}
-      {imageUrl && !failed && (
+      {showCredit && imageUrl && !failed && (
         <ProductPhotoCredit
           sourceName={sourceName}
           sourceUrl={sourceUrl}

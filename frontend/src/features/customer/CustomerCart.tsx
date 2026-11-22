@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { formatRupees } from './marketplace'
 import { ApprovedProductImage } from './ApprovedProductImage'
+import { ProductPhotoCredit } from '../../components/ProductPhotoCredit'
 import type { Basket, MarketplaceShop } from './marketplace'
 import type { CustomerAddress } from './CustomerAddresses'
 import './customer-shell.css'
@@ -381,10 +382,18 @@ export function CustomerCart() {
                     license={item.imageLicense}
                     attribution={item.imageAttribution}
                     variant="thumbnail"
+                    showCredit={false}
                   />
                   <div className="customer-cart-item__details">
                     <strong>{item.productName}</strong><span>{formatRupees(item.price)} each</span>
                     <small>{item.available ? item.availableStock + ' available' : 'Currently unavailable'}</small>
+                    <ProductPhotoCredit
+                      sourceName={item.imageSourceName}
+                      sourceUrl={item.imageSourceUrl}
+                      license={item.imageLicense}
+                      attribution={item.imageAttribution}
+                      className="customer-cart-item__photo-credit"
+                    />
                   </div>
                   <div className="customer-cart-item__actions">
                     <div className="customer-cart-quantity">
