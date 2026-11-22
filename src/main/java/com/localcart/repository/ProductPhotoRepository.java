@@ -15,15 +15,5 @@ public interface ProductPhotoRepository extends JpaRepository<ProductPhoto, Long
     long countByReviewStatusAndLicense(ProductImageReviewStatus status, String license);
     long countByReviewStatusAndApprovedImageUrlIsNotNull(ProductImageReviewStatus status);
 
-    @org.springframework.data.jpa.repository.Query("""
-            select count(photo)
-            from ProductPhoto photo
-            where photo.reviewStatus = :status
-              and photo.sourceName in (
-                'Open Food Facts', 'Open Beauty Facts',
-                'Open Pet Food Facts', 'Open Products Facts')
-            """)
-    long countApprovedOpenFactsPhotos(
-            @org.springframework.data.repository.query.Param("status")
-            ProductImageReviewStatus status);
+
 }
