@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 class ProductPhotoServiceTest {
     private static final String BARCODE = "8901234567890";
     private static final String IMAGE = "https://images.catalogue.example/products/8901234567890/front.jpg";
-    private static final String SOURCE = "https://world.openfoodfacts.org/product/" + BARCODE;
+    private static final String SOURCE = "https://catalogue.example/product/" + BARCODE;
     private static final String BRAND_IMAGE = "https://images.brand.example/products/test-grocery/front.jpg";
     private static final String BRAND_PAGE = "https://brand.example/products/test-grocery";
     private static final String BRAND_SOURCE = "Brand / supplier authorised catalogue";
@@ -153,8 +153,8 @@ class ProductPhotoServiceTest {
     @Test
     void thirdPartyCatalogueSourceIsRejectedForZeroPaddedBarcodeImagePathsToo() {
         String upc = "036000291452";
-        String paddedImage = "https://images.openfoodfacts.org/images/products/003/600/029/1452/front_en.2.400.jpg";
-        String upcSource = "https://world.openfoodfacts.org/product/" + upc;
+        String paddedImage = "https://images.catalogue.example/products/003/600/029/1452/front_en.2.400.jpg";
+        String upcSource = "https://catalogue.example/product/" + upc;
         Product product = product();
         product.setBarcode(upc);
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
