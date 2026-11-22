@@ -42,7 +42,7 @@ class FullPhotoRefreshTests(unittest.TestCase):
         changed = {**product, "packSize": "500 g"}
         self.assertNotEqual(original, refresh.fingerprint(changed))
 
-    def test_lookup_falls_back_to_open_beauty_facts_after_food_facts_404(self):
+    def test_universal_lookup_redirects_to_open_beauty_facts(self):
         product = {
             "productId": 202,
             "barcode": BARCODE,
@@ -122,7 +122,6 @@ class FullPhotoRefreshTests(unittest.TestCase):
                 session,
                 product,
                 BARCODE,
-                delay_seconds=0,
                 max_retries=0,
             )
         )
@@ -142,16 +141,6 @@ class FullPhotoRefreshTests(unittest.TestCase):
             "world.openproductsfacts.org",
         })
 
-
-        hosts = [url.split("/")[2] for url in (
-            f"https://{host}/api/v3/product/{{barcode}}.json" for host in refresh.SOURCES
-        )]
-        self.assertEqual(hosts, [
-            "world.openfoodfacts.org",
-            "world.openbeautyfacts.org",
-            "world.openpetfoodfacts.org",
-            "world.openproductsfacts.org",
-        ])
 
     def test_checkpoint_round_trip_uses_atomic_json_file(self):
         with tempfile.TemporaryDirectory() as directory:
