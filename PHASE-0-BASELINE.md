@@ -101,11 +101,13 @@ commit:
 | Semgrep security audit | **Passed** |
 | OSV dependency scan | **Passed** |
 | CycloneDX SBOM generation | **Passed** |
-| CodeQL Java analysis | In progress at last check |
-| OWASP ZAP passive baseline scan | In progress at last check |
+| CodeQL Java analysis | **Passed** |
+| OWASP ZAP passive baseline scan | **Passed** |
 
-Do not treat an in-progress scan as a pass. Check the PR's latest status
-before marking the remaining security verification complete.
+All seven listed automated workflows completed successfully against commit
+`d387438434f5e5241b4a582f22108a199a9822b5`. The only commit after that tested
+head changes this audit document; the comparison confirms no source code or
+workflow files changed after the successful checks.
 
 ## Phase 0 exit criteria
 
@@ -118,7 +120,7 @@ before marking the remaining security verification complete.
       Apniko repository.
 - [x] Backend and frontend CI configured for the new branch and PR.
 - [x] Frontend CI, backend CI, Gitleaks, Semgrep, OSV and SBOM checks passed.
-- [ ] CodeQL and OWASP ZAP complete successfully.
+- [x] CodeQL and OWASP ZAP complete successfully.
 - [ ] Local owner-run catalogue backup/reset is reviewed and completed.
 - [ ] Local working-tree scan confirms no ignored local tool directory or
       untracked references remain.
