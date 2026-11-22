@@ -105,7 +105,6 @@ public class ProductPhotoService {
                 ProductImageReviewStatus.APPROVED);
         long pending = photoRepository.countByReviewStatus(ProductImageReviewStatus.PENDING);
         long rejected = photoRepository.countByReviewStatus(ProductImageReviewStatus.REJECTED);
-        long openFacts = photoRepository.countApprovedOpenFactsPhotos(ProductImageReviewStatus.APPROVED);
         long supplierAuthorized = photoRepository.countByReviewStatusAndLicense(
                 ProductImageReviewStatus.APPROVED, "MANUFACTURER_AUTHORIZED");
         long eligibleWithBarcode = productRepository.countProductsWithBarcodeMissingApprovedPhoto(
@@ -117,7 +116,6 @@ public class ProductPhotoService {
                 approvedPhotos,
                 pending,
                 rejected,
-                openFacts,
                 supplierAuthorized,
                 eligibleWithBarcode,
                 historyRepository.countByOutcome("RETIRED")
@@ -194,7 +192,7 @@ public class ProductPhotoService {
 
         if (!AUTHORIZED_BRAND_SOURCE.equals(requestedSource)) {
             throw new BadRequestException(
-                    "Open Facts and third-party catalogue photo sources are disabled. "
+                    "Unauthorised third-party catalogue photo sources are disabled. "
                             + "Only manufacturer or supplier images with explicit written permission are accepted.");
         }
         if (!"MANUFACTURER AUTHORIZED".equalsIgnoreCase(license)) {
