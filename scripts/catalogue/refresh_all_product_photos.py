@@ -350,7 +350,7 @@ def main() -> int:
                 f"{result['sourceProductBrand']} · {result['sourcePackSize']}"
             )
             print(f"  Display image: {result['imageUrl']}")
-        print(f"  Quality source: {result['qualityImageUrl']}")
+            print(f"  Quality source: {result['qualityImageUrl']}")
             print(
                 f"  Quality: {quality['width']}x{quality['height']} px, "
                 f"{quality['bytes']} bytes, {quality['cleanBackgroundCorners']}/4 clean corners, "
