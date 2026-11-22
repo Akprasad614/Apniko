@@ -50,11 +50,7 @@ class FullPhotoRefreshTests(unittest.TestCase):
             "brand": "Sample Brand",
             "packSize": "50 g",
         }
-        missing = FakeResponse(
-            404,
-            {},
-            f"https://world.openfoodfacts.org/api/v3/product/{BARCODE}.json",
-        )
+        # The universal endpoint redirects to the correct family database.
         beauty = FakeResponse(
             200,
             {"product": {
@@ -68,7 +64,7 @@ class FullPhotoRefreshTests(unittest.TestCase):
             f"https://world.openbeautyfacts.org/api/v3/product/{BARCODE}.json",
         )
         session = Mock()
-        session.get.side_effect = [missing, beauty]
+        session.get.return_value = beauty
         quality = {
             "width": 1200,
             "height": 1200,
@@ -94,10 +90,12 @@ class FullPhotoRefreshTests(unittest.TestCase):
         self.assertEqual(candidate["imageUrl"], BEAUTY_IMAGE)
         self.assertEqual(candidate["qualityImageUrl"], BEAUTY_FULL_IMAGE)
         self.assertEqual(image_quality, quality)
-        self.assertEqual(session.get.call_count, 2)
+        self.assertEqual(session.get.call_count, 1)
+        self.assertIn("world.openfoodfacts.org/api/v3/product/", session.get.call_args.args[0])
+        self.assertEqual(session.get.call_args.kwargs["params"]["product_type"], "all")
         self.assertEqual(inspect.call_args.args[1], BEAUTY_FULL_IMAGE)
 
-    def test_lookup_reports_rejection_reason_from_each_family_database(self):
+    def test_lookup_reports_family_and_reason_from_universal_redirect(self):
         product = {
             "productId": 203,
             "barcode": BARCODE,
@@ -105,7 +103,7 @@ class FullPhotoRefreshTests(unittest.TestCase):
             "brand": "Expected Brand",
             "packSize": "50 g",
         }
-        food_mismatch = FakeResponse(
+        redirected = FakeResponse(
             200,
             {"product": {
                 "code": BARCODE,
@@ -114,22 +112,10 @@ class FullPhotoRefreshTests(unittest.TestCase):
                 "brands": "Different Brand",
                 "quantity": "50 g",
             }},
-            f"https://world.openfoodfacts.org/api/v3/product/{BARCODE}.json",
+            f"https://world.openbeautyfacts.org/api/v3/product/{BARCODE}.json",
         )
-        missing_responses = [
-            FakeResponse(
-                404,
-                {},
-                f"https://{host}/api/v3/product/{BARCODE}.json",
-            )
-            for host in (
-                "world.openbeautyfacts.org",
-                "world.openpetfoodfacts.org",
-                "world.openproductsfacts.org",
-            )
-        ]
         session = Mock()
-        session.get.side_effect = [food_mismatch, *missing_responses]
+        session.get.return_value = redirected
 
         candidate, quality, reason, service_unavailable = (
             refresh.lookup_candidate_across_sources(
@@ -144,13 +130,19 @@ class FullPhotoRefreshTests(unittest.TestCase):
         self.assertIsNone(candidate)
         self.assertIsNone(quality)
         self.assertFalse(service_unavailable)
-        self.assertIn("world.openfoodfacts.org: brand mismatch", reason)
-        self.assertIn("world.openbeautyfacts.org: no record", reason)
-        self.assertIn("world.openpetfoodfacts.org: no record", reason)
-        self.assertIn("world.openproductsfacts.org: no record", reason)
-        self.assertEqual(session.get.call_count, 4)
+        self.assertIn("world.openbeautyfacts.org: brand mismatch", reason)
+        self.assertEqual(session.get.call_count, 1)
+        self.assertEqual(session.get.call_args.kwargs["params"]["product_type"], "all")
 
-    def test_open_facts_family_lookup_includes_all_four_databases(self):
+    def test_open_facts_source_allowlist_covers_all_four_family_databases(self):
+        self.assertEqual(set(refresh.SOURCES), {
+            "world.openfoodfacts.org",
+            "world.openbeautyfacts.org",
+            "world.openpetfoodfacts.org",
+            "world.openproductsfacts.org",
+        })
+
+
         hosts = [url.split("/")[2] for url in (
             f"https://{host}/api/v3/product/{{barcode}}.json" for host in refresh.SOURCES
         )]
