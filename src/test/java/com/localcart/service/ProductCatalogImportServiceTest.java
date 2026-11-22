@@ -53,7 +53,7 @@ class ProductCatalogImportServiceTest {
         mockCategory();
         when(productRepository.findByBarcode("4006381333931")).thenReturn(Optional.empty());
         when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
-                "PackSense India / Open Food Facts", "4006381333931"))
+                "BigBasket authorised dataset", "4006381333931"))
                 .thenReturn(Optional.empty());
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
@@ -77,7 +77,7 @@ class ProductCatalogImportServiceTest {
                         && product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.ACTIVE));
         verify(sourceRecordRepository).save(argThat(source ->
                 source.getSourceName().equals("PackSense India / Open Food Facts")
-                        && source.getSourceLicense().equals("ODbL-1.0")
+                        && source.getSourceLicense().equals("BIGBASKET-WRITTEN-PERMISSION")
                         && source.getSourceRecordId().equals("4006381333931")
                         && source.getProduct().getId().equals(44L)));
     }
@@ -138,7 +138,7 @@ class ProductCatalogImportServiceTest {
         ProductImportBatchResponse response = service.importBatch(batch(invalid));
 
         assertEquals(1, response.rejected());
-        assertTrue(response.errors().get(0).contains("MRP source must be pack, brand, gov or off"));
+        assertTrue(response.errors().get(0).contains("MRP source must be pack, brand or gov"));
         verify(productRepository, never()).save(any());
     }
 
@@ -158,20 +158,50 @@ class ProductCatalogImportServiceTest {
     }
 
     @Test
-    void rejectsUnknownCategoryWithoutCreatingProduct() {
-        when(categoryRepository.findByNameIgnoreCaseAndParentIsNull("Unknown"))
+    void createsCategoriesFromBigBasketTaxonomyWhenStartingFromEmptyCatalogue() {
+        when(categoryRepository.findByNameIgnoreCaseAndParentIsNull("BigBasket Fresh"))
                 .thenReturn(Optional.empty());
+        when(categoryRepository.save(any(ProductCategory.class))).thenAnswer(invocation -> {
+            ProductCategory saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", saved.getParent() == null ? 10L : 11L);
+            return saved;
+        });
+        when(categoryRepository.findByNameIgnoreCaseAndParent_Id("Vegetables", 10L))
+                .thenReturn(Optional.empty());
+        when(productRepository.findByBarcode("4006381333931")).thenReturn(Optional.empty());
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
+                "BigBasket authorised dataset", "4006381333931"))
+                .thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
+            Product product = invocation.getArgument(0);
+            ReflectionTestUtils.setField(product, "id", 45L);
+            return product;
+        });
 
-        ProductImportItem invalid = new ProductImportItem(
-                "Sample", "Brand", "4006381333931", "250 g",
-                new BigDecimal("250"), "g", null, null,
-                "Unknown", "Some Subcategory", null, null,
+        ProductImportItem fresh = new ProductImportItem(
+                "Bhendi", "Fresho", "4006381333931", null,
+                null, null, null, null,
+                "BigBasket Fresh", "Vegetables", null, null,
                 "4006381333931", null);
 
-        ProductImportBatchResponse response = service.importBatch(batch(invalid));
-        assertEquals(1, response.rejected());
-        assertTrue(response.errors().get(0).contains("unknown category"));
-        verify(productRepository, never()).save(any());
+        ProductImportBatchResponse response = service.importBatch(batch(fresh));
+
+        assertEquals(1, response.inserted());
+        verify(categoryRepository, times(2)).save(any(ProductCategory.class));
+        verify(productRepository).save(any(Product.class));
+    }
+
+    @Test
+    void requiresPermissionReferenceForBigBasketDatasetReuse() {
+        ProductImportBatchRequest missingReference = new ProductImportBatchRequest(
+                "BigBasket authorised dataset",
+                "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
+                "BIGBASKET-WRITTEN-PERMISSION",
+                "BigBasket dataset without a written permission reference.",
+                java.util.List.of(item("4006381333931", "Sample Tea", "Brand", "250 g", null, null)));
+
+        assertThrows(BadRequestException.class, () -> service.importBatch(missingReference));
+        verifyNoInteractions(productRepository);
     }
 
     private void mockCategory() {
@@ -184,7 +214,7 @@ class ProductCatalogImportServiceTest {
     private ProductImportBatchRequest batch(ProductImportItem item) {
         return new ProductImportBatchRequest(
                 "PackSense India / Open Food Facts",
-                "https://huggingface.co/datasets/PackSense/packsense-india",
+                "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
                 "ODbL-1.0",
                 "PackSense India, derived from Open Food Facts; ODbL-1.0.",
                 java.util.List.of(item));
