@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-22  
 **Working branch:** `chore/phase-0-foundation-cleanup`  
-**Foundation PR:** [#56 — draft, not merged to main](https://github.com/Akprasad614/Apniko/pull/56)  
+**Foundation PR:** [#56 — not merged to main](https://github.com/Akprasad614/Apniko/pull/56)  
 **Phase 1 PR:** [#57 — merged into the Phase 0 working branch](https://github.com/Akprasad614/Apniko/pull/57)  
 **Scope:** Repository architecture, development conventions, clean catalogue
 starting conditions, automation entry points and phase completion evidence.
@@ -73,6 +73,8 @@ database, or rebuild the frontend.
 - Dataset prices must not be shown as current shop prices or verified MRP.
 - Preserve the distinction between shared master product identity and
   shop-specific inventory, price and stock.
+- The old BigBasket-specific importer is transitional code and is not an
+  approved source path. Phase 2 must replace or remove it before any import.
 
 ## Safety boundaries
 
@@ -80,15 +82,33 @@ The owner-reported backup path is:
 
 `~/Desktop/apniko-catalogue-reset-20261122-165627/localcart-before-reset.sql`
 
-The reset was performed on 2026-11-22 after the backend was stopped. The
-owner supplied the reset confirmation and reported the final counters as
-zero. This repository audit does not independently connect to the owner's
-Mac, local MySQL instance or Desktop backup file. Do not rerun the
-destructive reset to check this.
+On 2026-11-22 the owner verified from the Mac terminal that this file exists
+and is non-empty. The backup was made before the destructive local reset.
+The owner reported the final reset counters as zero. Do not rerun the reset
+merely to check this record.
+
+The owner also ran a working-tree inspection. `git status --short --ignored`
+showed only ignored generated/development directories:
+`.venv-catalogue/`, `frontend/.venv-catalogue/`, `frontend/dist/`,
+`frontend/node_modules/`, `scripts/catalogue/__pycache__/` and
+`target/`. The image/Open Food Facts filename scan returned no matches
+outside the explicitly pruned Git, dependency, build-output and virtualenv
+directories. The GitHub tracked-tree scan at the recorded code head found
+339 tracked files, no tracked image files and no Open Food Facts-named paths.
+This is a repository/worktree scan, not a claim about unrelated files elsewhere
+on the Mac.
+
+`git worktree list` showed only the current checkout, on
+`feature/phase-2-authorized-catalogue-intake`. The legacy branch
+`feature/apniko-dyad-frontend` remains as a local and remote branch
+reference, but is not checked out in the current clone. It is being retained
+rather than deleted because other separate clones cannot be inspected from
+this checkout. This branch-retirement housekeeping is not a Phase 0
+implementation blocker.
 
 No production database, remote data, credentials or customer records were
-changed. No deployment was made. The protected `main` branch remains at
-`3f8db823b4cc5a8fb49104d94cadfed72d29544e` in the recorded repository
+changed. No deployment was made. The protected `main` branch remained at
+`3f8db823b4cc5a8fb49104d94cadfed72d29544e` in the verified repository
 snapshot.
 
 ## Phase 1 completion
@@ -109,21 +129,17 @@ approved the storefront appearance.
 
 ## Automated validation
 
-The recorded working-branch head `6202c0fdc498135789ac1ecabd27e3cc4ee1a146`
-had 22 check-run records. Successful runs covered frontend lint/typecheck/
-tests/build, backend Maven and Phase 10 verification, CodeQL, Semgrep,
-Gitleaks, direct OSV dependency scanning, CycloneDX SBOM/dependency
-submission and passive DAST.
+The documentation closeout commit
+`d636ddd5c09a2d63b0fd922016a4e5d8a4db26fa` completed all 16 check-run
+records: 15 succeeded, 1 was neutral and none failed. Successful runs covered
+frontend lint/typecheck/tests/build, backend and Phase 10 verification,
+CodeQL, Semgrep, Gitleaks, direct OSV dependency scanning, CycloneDX
+dependency inventory/submission and passive DAST.
 
-Three duplicate/restarted check-run records were cancelled while equivalent
-successful runs existed for the same commit. The OSV code-scanning integration
-reported **neutral** because the older scheduled-workflow configuration was
-not present on that PR branch; the separate dependency-scan workflow passed.
-This is not recorded as an OSV code-scanning success.
-
-The documentation-only closeout commit that adds this audit update must also
-receive its own successful applicable CI/security checks before PR #56 is
-made ready for review.
+The OSV code-scanning integration reported **neutral** because the older
+scheduled-workflow configuration was not present on the PR branch; the
+separate dependency-scan workflow passed. This is not recorded as an OSV
+code-scanning success.
 
 ## Phase 0 exit criteria
 
@@ -132,24 +148,22 @@ made ready for review.
 - [x] Cleanly named working branch created from the unmerged catalogue work.
 - [x] Foundation documentation, ownership metadata and CI branch coverage
       aligned with the Apniko repository.
-- [x] GitHub tracked-tree scan at the recorded head: 339 tracked files,
-      no tracked image files and no Open Food Facts-named paths.
-- [x] Automated frontend, backend, catalogue safety and security checks have
-      successful results on the recorded head, with the OSV neutral result
-      and cancelled duplicates disclosed above.
+- [x] GitHub tracked-tree inspection: 339 tracked files, no tracked image
+      files and no Open Food Facts-named paths.
+- [x] Owner's local SQL backup verified present and non-empty.
+- [x] Owner's working-tree inspection found no matching product image or
+      Open Food Facts paths in the scanned project files.
+- [x] Owner-reported backup-first reset completed with all nine reported
+      verification counters at zero.
+- [x] Automated frontend, backend, catalogue safety and security checks
+      completed on the documentation closeout head: 15 success, 1 neutral,
+      0 failures; neutral OSV integration disclosed above.
 - [x] Phase 1 merged into the Phase 0 working branch and visually accepted.
-- [x] Owner-reported backup-first local reset completed with all nine
-      reported verification counters at zero.
-- [ ] On the owner's Mac, verify the existing SQL backup is present and
-      non-empty; do not rerun the reset.
-- [ ] On the owner's Mac, inspect ignored and untracked files for old product
-      photos, Open Food Facts files, downloaded private data or credentials.
-- [ ] Confirm no local working copy still depends on the superseded branch
-      `feature/apniko-dyad-frontend`. Retire that remote ref only after the
-      owner confirms; the current GitHub connector cannot delete branch refs.
+- [x] Only the Phase 2 checkout appears in the current clone's worktree list;
+      the old branch reference is preserved, not checked out or deleted.
 
-**Phase status:** Phase 1 is complete. Phase 0 implementation and remote
-verification are complete, but Phase 0 is **not yet formally closed** until
-the three owner-side closeout items above are verified. PR #56 remains a
-draft. No merge to `main`, production database operation or deployment is
-authorised or claimed by this audit.
+**Phase status: COMPLETE.** Phase 0 foundation and local clean-catalogue
+starting conditions are complete. Phase 1 customer experience is complete.
+The separate legacy branch reference is retained as non-blocking repository
+housekeeping. No merge to `main`, production database operation, catalogue
+import or deployment is claimed or authorised by this audit.
