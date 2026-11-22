@@ -79,7 +79,6 @@ class FullPhotoRefreshTests(unittest.TestCase):
                     session,
                     product,
                     BARCODE,
-                    delay_seconds=0,
                     max_retries=0,
                 )
             )
