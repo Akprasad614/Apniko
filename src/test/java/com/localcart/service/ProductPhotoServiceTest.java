@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 
 class ProductPhotoServiceTest {
     private static final String BARCODE = "8901234567890";
-    private static final String IMAGE = "https://images.openfoodfacts.org/images/products/890/123/456/7890/front_en.4.400.jpg";
+    private static final String IMAGE = "https://images.catalogue.example/products/8901234567890/front.jpg";
     private static final String SOURCE = "https://world.openfoodfacts.org/product/" + BARCODE;
     private static final String BRAND_IMAGE = "https://images.brand.example/products/test-grocery/front.jpg";
     private static final String BRAND_PAGE = "https://brand.example/products/test-grocery";
@@ -74,7 +74,7 @@ class ProductPhotoServiceTest {
     }
 
     @Test
-    void candidateRequiresExactBarcodeAndOpenFactsImageHost() {
+    void candidateRequiresValidBarcodeAndAuthorisedImageHost() {
         Product product = product();
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
@@ -87,14 +87,14 @@ class ProductPhotoServiceTest {
     }
 
     @Test
-    void openFactsImageRequiresExactBrandAndPackSize() {
+    void thirdPartyCatalogueImageRequiresExactBrandAndPackSize() {
         Product product = product();
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
         ProductPhotoCandidateRequest wrongBrand = new ProductPhotoCandidateRequest(
-                IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
+                IMAGE, SOURCE, "Third-party catalogue", "Test grocery pack",
                 "Different Brand", "1 kg", "CC BY-SA",
-                "Open Food Facts contributors", null, BARCODE);
+                "Third-party catalogue contributors", null, BARCODE);
         ProductPhotoCandidateRequest wrongPack = new ProductPhotoCandidateRequest(
                 IMAGE, SOURCE, "Open Food Facts", "Test grocery pack",
                 "Test Brand", "500 g", "CC BY-SA",
@@ -300,7 +300,7 @@ class ProductPhotoServiceTest {
     void rejectingReplacementKeepsPreviousApprovedImage() {
         Product product = product();
         ProductPhoto photo = pendingPhoto(product);
-        photo.setApprovedImageUrl("https://images.openfoodfacts.org/images/products/890/123/456/7890/old.jpg");
+        photo.setApprovedImageUrl("https://images.brand.example/products/previous-approved.jpg");
         photo.setSourceName("Open Food Facts");
         when(photoRepository.findByProductId(10L)).thenReturn(Optional.of(photo));
         when(photoRepository.save(any(ProductPhoto.class))).thenAnswer(call -> call.getArgument(0));
@@ -352,7 +352,7 @@ class ProductPhotoServiceTest {
     @Test
     void retirementPreservesPreviouslyApprovedPhotoAndRequiresConfirmation() {
         ProductPhoto photo = pendingPhoto(product());
-        String approved = "https://images.openfoodfacts.org/images/products/890/123/456/7890/approved.jpg";
+        String approved = "https://images.brand.example/products/previous-approved.jpg";
         photo.setApprovedImageUrl(approved);
         when(photoRepository.findByReviewStatus(eq(ProductImageReviewStatus.PENDING), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(photo)), Page.empty());
