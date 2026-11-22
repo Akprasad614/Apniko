@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - "automation/**"
+      - "chore/**"
   pull_request:
     branches:
       - main
       - "feature/**"
+      - "chore/**"
   workflow_dispatch:
 
 permissions:
