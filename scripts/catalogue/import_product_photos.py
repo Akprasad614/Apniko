@@ -485,10 +485,6 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
         if not quality:
             print(f"SKIP {barcode}: image-quality check failed: {quality_reason}")
             continue
-        candidate["attribution"] = (
-            candidate["attribution"] + "; Open Facts countries tag includes India "
-            "(community-contributed market evidence; verify current Indian availability before approval)"
-        )[:500]
         candidates += 1
         local_name = str(item.get("name") or "(name not listed)")
         local_brand = str(item.get("brand") or "(brand not listed)")
