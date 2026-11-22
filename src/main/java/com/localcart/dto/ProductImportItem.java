@@ -17,6 +17,9 @@ public record ProductImportItem(
         BigDecimal mrp,
         String mrpSource,
         String sourceRecordId,
-        Instant sourceModifiedAt
+        Instant sourceModifiedAt,
+        String sourceMetadataJson,
+        String identityDiscriminator,
+        String sourceReviewReason
 ) {
 }

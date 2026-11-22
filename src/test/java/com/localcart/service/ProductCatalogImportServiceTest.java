@@ -1,5 +1,6 @@
 package com.localcart.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.localcart.dto.ProductImportBatchRequest;
 import com.localcart.dto.ProductImportBatchResponse;
 import com.localcart.dto.ProductImportItem;
@@ -14,8 +15,10 @@ import com.localcart.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -30,6 +33,11 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ProductCatalogImportServiceTest {
 
+    private static final String SOURCE_NAME = "Mendeley Indian Packaged Foods Dataset (2026)";
+    private static final String SOURCE_URL = "https://data.mendeley.com/datasets/rhswn9z9xr/1";
+    private static final String SOURCE_LICENSE = "CC-BY-4.0";
+    private static final String DOI = "10.17632/rhswn9z9xr.1";
+
     @Mock private ProductRepository productRepository;
     @Mock private ProductCategoryRepository categoryRepository;
     @Mock private ProductCatalogueSourceRecordRepository sourceRecordRepository;
@@ -42,20 +50,18 @@ class ProductCatalogImportServiceTest {
     void setUp() {
         service = new ProductCatalogImportService(
                 productRepository, categoryRepository, sourceRecordRepository,
-                new ProductCatalogueQualityService());
-        parent = new ProductCategory("Beverages", "beverages", null);
+                new ProductCatalogueQualityService(), new ObjectMapper());
+        parent = new ProductCategory("SNACKS", "snacks", null);
         ReflectionTestUtils.setField(parent, "id", 1L);
-        subcategory = new ProductCategory("Tea, Coffee & Cocoa",
-                "beverages-tea-coffee-cocoa", parent);
+        subcategory = new ProductCategory("CHIPS", "snacks-chips", parent);
         ReflectionTestUtils.setField(subcategory, "id", 2L);
     }
 
     @Test
-    void importsOnlyBigBasketIdentityFieldsAndPersistsPermissionEvidence() {
+    void importsMendeleyIdentityAndStoresRawSourceMetadataWithoutRetailFacts() {
         mockCategory();
         when(productRepository.findByIdentityKey(anyString())).thenReturn(Optional.empty());
-        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
-                "BigBasket authorised dataset", "bigbasket:sample-tea-1"))
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(SOURCE_NAME, "mendeley-ipf-2026-v1:0001"))
                 .thenReturn(Optional.empty());
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
@@ -63,108 +69,38 @@ class ProductCatalogImportServiceTest {
             return product;
         });
 
-        ProductImportBatchResponse response = service.importBatch(batch(item("bigbasket:sample-tea-1")));
+        ProductImportBatchResponse response = service.importBatch(batch(item("mendeley-ipf-2026-v1:0001")));
 
         assertEquals(1, response.received());
         assertEquals(1, response.inserted());
         assertEquals(0, response.rejected());
         verify(productRepository).save(argThat(product ->
                 product.getId().equals(44L)
-                        && product.getName().equals("Sample Tea")
+                        && product.getName().equals("Sample Chips")
                         && product.getBrand().equals("Sample Brand")
                         && product.getBarcode() == null
                         && product.getPackSize() == null
+                        && product.getNetQuantity() == null
                         && product.getMrp() == null
-                        && product.getCategory().equals("Beverages")
-                        && product.getSubcategory().equals("Tea, Coffee & Cocoa")
+                        && product.getCategory().equals("SNACKS")
+                        && product.getSubcategory().equals("CHIPS")
                         && product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.ACTIVE));
         verify(sourceRecordRepository).save(argThat(source ->
-                source.getSourceName().equals("BigBasket authorised dataset")
-                        && source.getSourceLicense().equals("BIGBASKET-WRITTEN-PERMISSION")
-                        && source.getSourceRecordId().equals("bigbasket:sample-tea-1")
+                source.getSourceName().equals(SOURCE_NAME)
+                        && source.getSourceLicense().equals(SOURCE_LICENSE)
+                        && source.getSourceRecordId().equals("mendeley-ipf-2026-v1:0001")
+                        && source.getSourceMetadataJson().contains("\"Price_INR\":\"39.00\"")
                         && Boolean.TRUE.equals(source.getReuseRightsVerified())
                         && Boolean.TRUE.equals(source.getCommercialUsePermitted())
-                        && source.getPermissionReference().equals("TEST-BIGBASKET-GRANT")
+                        && source.getPermissionReference().equals(DOI)
                         && source.getProduct().getId().equals(44L)));
     }
 
     @Test
-    void rejectsUnverifiedBarcodePackSizeQuantityAndPriceFields() {
-        List<ProductImportItem> invalidItems = List.of(
-                new ProductImportItem("Sample Tea", "Brand", "4006381333931", null,
-                        null, null, null, null, "Beverages", "Tea", null, null, "bigbasket:barcode", null),
-                new ProductImportItem("Sample Tea", "Brand", null, "250 g",
-                        null, null, null, null, "Beverages", "Tea", null, null, "bigbasket:pack", null),
-                new ProductImportItem("Sample Tea", "Brand", null, null,
-                        new BigDecimal("250"), "g", null, null, "Beverages", "Tea", null, null, "bigbasket:qty", null),
-                new ProductImportItem("Sample Tea", "Brand", null, null,
-                        null, null, null, null, "Beverages", "Tea", new BigDecimal("120.00"), "brand", "bigbasket:mrp", null)
-        );
-
-        ProductImportBatchResponse response = service.importBatch(batch(invalidItems));
-
-        assertEquals(4, response.rejected());
-        assertTrue(response.errors().stream().allMatch(error -> error.contains("must not include unverified barcode")));
-        verifyNoInteractions(categoryRepository, productRepository, sourceRecordRepository);
-    }
-
-    @Test
-    void rejectsCommercialImportWithoutBothExplicitPermissionFlags() {
-        ProductImportBatchRequest request = new ProductImportBatchRequest(
-                "BigBasket authorised dataset",
-                "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
-                "BIGBASKET-WRITTEN-PERMISSION",
-                attribution("TEST-BIGBASKET-GRANT"),
-                false, true, "TEST-BIGBASKET-GRANT", List.of(item("bigbasket:tea-1")));
-
-        assertThrows(org.springframework.security.access.AccessDeniedException.class,
-                () -> service.importBatch(request));
-        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
-    }
-
-    @Test
-    void rejectsAttributionThatDoesNotMatchPermissionReference() {
-        ProductImportBatchRequest request = new ProductImportBatchRequest(
-                "BigBasket authorised dataset",
-                "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
-                "BIGBASKET-WRITTEN-PERMISSION",
-                "Commercial use: authorised. Permission reference: DIFFERENT-REFERENCE.",
-                true, true, "TEST-BIGBASKET-GRANT", List.of(item("bigbasket:tea-1")));
-
-        assertThrows(BadRequestException.class, () -> service.importBatch(request));
-        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
-    }
-
-    @Test
-    void rejectsUnapprovedSourceUrlAndSourceIdentity() {
-        ProductImportBatchRequest insecure = new ProductImportBatchRequest(
-                "BigBasket authorised dataset", "http://example.com/catalogue.csv",
-                "BIGBASKET-WRITTEN-PERMISSION", attribution("TEST-BIGBASKET-GRANT"),
-                true, true, "TEST-BIGBASKET-GRANT", List.of(item("bigbasket:tea-1")));
-        ProductImportBatchRequest arbitraryKagglePage = new ProductImportBatchRequest(
-                "BigBasket authorised dataset", "https://www.kaggle.com/datasets/other/dataset",
-                "BIGBASKET-WRITTEN-PERMISSION", attribution("TEST-BIGBASKET-GRANT"),
-                true, true, "TEST-BIGBASKET-GRANT", List.of(item("bigbasket:tea-1")));
-
-        assertThrows(BadRequestException.class, () -> service.importBatch(insecure));
-        assertThrows(BadRequestException.class, () -> service.importBatch(arbitraryKagglePage));
-        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
-    }
-
-    @Test
-    void createsCategoriesFromBigBasketTaxonomyWhenStartingFromEmptyCatalogue() {
-        when(categoryRepository.findByNameIgnoreCaseAndParentIsNull("BigBasket Fresh"))
-                .thenReturn(Optional.empty());
-        when(categoryRepository.save(any(ProductCategory.class))).thenAnswer(invocation -> {
-            ProductCategory saved = invocation.getArgument(0);
-            ReflectionTestUtils.setField(saved, "id", saved.getParent() == null ? 10L : 11L);
-            return saved;
-        });
-        when(categoryRepository.findByNameIgnoreCaseAndParent_Id("Vegetables", 10L))
-                .thenReturn(Optional.empty());
+    void preservesSourceReviewFlagAndKeepsAmbiguousRowsOutOfCustomerVisibility() {
+        mockCategory();
         when(productRepository.findByIdentityKey(anyString())).thenReturn(Optional.empty());
-        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
-                "BigBasket authorised dataset", "bigbasket:bhendi"))
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(anyString(), anyString()))
                 .thenReturn(Optional.empty());
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
@@ -172,23 +108,121 @@ class ProductCatalogImportServiceTest {
             return product;
         });
 
-        ProductImportItem fresh = new ProductImportItem(
-                "Bhendi", "Fresho", null, null, null, null,
-                "Regular", "Fresh okra", "BigBasket Fresh", "Vegetables",
-                null, null, "bigbasket:bhendi", null);
-
-        ProductImportBatchResponse response = service.importBatch(batch(List.of(fresh)));
+        ProductImportItem needsReview = item("mendeley-ipf-2026-v1:0023",
+                "Repeated product identity needs pack/variant verification");
+        ProductImportBatchResponse response = service.importBatch(batch(needsReview));
 
         assertEquals(1, response.inserted());
-        verify(categoryRepository, times(2)).save(any(ProductCategory.class));
-        verify(productRepository).save(any(Product.class));
+        verify(productRepository).save(argThat(product ->
+                product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.NEEDS_REVIEW
+                        && product.getCatalogueReviewReason().contains("pack/variant verification")));
+    }
+
+    @Test
+    void keepsRepeatedSourceRowsDistinctWhenTheirRetailPackIdentityIsUnknown() {
+        mockCategory();
+        when(productRepository.findByIdentityKey(anyString())).thenReturn(Optional.empty());
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(anyString(), anyString()))
+                .thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProductImportItem first = item("mendeley-ipf-2026-v1:0023",
+                "Repeated item name and brand in source");
+        ProductImportItem second = item("mendeley-ipf-2026-v1:0060",
+                "Repeated item name and brand in source");
+
+        ProductImportBatchResponse response = service.importBatch(batch(List.of(first, second)));
+
+        assertEquals(2, response.inserted());
+        ArgumentCaptor<Product> products = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository, times(2)).save(products.capture());
+        assertNotEquals(products.getAllValues().get(0).getIdentityKey(),
+                products.getAllValues().get(1).getIdentityKey());
+        assertTrue(products.getAllValues().stream()
+                .allMatch(product -> product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.NEEDS_REVIEW));
+    }
+
+    @Test
+    void rejectsUnverifiedBarcodePackSizeQuantityAndPriceFields() {
+        List<ProductImportItem> invalidItems = List.of(
+                new ProductImportItem("Sample Chips", "Brand", "4006381333931", null,
+                        null, null, null, null, "SNACKS", "CHIPS", null, null,
+                        "mendeley-ipf-2026-v1:0001", null, metadata(), "mendeley-ipf-2026-v1:0001", null),
+                new ProductImportItem("Sample Chips", "Brand", null, "250 g",
+                        null, null, null, null, "SNACKS", "CHIPS", null, null,
+                        "mendeley-ipf-2026-v1:0002", null, metadata(), "mendeley-ipf-2026-v1:0002", null),
+                new ProductImportItem("Sample Chips", "Brand", null, null,
+                        new BigDecimal("250"), "g", null, null, "SNACKS", "CHIPS", null, null,
+                        "mendeley-ipf-2026-v1:0003", null, metadata(), "mendeley-ipf-2026-v1:0003", null),
+                new ProductImportItem("Sample Chips", "Brand", null, null,
+                        null, null, null, null, "SNACKS", "CHIPS", new BigDecimal("120.00"), "brand",
+                        "mendeley-ipf-2026-v1:0004", null, metadata(), "mendeley-ipf-2026-v1:0004", null)
+        );
+
+        ProductImportBatchResponse response = service.importBatch(batch(invalidItems));
+
+        assertEquals(4, response.rejected());
+        assertTrue(response.errors().stream().allMatch(error -> error.contains("must not populate unverified")));
+        verifyNoInteractions(categoryRepository, productRepository, sourceRecordRepository);
+    }
+
+    @Test
+    void rejectsMalformedSourceMetadataJson() {
+        ProductImportItem invalid = new ProductImportItem(
+                "Sample Chips", "Sample Brand", null, null, null, null,
+                null, null, "SNACKS", "CHIPS", null, null,
+                "mendeley-ipf-2026-v1:0001", null, "{not-json}",
+                "mendeley-ipf-2026-v1:0001", null);
+
+        ProductImportBatchResponse response = service.importBatch(batch(invalid));
+
+        assertEquals(1, response.rejected());
+        assertTrue(response.errors().get(0).contains("sourceMetadataJson must contain valid JSON"));
+        verifyNoInteractions(categoryRepository, productRepository, sourceRecordRepository);
+    }
+
+    @Test
+    void rejectsCommercialImportWithoutBothExplicitRightsFlags() {
+        ProductImportBatchRequest request = new ProductImportBatchRequest(
+                SOURCE_NAME, SOURCE_URL, SOURCE_LICENSE, attribution(),
+                false, true, DOI, List.of(item("mendeley-ipf-2026-v1:0001")));
+
+        assertThrows(AccessDeniedException.class, () -> service.importBatch(request));
+        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
+    }
+
+    @Test
+    void rejectsAttributionThatDoesNotRetainDatasetDoiAndLicense() {
+        ProductImportBatchRequest request = new ProductImportBatchRequest(
+                SOURCE_NAME, SOURCE_URL, SOURCE_LICENSE,
+                "Dataset citation only; no licence reference.",
+                true, true, DOI, List.of(item("mendeley-ipf-2026-v1:0001")));
+
+        assertThrows(BadRequestException.class, () -> service.importBatch(request));
+        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
+    }
+
+    @Test
+    void rejectsBigBasketAndUnapprovedSourceUrls() {
+        ProductImportBatchRequest bigBasket = new ProductImportBatchRequest(
+                "BigBasket authorised dataset",
+                "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
+                "BIGBASKET-WRITTEN-PERMISSION", attribution(), true, true, DOI,
+                List.of(item("mendeley-ipf-2026-v1:0001")));
+        ProductImportBatchRequest unapprovedUrl = new ProductImportBatchRequest(
+                SOURCE_NAME, "https://example.com/dataset.csv", SOURCE_LICENSE,
+                attribution(), true, true, DOI, List.of(item("mendeley-ipf-2026-v1:0001")));
+
+        assertThrows(BadRequestException.class, () -> service.importBatch(bigBasket));
+        assertThrows(BadRequestException.class, () -> service.importBatch(unapprovedUrl));
+        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
     }
 
     private void mockCategory() {
-        when(categoryRepository.findByNameIgnoreCaseAndParentIsNull("Beverages"))
+        when(categoryRepository.findByNameIgnoreCaseAndParentIsNull("SNACKS"))
                 .thenReturn(Optional.of(parent));
-        when(categoryRepository.findByNameIgnoreCaseAndParent_Id(
-                "Tea, Coffee & Cocoa", 1L)).thenReturn(Optional.of(subcategory));
+        when(categoryRepository.findByNameIgnoreCaseAndParent_Id("CHIPS", 1L))
+                .thenReturn(Optional.of(subcategory));
     }
 
     private ProductImportBatchRequest batch(ProductImportItem item) {
@@ -197,22 +231,29 @@ class ProductCatalogImportServiceTest {
 
     private ProductImportBatchRequest batch(List<ProductImportItem> items) {
         return new ProductImportBatchRequest(
-                "BigBasket authorised dataset",
-                "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
-                "BIGBASKET-WRITTEN-PERMISSION",
-                attribution("TEST-BIGBASKET-GRANT"),
-                true, true, "TEST-BIGBASKET-GRANT", items);
+                SOURCE_NAME, SOURCE_URL, SOURCE_LICENSE, attribution(),
+                true, true, DOI, items);
     }
 
-    private String attribution(String reference) {
-        return "BigBasket CSV fields only. Commercial use: authorised by written permission. Permission reference: "
-                + reference + ".";
+    private String attribution() {
+        return "Duddela Sai Prashanth et al. (2026), Indian Packaged Foods Nutritional Composition Dataset (2026), "
+                + "Version 1, Mendeley Data, DOI: " + DOI
+                + ", CC BY 4.0. Apniko modifications: validation and normalization.";
+    }
+
+    private String metadata() {
+        return "{\"dataset\":{\"doi\":\"" + DOI + "\"},"
+                + "\"sourceValues\":{\"Price_INR\":\"39.00\",\"Serving_Size_g\":\"100\"}}";
     }
 
     private ProductImportItem item(String sourceRecordId) {
+        return item(sourceRecordId, null);
+    }
+
+    private ProductImportItem item(String sourceRecordId, String sourceReviewReason) {
         return new ProductImportItem(
-                "Sample Tea", "Sample Brand", null, null, null, null,
-                null, "Black tea", "Beverages", "Tea, Coffee & Cocoa",
-                null, null, sourceRecordId, null);
+                "Sample Chips", "Sample Brand", null, null, null, null,
+                null, null, "SNACKS", "CHIPS", null, null,
+                sourceRecordId, null, metadata(), sourceRecordId, sourceReviewReason);
     }
 }

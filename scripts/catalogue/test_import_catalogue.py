@@ -1,120 +1,182 @@
 import csv
+import json
 import tempfile
 import unittest
+from argparse import Namespace
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from import_catalogue import load_bigbasket_csv, normalize_row, run
+from import_catalogue import (
+    DOI, EXPECTED_HEADERS, SOURCE_LICENSE, SOURCE_NAME,
+    load_mendeley_csv, run, validate_api_url,
+)
+
+ROW_COUNT = 852
 
 
-class BigBasketImportTests(unittest.TestCase):
-    def row(self, **overrides):
-        value = {
-            "index": "19",
-            "product": "Fresho Bhendi",
-            "category": "Fruits & Vegetables",
-            "sub_category": "Fresh Vegetables",
-            "brand": "Fresho",
-            "type": "Regular",
-            "description": "Fresh okra",
-            "sale_price": "48.00",
-            "market_price": "59.00",
-            "rating": "4.2",
-        }
-        value.update(overrides)
-        return value
-
-    def test_bigbasket_row_imports_only_catalogue_identity_fields(self):
-        item = normalize_row(self.row(), 2)
-
-        self.assertEqual(item["name"], "Fresho Bhendi")
-        self.assertEqual(item["brand"], "Fresho")
-        self.assertEqual(item["category"], "Fruits & Vegetables")
-        self.assertEqual(item["subcategory"], "Fresh Vegetables")
-        self.assertEqual(item["variantGroupKey"], "Regular")
-        self.assertEqual(item["description"], "Fresh okra")
-        self.assertTrue(item["sourceRecordId"].startswith("bigbasket:"))
-        self.assertIsNone(item["barcode"])
-        self.assertIsNone(item["packSize"])
-        self.assertIsNone(item["mrp"])
-        self.assertNotIn("imageUrl", item)
-        self.assertNotIn("sale_price", item)
-        self.assertNotIn("market_price", item)
-        self.assertNotIn("rating", item)
-
-    def test_row_without_bigbasket_index_gets_stable_hash_record_id(self):
-        row = self.row()
-        row.pop("index")
-        first = normalize_row(row, 2)
-        second = normalize_row(row, 99)
-        self.assertEqual(first["sourceRecordId"], second["sourceRecordId"])
-
-    def test_csv_loader_counts_duplicates_and_missing_names(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "BigBasket.csv"
-            fields = [
-                "index", "product", "category", "sub_category",
-                "brand", "type", "description", "sale_price",
-                "market_price", "rating",
-            ]
-            with path.open("w", encoding="utf-8", newline="") as handle:
-                writer = csv.DictWriter(handle, fieldnames=fields)
-                writer.writeheader()
-                writer.writerow(self.row())
-                writer.writerow(self.row())
-                writer.writerow(self.row(index="20", product=""))
-            rows, stats = load_bigbasket_csv(path)
-
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(stats, {
-            "received": 3,
-            "eligible": 1,
-            "skipped_missing_name": 1,
-            "duplicate_source_rows": 1,
+class MendeleyImportTests(unittest.TestCase):
+    def source_row(self, row_id, **overrides):
+        row = {field: "" for field in EXPECTED_HEADERS}
+        row.update({
+            "S.No": str(row_id),
+            "Item name": f"Sample Food {row_id}",
+            "Brand_Name": "SAMPLE BRAND",
+            "Category": "SNACKS",
+            "Sub_Category": "CHIPS",
+            "Ingredients": "Potato, oil, salt",
+            "Serving_Size_g": "100.0",
+            "Calories_kcal": "450.0",
+            "Carbohydrates_g": "50.0",
+            "Proteins_g": "5.0",
+            "Total_Fat_g": "20.0",
+            "Saturated_Fat_g": "5.0",
+            "Trans_Fat_g": "0.1",
+            "Sugar_g": "2.0",
+            "Sodium_mg": "350.0",
+            "Dietary_Fiber_g": "4.0",
+            "Cholesterol_mg": "0",
+            "Calcium_mg": "20.0",
+            "Vitamin": "",
+            "Iron_mg": "1.0",
+            "Price_INR": "50.0",
+            "Source_of_Data": "",
+            "Collection_Date": "",
+            "Collected_By": "",
+            "Remarks": "",
         })
+        row.update(overrides)
+        return row
+
+    def make_csv(self, folder, rows=None, headers=EXPECTED_HEADERS):
+        path = Path(folder) / "packaged_foods_india.csv"
+        rows = rows if rows is not None else [
+            self.source_row(i) for i in range(1, ROW_COUNT + 1)
+        ]
+        with path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows([
+                {key: value for key, value in row.items() if key in headers}
+                for row in rows
+            ])
+        return path
 
     def args(self, path, **overrides):
         values = {
             "file": path,
             "api_url": "http://localhost:8080",
-            "source_url": "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
-            "permission_reference": None,
-            "permission_confirmed": False,
             "limit": 0,
-            "batch_size": 250,
+            "batch_size": 100,
+            "license_confirmed": False,
+            "commercial_use_confirmed": False,
+            "permission_reference": DOI,
             "apply": False,
         }
         values.update(overrides)
-        from argparse import Namespace
         return Namespace(**values)
 
-    def make_csv(self, folder):
-        path = Path(folder) / "BigBasket.csv"
-        fields = list(self.row().keys())
-        with path.open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=fields)
-            writer.writeheader()
-            writer.writerow(self.row())
-        return path
+    def test_maps_catalogue_identity_and_preserves_raw_source_values(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0].update({
+                "Serving_Size_g": "100",
+                "Price_INR": "39.00",
+                "Ingredients": "Potato, salt",
+            })
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
 
-    def test_dry_run_never_calls_api_or_needs_a_permission_reference(self):
+        item = records[0]
+        self.assertEqual(item["name"], "Sample Food 1")
+        self.assertEqual(item["brand"], "SAMPLE BRAND")
+        self.assertEqual(item["category"], "SNACKS")
+        self.assertEqual(item["subcategory"], "CHIPS")
+        self.assertEqual(item["sourceRecordId"], "mendeley-ipf-2026-v1:0001")
+        self.assertEqual(item["identityDiscriminator"], item["sourceRecordId"])
+        self.assertIsNone(item["barcode"])
+        self.assertIsNone(item["packSize"])
+        self.assertIsNone(item["netQuantity"])
+        self.assertIsNone(item["mrp"])
+        self.assertIsNone(item["description"])
+        self.assertEqual(stats["eligible"], ROW_COUNT)
+
+        metadata = json.loads(item["sourceMetadataJson"])
+        self.assertEqual(metadata["sourceValues"]["Ingredients"], "Potato, salt")
+        self.assertEqual(metadata["sourceValues"]["Price_INR"], "39.00")
+        self.assertEqual(metadata["dataset"]["doi"], DOI)
+        self.assertIn("not current shop price", metadata["fieldHandling"]["Price_INR"])
+        self.assertIn("not retail pack size", metadata["fieldHandling"]["Serving_Size_g"])
+
+    def test_repeated_name_brand_rows_are_kept_separate_and_flagged(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0]["Item name"] = rows[1]["Item name"] = "Duplicate Product"
+            rows[0]["Brand_Name"] = rows[1]["Brand_Name"] = "SAME BRAND"
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
+
+        self.assertEqual(stats["duplicate_identity_groups"], 1)
+        self.assertEqual(stats["duplicate_identity_rows"], 2)
+        self.assertIn("Repeated item name and brand", records[0]["sourceReviewReason"])
+        self.assertIn("Repeated item name and brand", records[1]["sourceReviewReason"])
+        self.assertNotEqual(records[0]["sourceRecordId"], records[1]["sourceRecordId"])
+
+    def test_less_than_values_preserved_and_malformed_values_flagged(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0]["Trans_Fat_g"] = "<0.1"
+            rows[1]["Proteins_g"] = "5.928.8"
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
+
+        self.assertEqual(stats["rows_with_less_than_values"], 1)
+        self.assertEqual(stats["rows_with_malformed_numeric_values"], 1)
+        values = json.loads(records[0]["sourceMetadataJson"])["sourceValues"]
+        self.assertEqual(values["Trans_Fat_g"], "<0.1")
+        self.assertIn("Malformed numeric source value", records[1]["sourceReviewReason"])
+
+    def test_preserves_suspect_source_taxonomy_and_flags_it_for_review(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0]["Category"] = "ICEREAMES"
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
+
+        self.assertEqual(records[0]["category"], "ICEREAMES")
+        self.assertIn("appears misspelled", records[0]["sourceReviewReason"])
+
+    def test_rejects_schema_that_differs_from_readme(self):
+        with tempfile.TemporaryDirectory() as folder:
+            headers = tuple(field for field in EXPECTED_HEADERS if field != "Brand_Name")
+            path = self.make_csv(folder, headers=headers)
+            with self.assertRaisesRegex(ValueError, "does not match supplied README"):
+                load_mendeley_csv(path)
+
+    def test_rejects_duplicate_source_row_ids(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[1]["S.No"] = "1"
+            path = self.make_csv(folder, rows)
+            with self.assertRaisesRegex(ValueError, "S.No contains duplicates"):
+                load_mendeley_csv(path)
+
+    def test_dry_run_never_calls_api(self):
         with tempfile.TemporaryDirectory() as folder:
             path = self.make_csv(folder)
             session = Mock()
             result = run(self.args(path), session=session)
-
         self.assertEqual(result, 0)
         session.post.assert_not_called()
 
-    def test_apply_is_blocked_without_explicit_permission_confirmation(self):
+    def test_apply_requires_explicit_licence_and_commercial_scope_confirmation(self):
         with tempfile.TemporaryDirectory() as folder:
             path = self.make_csv(folder)
-            with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
-                result = run(self.args(path, apply=True), session=Mock())
-
+            session = Mock()
+            result = run(self.args(path, apply=True), session=session)
         self.assertEqual(result, 2)
+        session.post.assert_not_called()
 
-    def test_apply_posts_only_bigbasket_identity_fields_and_permission_evidence(self):
+    def test_apply_sends_mendeley_provenance_and_never_sets_retail_facts(self):
         with tempfile.TemporaryDirectory() as folder:
             path = self.make_csv(folder)
             session = Mock()
@@ -124,29 +186,30 @@ class BigBasketImportTests(unittest.TestCase):
             }
             response.raise_for_status.return_value = None
             session.post.return_value = response
-            args = self.args(
-                path,
-                apply=True,
-                permission_reference="SUPPLIER-GRANT-2026-01",
-                permission_confirmed=True,
-            )
             with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
-                result = run(args, session=session)
+                result = run(self.args(
+                    path, apply=True, license_confirmed=True,
+                    commercial_use_confirmed=True,
+                ), session=session)
 
         self.assertEqual(result, 0)
         payload = session.post.call_args.kwargs["json"]
-        self.assertEqual(payload["sourceName"], "BigBasket authorised dataset")
-        self.assertEqual(payload["sourceLicense"], "BIGBASKET-WRITTEN-PERMISSION")
+        self.assertEqual(payload["sourceName"], SOURCE_NAME)
+        self.assertEqual(payload["sourceLicense"], SOURCE_LICENSE)
+        self.assertEqual(payload["sourceUrl"], "https://data.mendeley.com/datasets/rhswn9z9xr/1")
         self.assertTrue(payload["reuseRightsVerified"])
         self.assertTrue(payload["commercialUsePermitted"])
-        self.assertEqual(payload["permissionReference"], "SUPPLIER-GRANT-2026-01")
-        self.assertIn("Commercial use: authorised", payload["attribution"])
-        self.assertIn("Permission reference: SUPPLIER-GRANT-2026-01", payload["attribution"])
-        product = payload["products"][0]
-        self.assertIsNone(product["barcode"])
-        self.assertIsNone(product["packSize"])
-        self.assertIsNone(product["mrp"])
-        self.assertNotIn("imageUrl", product)
+        item = payload["products"][0]
+        self.assertIsNone(item["mrp"])
+        self.assertIsNone(item["packSize"])
+        self.assertIsNone(item["barcode"])
+        self.assertNotIn("imageUrl", item)
+        self.assertTrue(item["sourceMetadataJson"].startswith("{"))
+
+    def test_api_url_requires_https_except_localhost(self):
+        self.assertEqual(validate_api_url("http://localhost:8080/"), "http://localhost:8080")
+        with self.assertRaises(ValueError):
+            validate_api_url("http://api.example.com")
 
 
 if __name__ == "__main__":

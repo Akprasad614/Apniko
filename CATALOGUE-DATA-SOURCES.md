@@ -1,67 +1,77 @@
 # Apniko master catalogue — source policy
 
-## Current state: empty and no active source
+## Current state: empty catalogue, one inspected Phase 2 source
 
 The reset development catalogue is intended to contain **zero master products,
 zero product photos, zero product-photo candidates, zero source records and
 zero seeded product categories** until a reviewed source is deliberately
 approved and imported.
 
-Open Food Facts and its related catalogues are excluded. BigBasket is also
+Open Food Facts and all related catalogues are excluded. BigBasket is also
 excluded; do not use its website, product listings, Kaggle copy, undocumented
-APIs or product images as an Apniko source. No external dataset is currently
-approved or imported.
+APIs or product images as an Apniko source.
 
-## Proposed Phase 2 seed dataset — not yet activated
+## Selected Phase 2 seed — Mendeley packaged foods
 
-The proposed first data source for Phase 2 is
+The selected first seed is
 [Indian Packaged Foods Nutritional Composition Dataset (2026)](https://data.mendeley.com/datasets/rhswn9z9xr/1),
 Mendeley Data, DOI [10.17632/rhswn9z9xr.1](https://doi.org/10.17632/rhswn9z9xr.1),
-Version 1.
+Version 1. The supplied README states CC BY 4.0 and describes 852 records
+across 25 variables.
 
-The repository landing page identifies a CC BY 4.0 licence and describes
-852 packaged-food records. This is a candidate packaged-food seed, not a
-complete grocery catalogue and not an image feed. Before implementation, the
-actual downloaded CSV and README must be inspected to confirm the exact
-headers, row count, data types, provenance notes, attribution requirements
-and any content excluded from the dataset licence. Preserve the source
-citation and record all normalization or other changes. Do not imply that
-Mendeley or the dataset contributors endorse Apniko.
+The exact supplied CSV was inspected: 852 rows, 25 expected headers,
+UTF-8, SHA-256
+`f64832743d4918c428aab31fb8a3681cd2dee89f3c5f305185ec0edfabe8f303`.
+The duplicate upload was byte-identical. This is an Indian packaged-food
+seed only, not a complete grocery catalogue and not an image feed.
 
-No Phase 2 import has been applied. Until the source files have been inspected
-and a tested importer is approved, the dataset must remain outside the
-application database.
+The README does not specify whether nutrition values are per serving or per
+100 g. It also contains malformed numeric tokens, less-than values, repeated
+product/brand identities, a likely misspelled category label and sparse
+collection-source/date metadata. See `PHASE-2-DATASET-INSPECTION.md`.
 
 ## Field and data-quality boundaries
 
-- Import only source fields that are present and understood in the inspected
-  file. Retain source row identifiers and dataset/version provenance where
-  available.
-- Do not invent GTINs, barcodes, pack sizes, variants, product photographs,
-  MRP, current shop prices, ratings or stock.
-- A nutritional serving size is not automatically the retail pack size.
-- Any dataset price is not a current shop-specific selling price or a verified
-  current MRP. Shopkeepers set their own selling price and stock.
-- Do not turn missing data into guesses. Send ambiguous or low-quality rows
-  to admin review rather than silently promoting them.
+- Map only source fields that are present and understood.
+- Product name, brand, category and sub-category are mapped to the product
+  model. Ingredients and all nutrition/source values are retained as raw
+  source metadata, not published as verified facts.
+- Retain the original source row ID, dataset DOI/version, CSV hash, licence
+  and attribution.
+- A nutritional serving size is not the retail pack size.
+- Never invent GTINs, barcodes, pack sizes, variants, MRP, product photos or
+  other missing facts.
+- Dataset `Price_INR` is an observed source value only; it is not the current
+  shop selling price or verified MRP.
+- Do not convert less-than tokens, comma decimals or malformed values to
+  numeric values by guessing.
+- Repeated item-name + brand rows are kept separate by source row ID and
+  marked for administrator review instead of being merged.
+- Unclassified or questionable source taxonomy values remain visible in
+  admin review; do not silently rewrite them.
 - A master product does not automatically become inventory at any shop.
 
-## Importer status
+## Importer
 
-The existing BigBasket-specific CLI importer and backend source validation
-are legacy implementation, not an approved source path. Do not run that
-importer or submit BigBasket records. Phase 2 must replace the source-specific
-mapping and validation with a Mendeley-file importer only after the actual
-CSV and README have been inspected. The new importer must default to dry-run,
-validate and deduplicate rows, retain attribution/provenance, and require
-admin review before customer visibility.
+`scripts/catalogue/import_catalogue.py` is now the Mendeley version-1
+file-based importer. It does not download the dataset. Dry-run is the
+default; the exact schema and 852-row count are required. The backend source
+gate accepts only the Mendeley dataset URL and CC-BY-4.0 source identifier.
+
+Applying is blocked unless an administrator token is present and the
+operator explicitly confirms both the CC BY 4.0 licence and that the licence
+covers Apniko's intended commercial use. Do not import without that check.
+The source metadata is retained privately in the catalogue source-record
+table.
+
+No products have been imported. The development catalogue remains empty.
 
 ## Product images
 
-The proposed Mendeley dataset is not a product-image source. Products remain
-text-first and use the neutral no-photo state. No Open Food Facts or BigBasket
-images, retailer scraping, stock placeholders or generated package imagery
-may be used. Any future manufacturer/supplier photograph requires separate
+The Mendeley dataset is not a product-image source. Products remain
+text-first with a neutral no-photo state. Do not use Open Food Facts or
+BigBasket images, retailer scraping, stock placeholders or generated package
+imagery. Any future manufacturer/supplier photograph requires separate
 written rights for Apniko's intended use, exact product/variant matching and
 administrator approval. See `PRODUCT-PHOTOS.md`.
 
@@ -70,6 +80,6 @@ administrator approval. See `PRODUCT-PHOTOS.md`.
 The backup-first reset helper is
 `scripts/catalogue/reset-local-catalogue.sh`. It is a local-only operation
 and must not be pointed at production or a remote database. The project owner
-ran it on 2026-11-22 and reported a full SQL backup plus zero catalogue/order
-verification counts. Do not rerun the destructive reset merely to verify this
-record; confirm the existing backup file instead.
+ran it on 2026-11-22 and verified that the existing SQL backup is present and
+non-empty. The reset counters were reported as zero. Do not rerun the
+destructive reset to verify this.

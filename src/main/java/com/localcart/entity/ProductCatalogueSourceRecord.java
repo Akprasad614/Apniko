@@ -56,6 +56,10 @@ public class ProductCatalogueSourceRecord {
     @Column(name = "imported_at", nullable = false)
     private Instant importedAt;
 
+    // Raw Mendeley row metadata is retained for provenance/review, not exposed as shop price or customer nutrition facts.
+    @Column(name = "source_metadata_json", columnDefinition = "TEXT")
+    private String sourceMetadataJson;
+
     public ProductCatalogueSourceRecord() {
     }
 
@@ -86,4 +90,6 @@ public class ProductCatalogueSourceRecord {
     public void setReportedMrpSource(String reportedMrpSource) { this.reportedMrpSource = reportedMrpSource; }
     public Instant getImportedAt() { return importedAt; }
     public void setImportedAt(Instant importedAt) { this.importedAt = importedAt; }
+    public String getSourceMetadataJson() { return sourceMetadataJson; }
+    public void setSourceMetadataJson(String sourceMetadataJson) { this.sourceMetadataJson = sourceMetadataJson; }
 }

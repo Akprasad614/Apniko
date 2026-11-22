@@ -1,5 +1,8 @@
 package com.localcart.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.localcart.dto.ProductImportBatchRequest;
 import com.localcart.dto.ProductImportBatchResponse;
 import com.localcart.dto.ProductImportItem;
@@ -30,24 +33,29 @@ import java.util.*;
 public class ProductCatalogImportService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductCatalogImportService.class);
-    private static final String BIGBASKET_SOURCE = "BigBasket authorised dataset";
-    private static final String BIGBASKET_PERMISSION = "BIGBASKET-WRITTEN-PERMISSION";
+    private static final String MENDELEY_SOURCE = "Mendeley Indian Packaged Foods Dataset (2026)";
+    private static final String MENDELEY_LICENSE = "CC-BY-4.0";
+    private static final String MENDELEY_URL = "https://data.mendeley.com/datasets/rhswn9z9xr/1";
+    private static final String MENDELEY_DOI = "10.17632/rhswn9z9xr.1";
     private static final Set<String> SUPPORTED_MRP_SOURCES = Set.of("pack", "brand", "gov");
 
     private final ProductRepository productRepository;
     private final ProductCategoryRepository categoryRepository;
     private final ProductCatalogueSourceRecordRepository sourceRecordRepository;
     private final ProductCatalogueQualityService catalogueQualityService;
+    private final ObjectMapper objectMapper;
 
     public ProductCatalogImportService(
             ProductRepository productRepository,
             ProductCategoryRepository categoryRepository,
             ProductCatalogueSourceRecordRepository sourceRecordRepository,
-            ProductCatalogueQualityService catalogueQualityService) {
+            ProductCatalogueQualityService catalogueQualityService,
+            ObjectMapper objectMapper) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.sourceRecordRepository = sourceRecordRepository;
         this.catalogueQualityService = catalogueQualityService;
+        this.objectMapper = objectMapper;
     }
 
     public ProductImportBatchResponse importBatch(ProductImportBatchRequest request) {
@@ -108,6 +116,7 @@ public class ProductCatalogImportService {
                 sourceRecord.setSourceModifiedAt(item.sourceModifiedAt());
                 sourceRecord.setReportedMrp(item.mrp());
                 sourceRecord.setReportedMrpSource(normalizeMrpSource(item.mrpSource()));
+                sourceRecord.setSourceMetadataJson(item.sourceMetadataJson());
                 sourceRecord.setImportedAt(Instant.now());
 
                 if (changed || created) {
@@ -124,7 +133,7 @@ public class ProductCatalogImportService {
                     unchanged++;
                 }
             } catch (IllegalArgumentException | IllegalStateException exception) {
-                LOGGER.warn("Rejected BigBasket catalogue row {}: {}", index + 1, exception.getMessage());
+                LOGGER.warn("Rejected Mendeley catalogue row {}: {}", index + 1, exception.getMessage());
                 errors.add("Row " + (index + 1) + ": " + exception.getMessage());
             }
         }
@@ -142,42 +151,43 @@ public class ProductCatalogImportService {
         if (request.products().size() > 500) {
             throw new BadRequestException("Import batches cannot exceed 500 products");
         }
+
         URI uri;
         try {
             uri = URI.create(request.sourceUrl().trim());
         } catch (RuntimeException exception) {
-            throw new BadRequestException("Source URL must be a valid HTTPS URL");
+            throw new BadRequestException("Source URL must be the approved Mendeley dataset URL");
         }
-        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
-        String path = uri.getPath() == null ? "" : uri.getPath();
-        String expectedPath = "/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints";
-        boolean kaggleDataset = (host.equals("www.kaggle.com") || host.equals("kaggle.com"))
-                && (path.equals(expectedPath) || path.equals(expectedPath + "/"));
-        boolean officialBigBasketRoot = (host.equals("www.bigbasket.com") || host.equals("bigbasket.com"))
-                && (path.isEmpty() || path.equals("/"));
-        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getUserInfo() != null
-                || (uri.getPort() != -1 && uri.getPort() != 443)
-                || uri.getQuery() != null || uri.getFragment() != null
-                || (!kaggleDataset && !officialBigBasketRoot)) {
-            throw new BadRequestException("Source URL must be the approved BigBasket dataset page or official BigBasket source");
+        boolean approvedMendeleyUrl = "https".equalsIgnoreCase(uri.getScheme())
+                && "data.mendeley.com".equalsIgnoreCase(uri.getHost())
+                && "/datasets/rhswn9z9xr/1".equals(uri.getPath())
+                && uri.getUserInfo() == null
+                && (uri.getPort() == -1 || uri.getPort() == 443)
+                && uri.getQuery() == null
+                && uri.getFragment() == null;
+        if (!approvedMendeleyUrl || !MENDELEY_URL.equals(request.sourceUrl().trim())) {
+            throw new BadRequestException("Only the approved Mendeley dataset version 1 URL is accepted");
         }
-        if (!BIGBASKET_SOURCE.equals(request.sourceName().trim())
-                || !BIGBASKET_PERMISSION.equals(request.sourceLicense().trim())) {
-            throw new BadRequestException("Only the permission-gated BigBasket dataset source is accepted");
+        if (!MENDELEY_SOURCE.equals(request.sourceName().trim())
+                || !MENDELEY_LICENSE.equals(request.sourceLicense().trim())) {
+            throw new BadRequestException("Only the Mendeley Indian Packaged Foods dataset under CC-BY-4.0 is accepted");
         }
         if (!Boolean.TRUE.equals(request.reuseRightsVerified())
                 || !Boolean.TRUE.equals(request.commercialUsePermitted())) {
-            LOGGER.warn("Blocked BigBasket catalogue import because commercial reuse rights were not verified");
+            LOGGER.warn("Blocked Mendeley catalogue import because CC BY 4.0 reuse scope was not confirmed");
             throw new AccessDeniedException(
-                    "Commercial import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
+                    "Import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
         }
+
         String permissionReference = requiredText(request.permissionReference(), "permissionReference", 500);
         String attribution = requiredText(request.attribution(), "attribution", 500);
         String normalizedAttribution = attribution.toLowerCase(Locale.ROOT);
-        if (!normalizedAttribution.contains("commercial use: authorised")
-                || !normalizedAttribution.contains("permission reference: "
-                        + permissionReference.toLowerCase(Locale.ROOT))) {
-            throw new BadRequestException("Attribution must state authorised commercial use and include the exact written permission reference");
+        if (!MENDELEY_DOI.equalsIgnoreCase(permissionReference)
+                || !normalizedAttribution.contains(MENDELEY_DOI)
+                || !normalizedAttribution.contains("cc by 4.0")
+                || !normalizedAttribution.contains("apniko modifications")) {
+            throw new BadRequestException(
+                    "Attribution must retain the dataset DOI, CC BY 4.0 and disclose Apniko modifications");
         }
     }
 
@@ -192,17 +202,31 @@ public class ProductCatalogImportService {
                 || item.mrp() != null
                 || (item.mrpSource() != null && !item.mrpSource().isBlank())) {
             throw new IllegalArgumentException(
-                    "BigBasket reference rows must not include unverified barcode, pack-size, quantity or price fields");
+                    "Mendeley reference rows must not populate unverified barcode, retail pack-size, quantity or price fields");
         }
         requiredText(item.name(), "name", 120);
         requiredText(item.category(), "category", 80);
         requiredText(item.subcategory(), "subcategory", 100);
-        requiredText(item.sourceRecordId(), "sourceRecordId", 160);
+        String sourceRecordId = requiredText(item.sourceRecordId(), "sourceRecordId", 160);
+        String identityDiscriminator = requiredText(item.identityDiscriminator(), "identityDiscriminator", 160);
+        if (!sourceRecordId.equals(identityDiscriminator)) {
+            throw new IllegalArgumentException("identityDiscriminator must match the stable Mendeley source row ID");
+        }
+        requiredText(item.sourceMetadataJson(), "sourceMetadataJson", 8000);
         optionalText(item.brand(), "brand", 100);
         optionalText(item.packSize(), "packSize", 80);
         optionalText(item.netQuantityUnit(), "netQuantityUnit", 20);
         optionalText(item.variantGroupKey(), "variantGroupKey", 120);
         optionalText(item.description(), "description", 1000);
+        optionalText(item.sourceReviewReason(), "sourceReviewReason", 500);
+        try {
+            JsonNode metadata = objectMapper.readTree(item.sourceMetadataJson());
+            if (metadata == null || !metadata.isObject()) {
+                throw new IllegalArgumentException("sourceMetadataJson must be a JSON object");
+            }
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("sourceMetadataJson must contain valid JSON");
+        }
 
         if (item.netQuantity() != null
                 && (item.netQuantity().signum() <= 0
@@ -328,7 +352,11 @@ public class ProductCatalogImportService {
         if (product.getCatalogueReviewedAt() == null
                 && (authoritative || product.getCatalogueReviewStatus() == null)) {
             ProductCatalogueQualityService.Assessment assessment =
-                    catalogueQualityService.assess(product);
+                    item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()
+                            ? new ProductCatalogueQualityService.Assessment(
+                                    ProductCatalogueReviewStatus.NEEDS_REVIEW,
+                                    item.sourceReviewReason().trim())
+                            : catalogueQualityService.assess(product);
             ProductCatalogueReviewStatus nextStatus = assessment.status();
             if (product.getCatalogueReviewStatus() != nextStatus) {
                 product.setCatalogueReviewStatus(nextStatus);
@@ -375,8 +403,8 @@ public class ProductCatalogImportService {
     private String identityKey(ProductImportItem item, String barcode) {
         String identity = barcode != null
                 ? "gtin|" + barcode
-                : String.join("|", normalized(item.brand()), normalized(item.name()),
-                    normalized(item.packSize()), normalized(item.variantGroupKey()));
+                : String.join("|", "source-record", normalized(item.sourceRecordId()),
+                    normalized(item.identityDiscriminator()));
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(identity.getBytes(StandardCharsets.UTF_8));
