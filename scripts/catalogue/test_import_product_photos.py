@@ -165,6 +165,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         ):
             payload = {"product": {
                 "code": BARCODE,
+            "countries_tags": ["en:india"],
                 "brands": source_brand,
                 "quantity": source_pack,
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
@@ -178,12 +179,14 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }
         wrong_brand = {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "brands": "Different Brand",
             "quantity": "1 kg",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
         }}
         wrong_pack = {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "brands": "Sample Brand",
             "quantity": "500 g",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
@@ -201,7 +204,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         def candidate_for(local_brand, source_brand):
             item = {"barcode": BARCODE, "name": "Grocery", "brand": local_brand, "packSize": "200 ml"}
             payload = {"product": {
-                "code": BARCODE, "product_name": "Grocery pack",
+                "code": BARCODE,
+            "countries_tags": ["en:india"], "product_name": "Grocery pack",
                 "brands": source_brand, "quantity": "200ml",
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
             }}
@@ -216,7 +220,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         def candidate_for(local_pack, source_pack):
             item = {"barcode": BARCODE, "name": "Grocery", "brand": "Sample Brand", "packSize": local_pack}
             payload = {"product": {
-                "code": BARCODE, "product_name": "Grocery pack", "brands": "Sample Brand", "quantity": source_pack,
+                "code": BARCODE,
+            "countries_tags": ["en:india"], "product_name": "Grocery pack", "brands": "Sample Brand", "quantity": source_pack,
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
             }}
             return find_candidate(item, payload, API_URL)
@@ -243,6 +248,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }
         payload = {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "brands": "Sample Brand",
             "quantity": "1 kg",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
@@ -260,7 +266,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }
         self.assertIsNone(find_candidate(
             item, {"product": {
-                "code": BARCODE, "brands": "Sample Brand", "quantity": "1 kg",
+                "code": BARCODE,
+            "countries_tags": ["en:india"], "brands": "Sample Brand", "quantity": "1 kg",
                 "selected_images": {},
             }}, API_URL))
 
@@ -277,6 +284,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
         found = FakeResponse(200, {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "product_name": "Selected grocery",
             "brands": "Sample Brand",
             "quantity": "1 kg",
@@ -354,6 +362,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
         found = FakeResponse(200, {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "product_name": "Grocery pack",
             "brands": "Sample Brand",
             "quantity": "1 kg",
@@ -364,7 +373,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
             "http://localhost:8080/api/admin/catalogue/products/42/photo-candidate",
         )
         session = Mock()
-        session.get.side_effect = [targets, found]
+        session.get.side_effect = [targets, found, valid_image_response()]
         session.post.return_value = conflict
         args = argparse.Namespace(
             api_url="http://localhost:8080",
@@ -399,6 +408,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         )
         found = FakeResponse(200, {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "product_name": "Grocery pack",
             "brands": "Sample Brand",
             "quantity": "1 kg",
