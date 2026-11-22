@@ -54,7 +54,7 @@ class ProductPhotoServiceTest {
 
         assertEquals(ProductImageReviewStatus.PENDING, result.status());
         assertNull(result.approvedImageUrl());
-        assertEquals(IMAGE, result.candidateImageUrl());
+        assertEquals(BRAND_IMAGE, result.candidateImageUrl());
         assertEquals("Test Brand", result.sourceProductBrand());
         assertEquals("1 kg", result.sourcePackSize());
         assertNull(result.authorizationReference());
