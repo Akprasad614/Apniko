@@ -9,9 +9,11 @@ import sys
 import time
 import unicodedata
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlparse
+from io import BytesIO
+from urllib.parse import urlparse, urlunparse
 
 import requests
+from PIL import Image, ImageFilter, ImageOps, ImageStat, UnidentifiedImageError
 
 API_URL = "https://world.openfoodfacts.org/api/v3/product/{barcode}.json"
 LICENSE = "CC BY-SA"
@@ -22,6 +24,137 @@ SOURCES = {
     "world.openproductsfacts.org": "Open Products Facts",
 }
 IMAGE_HOSTS = {"images." + host.removeprefix("world.") for host in SOURCES}
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+MAX_IMAGE_BYTES = 12 * 1024 * 1024
+MIN_IMAGE_SIDE = 600
+PHOTO_POLICY_VERSION = "india-market-clean-background-v2"
+
+
+def get_with_retries(
+    session: requests.Session,
+    url: str,
+    *,
+    max_retries: int = 3,
+    **kwargs,
+) -> requests.Response:
+    """Retry temporary network/5xx failures without hiding persistent errors."""
+    last_response = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = session.get(url, **kwargs)
+        except (requests.Timeout, requests.ConnectionError):
+            if attempt >= max_retries:
+                raise
+            time.sleep(min(2 ** attempt, 30))
+            continue
+
+        if response.status_code not in RETRYABLE_STATUS_CODES:
+            return response
+        last_response = response
+        if attempt >= max_retries:
+            return response
+
+        retry_after = response.headers.get("Retry-After") if hasattr(response, "headers") else None
+        try:
+            wait_seconds = float(retry_after) if retry_after else float(2 ** attempt)
+        except (TypeError, ValueError):
+            wait_seconds = float(2 ** attempt)
+        time.sleep(min(max(wait_seconds, 1.0), 60.0))
+
+    if last_response is not None:
+        return last_response
+    raise requests.RequestException("Request failed after retry policy was exhausted")
+
+
+def _corner_is_clean_background(image: Image.Image, corner: str) -> bool:
+    width, height = image.size
+    patch_width = max(8, int(width * 0.05))
+    patch_height = max(8, int(height * 0.05))
+    boxes = {
+        "top-left": (0, 0, patch_width, patch_height),
+        "top-right": (width - patch_width, 0, width, patch_height),
+        "bottom-left": (0, height - patch_height, patch_width, height),
+        "bottom-right": (width - patch_width, height - patch_height, width, height),
+    }
+    patch = image.crop(boxes[corner]).resize((32, 32)).convert("RGBA")
+    pixels = list(patch.getdata())
+    transparent = sum(1 for r, g, b, a in pixels if a <= 16) / len(pixels)
+    if transparent >= 0.85:
+        return True
+    neutral_white = sum(
+        1 for r, g, b, a in pixels
+        if a >= 240 and min(r, g, b) >= 228 and max(r, g, b) - min(r, g, b) <= 28
+    ) / len(pixels)
+    return neutral_white >= 0.85
+
+
+def inspect_image_quality(
+    session: requests.Session,
+    image_url: str,
+    barcode: str,
+    *,
+    max_retries: int = 3,
+) -> tuple[dict | None, str | None]:
+    """Conservatively screen the actual image bytes before it enters moderation.
+
+    This is a basic technical/background gate, not a substitute for human review.
+    """
+    if not safe_image_url(image_url, barcode):
+        return None, "image URL is not an HTTPS image for the matching barcode"
+
+    response = get_with_retries(
+        session,
+        image_url,
+        headers={"User-Agent": "ApnikoProductPhotoImporter/2.0", "Accept": "image/jpeg,image/png,image/webp"},
+        timeout=(5, 30),
+        max_retries=max_retries,
+    )
+    if response.status_code == 404:
+        return None, "full-size image is unavailable"
+    response.raise_for_status()
+
+    content_type = str(response.headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
+    if content_type not in {"image/jpeg", "image/png", "image/webp"}:
+        return None, f"unsupported image content type: {content_type or 'missing'}"
+    content = response.content
+    if not content:
+        return None, "image response is empty"
+    if len(content) > MAX_IMAGE_BYTES:
+        return None, "image exceeds the 12 MB safety limit"
+
+    try:
+        with Image.open(BytesIO(content)) as opened:
+            opened.verify()
+        with Image.open(BytesIO(content)) as opened:
+            image = ImageOps.exif_transpose(opened).convert("RGBA")
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        return None, "image bytes are invalid or unsafe to decode"
+
+    width, height = image.size
+    if min(width, height) < MIN_IMAGE_SIDE:
+        return None, f"image resolution is too small ({width}x{height}; minimum short side {MIN_IMAGE_SIDE}px)"
+
+    clean_corners = sum(
+        1 for corner in ("top-left", "top-right", "bottom-left", "bottom-right")
+        if _corner_is_clean_background(image, corner)
+    )
+    if clean_corners < 3:
+        return None, f"background is not sufficiently clean/neutral ({clean_corners}/4 clean corners)"
+
+    preview = image.convert("RGB")
+    preview.thumbnail((256, 256))
+    edges = preview.convert("L").filter(ImageFilter.FIND_EDGES)
+    sharpness_score = float(ImageStat.Stat(edges).var[0])
+    if sharpness_score < 8.0:
+        return None, f"image appears blurred or lacks detail (edge variance {sharpness_score:.1f})"
+
+    return {
+        "width": width,
+        "height": height,
+        "bytes": len(content),
+        "cleanBackgroundCorners": clean_corners,
+        "sharpnessScore": round(sharpness_score, 1),
+    }, None
 
 
 def safe_image_url(value: str | None, barcode: str) -> bool:
@@ -138,6 +271,19 @@ def explain_candidate(
     if not source_name:
         return None, "source catalogue is not allowlisted"
 
+    country_tags = {
+        str(tag).strip().casefold()
+        for tag in (product.get("countries_tags") or [])
+        if str(tag).strip()
+    }
+    country_names = {
+        re.sub(r"[^a-z]", "", token.casefold())
+        for token in re.split(r"[,;]", str(product.get("countries") or ""))
+        if token.strip()
+    }
+    if "en:india" not in country_tags and "india" not in country_names:
+        return None, "Open Facts does not tag India as a country where this product is sold"
+
     source_brand = str(product.get("brands") or "").split(",")[0].strip()
     source_pack_size = str(product.get("quantity") or "").strip()
     local_brand = str(local_product.get("brand") or "").strip()
@@ -162,10 +308,24 @@ def explain_candidate(
         return None, "source record has no product name"
 
     front = (product.get("selected_images") or {}).get("front") or {}
-    variants = front.get("display") or front.get("small") or {}
+    variants = front.get("full") or front.get("display") or front.get("small") or {}
     image_url = variants.get("en") or next(iter(variants.values()), None)
     if not image_url:
         return None, "source record has no front photograph"
+
+    # Open Food Facts provides a documented .full image variant alongside 100/200/400
+    # pixel derivatives. Prefer a full-size file for Apniko's image-quality checks.
+    if not front.get("full"):
+        parsed_image = urlparse(image_url)
+        full_path = re.sub(
+            r"\.(?:100|200|400)\.(?=(?:jpg|jpeg|png|webp)$)",
+            ".full.",
+            parsed_image.path,
+            flags=re.IGNORECASE,
+        )
+        if full_path != parsed_image.path:
+            image_url = urlunparse(parsed_image._replace(path=full_path))
+
     if not safe_image_url(image_url, barcode):
         return None, "front photograph URL is not on the matching allowlisted image host"
 
@@ -217,6 +377,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--limit", type=int, default=10)
     result.add_argument("--page", type=int, default=0)
     result.add_argument("--delay-seconds", type=float, default=4.1)
+    result.add_argument("--max-retries", type=int, default=3)
     result.add_argument(
         "--product-ids",
         type=parse_product_ids,
@@ -231,8 +392,9 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
     if not token:
         print("Set APNIKO_ADMIN_TOKEN to an active administrator JWT.", file=sys.stderr)
         return 2
-    if not 1 <= args.limit <= 100 or args.page < 0 or args.delay_seconds < 4.0:
-        print("Use --limit 1..100, non-negative --page and --delay-seconds >= 4.", file=sys.stderr)
+    max_retries = getattr(args, "max_retries", 3)
+    if not 1 <= args.limit <= 100 or args.page < 0 or args.delay_seconds < 4.0 or not 0 <= max_retries <= 6:
+        print("Use --limit 1..100, non-negative --page, --delay-seconds >= 4 and --max-retries 0..6.", file=sys.stderr)
         return 2
 
     client = session or requests.Session()
@@ -246,11 +408,13 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
     products: list[dict] = []
     page = args.page
     while len(products) < args.limit:
-        response = client.get(
+        response = get_with_retries(
+            client,
             base + "/api/admin/catalogue/photo-import-targets",
             params={"page": page, "size": min(100, args.limit)},
             headers=headers,
             timeout=(5, 20),
+            max_retries=max_retries,
         )
         response.raise_for_status()
         body = response.json()
@@ -293,11 +457,13 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
         if inspected:
             time.sleep(args.delay_seconds)
         inspected += 1
-        response = client.get(
+        response = get_with_retries(
+            client,
             API_URL.format(barcode=barcode),
-            params={"fields": "code,product_name,brands,quantity,selected_images,photographers_tags", "product_type": "all"},
+            params={"fields": "code,product_name,brands,quantity,countries,countries_tags,selected_images,photographers_tags", "product_type": "all"},
             headers={"User-Agent": user_agent, "Accept": "application/json"},
             timeout=(5, 25),
+            max_retries=max_retries,
         )
         if response.status_code == 404:
             # A catalogue GTIN may not exist in the community-maintained source.
@@ -312,6 +478,13 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
         if not candidate:
             print(f"SKIP {barcode}: {skip_reason}")
             continue
+
+        quality, quality_reason = inspect_image_quality(
+            client, candidate["imageUrl"], barcode, max_retries=max_retries
+        )
+        if not quality:
+            print(f"SKIP {barcode}: image-quality check failed: {quality_reason}")
+            continue
         candidates += 1
         local_name = str(item.get("name") or "(name not listed)")
         local_brand = str(item.get("brand") or "(brand not listed)")
@@ -320,6 +493,12 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
         print(f"  Apniko : {local_name} · {local_brand} · {local_pack}")
         print(f"  Source : {candidate['sourceProductName']} · {candidate['sourceProductBrand']} · {candidate['sourcePackSize']}")
         print(f"  Image  : {candidate['imageUrl']}")
+        print(
+            f"  Quality: {quality['width']}x{quality['height']} px, "
+            f"{quality['bytes']} bytes, {quality['cleanBackgroundCorners']}/4 clean corners, "
+            f"edge variance {quality['sharpnessScore']}"
+        )
+        print("  Market : India country tag present; current availability still needs administrator verification.")
         if args.apply:
             saved = client.post(
                 base + f"/api/admin/catalogue/products/{item['productId']}/photo-candidate",

@@ -2,10 +2,15 @@ import argparse
 import os
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
-from io import StringIO
+from io import BytesIO, StringIO
 from unittest.mock import Mock, patch
 
-from import_product_photos import explain_candidate, find_candidate, parse_product_ids, run, safe_image_url, valid_gtin
+from PIL import Image, ImageDraw
+
+from import_product_photos import (
+    explain_candidate, find_candidate, inspect_image_quality, parse_product_ids,
+    run, safe_image_url, valid_gtin,
+)
 
 
 BARCODE = "8901234567890"
@@ -13,11 +18,34 @@ IMAGE = "https://images.openfoodfacts.org/images/products/890/123/456/7890/front
 API_URL = "https://world.openfoodfacts.org/api/v3/product/" + BARCODE + ".json"
 
 
+def make_valid_image_bytes():
+    image = Image.new("RGB", (640, 640), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((145, 70, 495, 570), fill=(45, 75, 105), outline=(10, 10, 10), width=8)
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG", quality=92)
+    return buffer.getvalue()
+
+
+VALID_IMAGE_BYTES = make_valid_image_bytes()
+FULL_IMAGE = IMAGE.replace(".400.jpg", ".full.jpg")
+
+
+def valid_image_response():
+    return FakeResponse(
+        200, {}, FULL_IMAGE,
+        content=VALID_IMAGE_BYTES,
+        headers={"Content-Type": "image/jpeg"},
+    )
+
+
 class FakeResponse:
-    def __init__(self, status_code, payload, url):
+    def __init__(self, status_code, payload, url, content=b"", headers=None):
         self.status_code = status_code
         self.payload = payload
         self.url = url
+        self.content = content
+        self.headers = headers or {}
 
     def json(self):
         return self.payload
@@ -40,6 +68,62 @@ class ProductPhotoImporterTests(unittest.TestCase):
         self.assertFalse(safe_image_url(IMAGE.replace("images.openfoodfacts.org", "example.com"), BARCODE))
         self.assertFalse(safe_image_url(IMAGE.replace("890/123/456/7890", "111/222/333/4444"), BARCODE))
 
+    def test_candidate_requires_india_in_source_countries(self):
+        item = {
+            "barcode": BARCODE, "name": "Grocery",
+            "brand": "Sample Brand", "packSize": "1 kg",
+        }
+        payload = {"product": {
+            "code": BARCODE,
+            "countries_tags": ["en:united-states"],
+            "product_name": "Grocery pack",
+            "brands": "Sample Brand",
+            "quantity": "1 kg",
+            "selected_images": {"front": {"display": {"en": IMAGE}}},
+        }}
+        candidate, reason = explain_candidate(item, payload, API_URL)
+        self.assertIsNone(candidate)
+        self.assertIn("does not tag India", reason)
+
+    def test_candidate_prefers_full_size_image_variant(self):
+        item = {
+            "barcode": BARCODE, "name": "Grocery",
+            "brand": "Sample Brand", "packSize": "1 kg",
+        }
+        payload = {"product": {"code": BARCODE,
+            "countries_tags": ["en:india"],
+            "product_name": "Grocery pack",
+            "brands": "Sample Brand",
+            "quantity": "1 kg",
+            "selected_images": {"front": {
+                "display": {"en": IMAGE},
+            }},
+        }}
+        candidate = find_candidate(item, payload, API_URL)
+        self.assertEqual(candidate["imageUrl"], FULL_IMAGE)
+
+    def test_image_quality_gate_accepts_clear_white_background_full_image(self):
+        session = Mock()
+        session.get.return_value = valid_image_response()
+        report, reason = inspect_image_quality(session, FULL_IMAGE, BARCODE)
+        self.assertIsNone(reason)
+        self.assertGreaterEqual(report["width"], 600)
+        self.assertGreaterEqual(report["cleanBackgroundCorners"], 3)
+        session.get.assert_called_once()
+
+    def test_image_quality_gate_rejects_low_resolution_image(self):
+        tiny = Image.new("RGB", (400, 400), "white")
+        buffer = BytesIO()
+        tiny.save(buffer, format="JPEG")
+        session = Mock()
+        session.get.return_value = FakeResponse(
+            200, {}, FULL_IMAGE, content=buffer.getvalue(),
+            headers={"Content-Type": "image/jpeg"},
+        )
+        report, reason = inspect_image_quality(session, FULL_IMAGE, BARCODE)
+        self.assertIsNone(report)
+        self.assertIn("resolution is too small", reason)
+
     def test_source_barcode_must_match_exactly(self):
         item = {"barcode": BARCODE, "name": "Grocery"}
         payload = {"product": {"code": "8901234567891", "selected_images": {"front": {"display": {"en": IMAGE}}}}}
@@ -52,6 +136,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }
         payload = {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "product_name": "Grocery pack",
             "brands": "Sample Brand",
             "quantity": "1 kg",
@@ -80,6 +165,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         ):
             payload = {"product": {
                 "code": BARCODE,
+            "countries_tags": ["en:india"],
                 "brands": source_brand,
                 "quantity": source_pack,
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
@@ -93,12 +179,14 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }
         wrong_brand = {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "brands": "Different Brand",
             "quantity": "1 kg",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
         }}
         wrong_pack = {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "brands": "Sample Brand",
             "quantity": "500 g",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
@@ -116,7 +204,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         def candidate_for(local_brand, source_brand):
             item = {"barcode": BARCODE, "name": "Grocery", "brand": local_brand, "packSize": "200 ml"}
             payload = {"product": {
-                "code": BARCODE, "product_name": "Grocery pack",
+                "code": BARCODE,
+            "countries_tags": ["en:india"], "product_name": "Grocery pack",
                 "brands": source_brand, "quantity": "200ml",
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
             }}
@@ -131,7 +220,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         def candidate_for(local_pack, source_pack):
             item = {"barcode": BARCODE, "name": "Grocery", "brand": "Sample Brand", "packSize": local_pack}
             payload = {"product": {
-                "code": BARCODE, "product_name": "Grocery pack", "brands": "Sample Brand", "quantity": source_pack,
+                "code": BARCODE,
+            "countries_tags": ["en:india"], "product_name": "Grocery pack", "brands": "Sample Brand", "quantity": source_pack,
                 "selected_images": {"front": {"display": {"en": IMAGE}}},
             }}
             return find_candidate(item, payload, API_URL)
@@ -158,6 +248,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }
         payload = {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "brands": "Sample Brand",
             "quantity": "1 kg",
             "selected_images": {"front": {"display": {"en": IMAGE}}},
@@ -175,7 +266,8 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }
         self.assertIsNone(find_candidate(
             item, {"product": {
-                "code": BARCODE, "brands": "Sample Brand", "quantity": "1 kg",
+                "code": BARCODE,
+            "countries_tags": ["en:india"], "brands": "Sample Brand", "quantity": "1 kg",
                 "selected_images": {},
             }}, API_URL))
 
@@ -192,6 +284,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
         found = FakeResponse(200, {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "product_name": "Selected grocery",
             "brands": "Sample Brand",
             "quantity": "1 kg",
@@ -201,7 +294,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
                              "http://localhost:8080/api/admin/catalogue/products/29/photo-candidate")
 
         session = Mock()
-        session.get.side_effect = [targets, found]
+        session.get.side_effect = [targets, found, valid_image_response()]
         session.post.return_value = saved
         args = argparse.Namespace(
             api_url="http://localhost:8080",
@@ -269,6 +362,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }, "http://localhost:8080/api/admin/catalogue/photo-import-targets")
         found = FakeResponse(200, {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "product_name": "Grocery pack",
             "brands": "Sample Brand",
             "quantity": "1 kg",
@@ -279,7 +373,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
             "http://localhost:8080/api/admin/catalogue/products/42/photo-candidate",
         )
         session = Mock()
-        session.get.side_effect = [targets, found]
+        session.get.side_effect = [targets, found, valid_image_response()]
         session.post.return_value = conflict
         args = argparse.Namespace(
             api_url="http://localhost:8080",
@@ -314,6 +408,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         )
         found = FakeResponse(200, {"product": {
             "code": BARCODE,
+            "countries_tags": ["en:india"],
             "product_name": "Grocery pack",
             "brands": "Sample Brand",
             "quantity": "1 kg",
@@ -321,7 +416,7 @@ class ProductPhotoImporterTests(unittest.TestCase):
         }}, API_URL)
 
         session = Mock()
-        session.get.side_effect = [targets, not_found, found]
+        session.get.side_effect = [targets, not_found, found, valid_image_response()]
         args = argparse.Namespace(
             api_url="http://localhost:8080",
             limit=10,
