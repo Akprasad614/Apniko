@@ -36,6 +36,21 @@ UPDATE notification_sync_state SET last_processed_history_id = 0;
 COMMIT;
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- Reset local development sequence numbers so the catalogue begins at ID 1.
+ALTER TABLE inventory_movements AUTO_INCREMENT = 1;
+ALTER TABLE cart_items AUTO_INCREMENT = 1;
+ALTER TABLE carts AUTO_INCREMENT = 1;
+ALTER TABLE shop_inventory AUTO_INCREMENT = 1;
+ALTER TABLE order_items AUTO_INCREMENT = 1;
+ALTER TABLE order_status_history AUTO_INCREMENT = 1;
+ALTER TABLE payments AUTO_INCREMENT = 1;
+ALTER TABLE orders AUTO_INCREMENT = 1;
+ALTER TABLE product_photo_review_history AUTO_INCREMENT = 1;
+ALTER TABLE product_catalogue_source_records AUTO_INCREMENT = 1;
+ALTER TABLE product_photos AUTO_INCREMENT = 1;
+ALTER TABLE products AUTO_INCREMENT = 1;
+ALTER TABLE product_categories AUTO_INCREMENT = 1;
+
 SELECT
     (SELECT COUNT(*) FROM products) AS products_remaining,
     (SELECT COUNT(*) FROM product_photos) AS product_photos_remaining,
