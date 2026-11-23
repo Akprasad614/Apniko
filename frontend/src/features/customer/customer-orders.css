@@ -69,7 +69,7 @@
 }
 
 .customer-order__number {
-  color: var(--lc-terracotta);
+  color: #8c4328;
   font-size: 0.55rem;
   font-weight: 850;
   letter-spacing: 0.15em;
@@ -324,7 +324,7 @@
 
 .customer-order__history time {
   grid-column: 1 / -1;
-  color: #8a9288;
+  color: var(--lc-muted);
   font-size: 0.57rem;
 }
 
