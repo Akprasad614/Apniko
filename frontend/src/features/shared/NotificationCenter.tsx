@@ -161,6 +161,7 @@ export function NotificationCenter() {
       <button
         type="button"
         className="notification-trigger"
+        aria-label={unreadCount > 0 ? `Updates, ${unreadCount} unread` : "Updates"}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((current) => !current)}
