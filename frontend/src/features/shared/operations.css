@@ -769,3 +769,30 @@
 .operations-bottom-nav--three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+
+/* Phase 7 WCAG contrast refinements for the delivery-partner workspace. */
+.delivery-order__top > div > .operations-eyebrow {
+  color: #8c4328;
+}
+
+.delivery-order__top h2 {
+  color: #173f35;
+}
+
+.delivery-order__top p:last-child {
+  color: #59645d;
+}
+
+.operations-status--active {
+  color: #234914;
+  background: #e5ecd9;
+}
+
+.delivery-order__destination strong {
+  color: #173f35;
+}
+
+.delivery-order__destination p {
+  color: #59645d;
+}
