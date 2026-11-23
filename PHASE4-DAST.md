@@ -9,7 +9,7 @@ The scan runs on pull requests that change backend code/configuration, matching 
 ## Scan mode and policy
 
 - ZAP Baseline spiders the target and waits for passive scanning. It does not perform active attack payloads.
-- `-I` makes warning-level findings report-only in this initial baseline. A scanner execution error still fails the step. Findings are not silently suppressed; they remain in the reports for triage.
+- The workflow does not pass `-I`: warning-level passive findings fail the job so new issues cannot silently pass. Informational observations remain report-only in the ZAP report. Scanner execution errors also fail the step.
 - The workflow uses ZAP's `--autooff` compatibility mode rather than the Automation Framework because the Framework's generated summary file failed on this runner. The packaged baseline scan still performs spidering and passive analysis; no active attack scan is enabled.
 - Report filenames are relative to the mounted `/zap/wrk` directory, and the job explicitly verifies the HTML, JSON, and Markdown files before uploading the artifact.
 - After reviewing the first reports, selected ZAP rule IDs can be promoted to a blocking policy through a reviewed configuration file in a later change.
@@ -48,9 +48,18 @@ overriding the Swagger UI WebJar to `5.34.1`, but did not set the matching
 [version override guidance](https://springdoc.org/faq.html) says the explicit
 property must match the WebJar version with Springdoc versions before 3.2.1.
 Phase 4 now sets `springdoc.swagger-ui.version=5.34.1` in
-`application.properties`. This is a targeted configuration correction; the
-Swagger 500 is not considered resolved until the next DAST run verifies the UI
-resource returns its expected response.
+`application.properties`.
+
+The next diagnostic run `45204796107` verified the correction: Swagger UI,
+OpenAPI JSON and Swagger configuration all returned HTTP 200, with no
+application exception in the captured log. The former 500 is resolved. That
+successful response exposed one Medium CSP finding and four Low browser-header
+findings on the Swagger UI document. A dedicated `SwaggerUiSecurityHeadersWriter`
+now applies a restrictive CSP, COEP, COOP, CORP and Permissions Policy only
+to Swagger UI routes. It deliberately does not impose those policies on
+customer/API routes. Unit tests check both the positive Swagger route and the
+absence of these route-specific headers on customer routes. The next blocking
+baseline run must confirm the header findings are gone.
 
 ## Isolation and safety
 
