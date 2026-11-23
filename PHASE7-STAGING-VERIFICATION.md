@@ -1,8 +1,24 @@
 # Phase 7 — end-to-end staging verification
 
-**Status:** automated test harness implemented; final completion depends on the new GitHub Actions run.
+**Status:** automated Phase 7 acceptance passed on the verified application/test commit. The documentation-only update is triggering a final confirmation run.
 **Branch:** feature/phase-7-e2e-accessibility-staging
 **Parent milestone:** Phase 6 role-based application delivery
+
+## Verification record
+
+The full Phase 7 workflow passed on **23 November 2026**.
+
+- Verified application/test commit: `436113884168ccc2e64f21db51da13aa5bed43f6`
+- GitHub Actions run: [#45234820213 — browser, accessibility and staging verification](https://github.com/Akprasad614/Apniko/actions/runs/45234820213)
+- Browser evidence artifact: [apniko-phase7-e2e-20](https://github.com/Akprasad614/Apniko/actions/runs/45234820213/artifacts/14849260915) (retained until 7 December 2026)
+- Frontend lint, typecheck, unit tests and production build: passed.
+- Backend Maven `verify` against disposable MySQL 8.4: passed.
+- Real API Playwright customer → shopkeeper → delivery → customer order-history journey: passed.
+- Customer, shopkeeper, delivery and administrator axe checks: passed with no critical or serious violations.
+- 390 × 844 mobile overflow checks for all four roles: passed.
+- Nine retained desktop/mobile screenshots were reviewed, including the delivered customer order-history view.
+
+The only change after that passing run is this verification-document update. The workflow listens to this document path, so GitHub Actions will re-run the same isolated acceptance suite on the documentation-updated branch head before the milestone is finally closed.
 
 ## What the Phase 7 workflow runs
 
