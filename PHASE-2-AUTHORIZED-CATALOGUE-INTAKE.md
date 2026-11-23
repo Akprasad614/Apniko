@@ -220,4 +220,4 @@ No products have been imported. The local catalogue remains empty.
 local dry-run and automated verification are complete. The seed import has
 not been applied, so the development catalogue remains empty. This does not
 block Phase 3 engineering; image sourcing is a separate workstream because
-this dataset contains no product photographs.
+this dataset contains no product photographs. Phase 3's authorised photo-intake, matching, moderation and rollout policy is documented in `PHASE-3-PRODUCT-PHOTOGRAPHY.md`.
