@@ -87,12 +87,20 @@ Every feature uses existing API response data and backend authorization. No demo
 
 ## Phase 7 — Full end-to-end staging verification
 
-- Add Playwright browser journeys for customer, shopkeeper and delivery workflows.
-- Add accessibility checks using axe-core and review responsive screenshots for key pages.
-- Deploy pull-request previews or a dedicated staging environment.
-- Run API and browser end-to-end flows with seeded test data.
-- Add carefully scoped authenticated DAST and approved Nuclei templates only after a separately reviewed plan with dedicated disposable identities and explicit approval.
-- Verify that test jobs never connect to the main development or production database.
+Implementation is on `feature/phase-7-e2e-accessibility-staging`; see `PHASE7-STAGING-VERIFICATION.md`.
+
+- [x] Playwright runs the real Spring Boot API and Vite browser application against a disposable MySQL 8.4 CI database.
+- [x] The customer → shopkeeper → delivery-partner order lifecycle uses API-created CI-only fixtures and the browser UI.
+- [x] A cross-role API request must return HTTP 403.
+- [x] axe-core WCAG 2.0/2.1 A/AA checks cover customer, shopkeeper, delivery and administrator workspaces; critical/serious findings fail CI.
+- [x] Responsive 390 × 844 overflow checks and desktop/mobile screenshots cover all four roles.
+- [x] One-run test passwords and JWT secrets are generated at CI runtime; repository permissions remain read-only.
+- [x] Phase 7 static verification is part of frontend CI, and a dedicated workflow runs Maven verification plus the browser journey.
+- [ ] A persistent public preview/staging deployment remains unconfigured because Vercel has no linked team/project. Each workflow instead starts an isolated full-stack staging environment.
+- [ ] Authenticated active DAST and Nuclei remain gated on a separately reviewed target/identity plan and explicit approval.
+- [x] Test jobs use only `localcart_phase7`, never the developer or production database.
+
+Do not close Phase 7 until the workflow passes on the final branch head and the uploaded screenshots/axe evidence are reviewed.
 
 ## Phase 8 — Production readiness and release controls
 

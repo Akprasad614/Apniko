@@ -48,3 +48,7 @@ frontend/.env.*
 data/catalogue/source/
 data/catalogue/reports/
 .venv-catalogue/
+
+### Phase 7 browser test output ###
+frontend/test-results/
+frontend/playwright-report/
