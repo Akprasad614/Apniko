@@ -33,15 +33,15 @@ Required columns:
 - `authorization_reference`
 - `attribution`
 
-The importer:
+The current importer/backend path supports only the manufacturer/brand/supplier-authorised route classified as `MANUFACTURER_AUTHORIZED`; open-licence support is a separate future implementation. The importer:
 
 - Requires a valid GTIN-8/12/13/14 check digit and an existing Apniko product awaiting a photo.
 - Requires exact normalized brand and pack-size matches; it does not guess variants or pack conversions.
 - Requires HTTPS source and image URLs, rejects credentials, query strings and fragments, and permits only the source host or an explicitly configured authorised image CDN.
 - Requires an internal permission reference and attribution for the supplier-authorised path.
 - Uses an administrator JWT and submits candidates only when `--apply` is explicitly supplied.
-- Does not download, copy, transform or rehost image bytes.
-- Defaults to dry-run and never approves or publishes a candidate.
+- Does not download, copy, transform or rehost image bytes, so it does not perform automated visual-quality inspection.
+- Defaults to dry-run and never approves or publishes a candidate. An administrator must inspect the actual image and exact pack before approval.
 
 Example dry run:
 
@@ -108,8 +108,9 @@ At the current Phase 2 baseline, the Mendeley dry-run made no API calls or datab
 - [x] Rejection requires a reason; pending/rejected images remain hidden from customers.
 - [x] Candidate retirement preserves audit history and previously approved images.
 - [x] Rollout reporting distinguishes approved photos from pending/rejected/retired candidates.
-- [x] Phase 3 verification script runs the authorised importer test suite.
-- [ ] A real supplier/manufacturer feed or openly licensed image manifest is supplied and rights-checked.
+- [x] Phase 3 verification script runs the authorised supplier importer test suite.
+- [ ] A real supplier/manufacturer feed is supplied and rights-checked.
+- [ ] If open-licence images are desired, implement and test a separate licence-aware intake path before using them.
 - [ ] Product GTIN and retail pack identity are independently verified for each image match.
 - [ ] Local/staging dry-run is performed against actual authorised input.
 - [ ] Candidate submission and administrator visual review are performed against real products.
