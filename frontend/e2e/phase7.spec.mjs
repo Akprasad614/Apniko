@@ -271,8 +271,10 @@ test('customer to shopkeeper to delivery order lifecycle; role accessibility and
   await page.setViewportSize({ width: 1440, height: 1000 })
   await signIn(page, CUSTOMER_EMAIL)
   await page.goto('/customer/orders')
-  await expect(page.getByText(PRODUCT_NAME, { exact: true })).toBeVisible()
-  await expect(page.getByText(/Delivered/i)).toBeVisible()
+  const deliveredOrder = page.locator('.customer-order').filter({ hasText: 'ORDER #' + orderId })
+  await expect(deliveredOrder).toContainText(/Delivered/i)
+  await deliveredOrder.getByRole('button', { name: 'Items and status history' }).click()
+  await expect(deliveredOrder.getByText(PRODUCT_NAME, { exact: true })).toBeVisible()
   await checkA11y(page, 'customer delivered order history')
   await screenshot(page, testInfo, 'customer-order-delivered')
 
