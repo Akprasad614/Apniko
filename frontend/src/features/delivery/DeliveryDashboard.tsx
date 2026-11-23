@@ -5,6 +5,7 @@ import { Button } from '../../components/Button'
 import { Wordmark } from '../../components/Wordmark'
 import { ApiError, apiRequest } from '../../lib/api'
 import '../shared/operations.css'
+import { NotificationCenter } from '../shared/NotificationCenter'
 
 type DeliveryTab = 'available' | 'assigned' | 'completed'
 
@@ -138,7 +139,7 @@ export function DeliveryDashboard() {
         <div className="operations-shell operations-header__inner">
           <Wordmark />
           <div className="operations-user">
-            <span>{session?.name}</span><span className="operations-role">DELIVERY</span>
+            <span>{session?.name}</span><NotificationCenter /><span className="operations-role">DELIVERY</span>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
         </div>
