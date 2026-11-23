@@ -922,7 +922,7 @@ export function ShopkeeperDashboard() {
                           </div>
                           <span>{analyticsOverview.from} — {analyticsOverview.to}</span>
                         </div>
-                        {analyticsDaily.length ? (
+                        {analyticsDaily.some((day) => day.totalOrders > 0 || day.nonCancelledOrderValue > 0) ? (
                           <div className={analyticsPeriod > 7
                             ? 'shopkeeper-analytics__bars shopkeeper-analytics__bars--wide'
                             : 'shopkeeper-analytics__bars'}>
