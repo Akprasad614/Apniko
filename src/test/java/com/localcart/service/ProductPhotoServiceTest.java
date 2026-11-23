@@ -12,6 +12,7 @@ import com.localcart.repository.ProductPhotoReviewHistoryRepository;
 import com.localcart.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.util.List;
@@ -187,6 +188,7 @@ class ProductPhotoServiceTest {
 
     @Test
     void manufacturerAuthorisedImageRequiresPermissionReferenceAndTrustedHost() {
+        ReflectionTestUtils.setField(service, "authorizedImageHosts", "images.brand.example");
         Product product = product();
         product.setBrand("Brand Example");
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
@@ -235,11 +237,20 @@ class ProductPhotoServiceTest {
                 "MANUFACTURER_AUTHORIZED", "Brand image",
                 "Supplier agreement BR-2026-014", BARCODE
         );
+        ProductPhotoCandidateRequest unlistedSubdomain = new ProductPhotoCandidateRequest(
+                "https://cdn.brand.example/products/masoor-1kg/front.jpg",
+                "https://brand.example/products/masoor-dal",
+                BRAND_SOURCE, "Masoor Dal", "Brand Example", "1 kg",
+                "MANUFACTURER_AUTHORIZED", "Brand image",
+                "Supplier agreement BR-2026-014", BARCODE
+        );
 
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, missingPermission));
         assertThrows(BadRequestException.class,
                 () -> service.submitCandidate(10L, unapprovedHost));
+        assertThrows(BadRequestException.class,
+                () -> service.submitCandidate(10L, unlistedSubdomain));
         verify(photoRepository, never()).save(any(ProductPhoto.class));
     }
 
