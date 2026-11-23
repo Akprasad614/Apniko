@@ -334,12 +334,11 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                 />
               </label>
               {shopSearchInput.trim() && (
-                <div className="customer-shop-results" role="list" aria-label="Matching neighbourhood shops">
+                <div className="customer-shop-results" role="group" aria-label="Matching neighbourhood shops">
                   {matchingShops.length ? matchingShops.map((shop) => (
                     <button
                       key={shop.id}
                       type="button"
-                      role="listitem"
                       className={selectedShopId === shop.id ? 'is-selected' : ''}
                       aria-pressed={selectedShopId === shop.id}
                       onClick={() => {
