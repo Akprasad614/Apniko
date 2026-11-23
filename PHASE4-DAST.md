@@ -15,31 +15,6 @@ The scan runs on pull requests that change backend code/configuration, matching 
 - After reviewing the first reports, selected ZAP rule IDs can be promoted to a blocking policy through a reviewed configuration file in a later change.
 - This workflow does not run ZAP Full Scan, ZAP API Scan, Nuclei, or an AI pentest agent.
 
-## First recorded baseline and open finding
-
-The 22 November 2026 baseline run on the disposable PR environment (workflow run
-`45050829870`, ZAP 2.17.0) completed and uploaded its reports. The report showed:
-
-- 0 High alerts and 0 Medium alerts.
-- 1 Low alert: **Application Error Disclosure** (rule `90022`) on
-  `GET /swagger-ui/index.html`, with HTTP 500 as the evidence.
-- 4 Informational `Non-Storable Content` observations on the root, robots,
-  sitemap and Swagger UI responses (the application sends `Cache-Control: no-store`).
-- The spider reported only 4 endpoints, so this is not broad API route coverage.
-
-The workflow's green conclusion means the scanner completed; it does **not**
-mean there were no findings. Warnings are currently report-only under `-I`.
-Treat the Swagger UI 500 as an open application issue until a subsequent run
-confirms the endpoint returns the intended response and the response is reviewed.
-The informational cache observations should remain separate from security
-vulnerabilities; do not remove `no-store` from sensitive or user-specific content.
-
-The workflow now captures status codes and response bodies for Swagger UI,
-`/v3/api-docs` and the Swagger configuration endpoint, plus a bounded,
-password-redacted tail of the disposable app startup log. These diagnostics are
-retained with the ZAP reports to make the 500 traceable without using production
-data or credentials.
-
 ## Isolation and safety
 
 - GitHub Actions creates a disposable MySQL 8.4 service and `localcart_dast` database for each run.
