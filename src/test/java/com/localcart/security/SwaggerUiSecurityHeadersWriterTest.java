@@ -22,8 +22,8 @@ class SwaggerUiSecurityHeadersWriterTest {
         writer.writeHeaders(request, response);
 
         assertEquals("default-src 'self'; base-uri 'self'; object-src 'none'; "
-                        + "frame-ancestors 'none'; script-src 'self'; "
-                        + "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                        + "frame-ancestors 'none'; form-action 'self'; script-src 'self'; "
+                        + "style-src 'self'; img-src 'self' data:; "
                         + "font-src 'self' data:; connect-src 'self'",
                 response.getHeader("Content-Security-Policy"));
         assertEquals("require-corp",
