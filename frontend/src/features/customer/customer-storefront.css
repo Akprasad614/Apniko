@@ -1689,3 +1689,25 @@
   color: var(--lc-muted);
   font-size: .72rem;
 }
+
+
+/* Phase 7 WCAG contrast refinements for small catalogue and metadata text. */
+.marketplace-heading__owner span,
+.customer-catalogue-section-heading > a {
+  color: #8c4328;
+}
+
+.catalogue-product-card__pack {
+  color: #5c665d;
+}
+
+.catalogue-product-card__purchase button {
+  border-color: #365f21;
+  color: #365f21;
+}
+
+.catalogue-product-card__purchase button:hover:not(:disabled) {
+  border-color: #365f21;
+  color: #fff;
+  background: #365f21;
+}
