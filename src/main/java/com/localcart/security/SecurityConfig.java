@@ -55,6 +55,8 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
 
+                .headers(headers -> headers.addHeaderWriter(new SwaggerUiSecurityHeadersWriter()))
+
                 .authenticationProvider(authenticationProvider)
 
                 .sessionManagement(session ->
