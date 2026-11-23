@@ -349,7 +349,7 @@ export function AdminDashboard() {
           ))}
         </nav>
 
-        {error && <div className="operations-alert operations-alert--error" role="alert">{error}</div>
+        {error && <div className="operations-alert operations-alert--error" role="alert">{error}</div>}
         {notice && <div className="operations-alert operations-alert--success" role="status">{notice}</div>}
 
         {loading ? (
