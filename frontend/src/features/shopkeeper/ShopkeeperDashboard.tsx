@@ -31,6 +31,7 @@ import type {
   ShopDeliveryMode,
 } from './shopkeeper'
 import './shopkeeper-dashboard.css'
+import { NotificationCenter } from '../shared/NotificationCenter'
 
 type DashboardTab = 'overview' | 'orders' | 'inventory' | 'analytics'
 interface CatalogueProductPage {
@@ -580,6 +581,7 @@ export function ShopkeeperDashboard() {
           <Link to="/shopkeeper" className="shopkeeper-wordmark">apniko<span>.</span></Link>
           <div className="shopkeeper-header__right">
             <span className="shopkeeper-header__welcome">Shopkeeper desk · {greeting}</span>
+            <NotificationCenter />
             <span className="shopkeeper-role">SHOPKEEPER</span>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
