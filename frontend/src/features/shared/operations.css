@@ -764,3 +764,8 @@
     margin-bottom: 1.5rem;
   }
 }
+
+
+.operations-bottom-nav--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
