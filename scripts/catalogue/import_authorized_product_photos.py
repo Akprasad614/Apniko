@@ -73,7 +73,7 @@ def valid_https_url(value: str) -> bool:
 def allowed_image_host(image_url: str, source_url: str, configured_hosts: set[str]) -> bool:
     image_host = (urlparse(image_url).hostname or "").lower()
     source_host = (urlparse(source_url).hostname or "").lower()
-    if image_host == source_host or image_host.endswith("." + source_host):
+    if image_host == source_host:
         return True
     return image_host in configured_hosts
 
