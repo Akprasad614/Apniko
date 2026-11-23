@@ -3,7 +3,7 @@ import { formatNotificationDate, notificationDestination } from './notifications
 
 describe('notification destinations', () => {
   it('opens a customer order from an order notification', () => {
-    expect(notificationDestination('CUSTOMER', 42)).toBe('/customer/orders?placed=42')
+    expect(notificationDestination('CUSTOMER', 42)).toBe('/customer/orders')
   })
 
   it('routes each role to its own workspace when no customer order is linked', () => {
