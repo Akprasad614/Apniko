@@ -1715,3 +1715,18 @@
 .catalogue-product-card__brand {
   color: #5c665d;
 }
+
+
+/* Keep the compact catalogue action readable in touch, hover and keyboard states. */
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"] {
+  border-color: #234914 !important;
+  color: #234914 !important;
+  background-color: #f7fbf3 !important;
+}
+
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"]:hover:not(:disabled),
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"]:focus-visible {
+  border-color: #234914 !important;
+  color: #fff !important;
+  background-color: #234914 !important;
+}

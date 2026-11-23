@@ -56,7 +56,10 @@ async function checkA11y(page, label) {
       id: item.id,
       impact: item.impact,
       help: item.help,
-      nodes: item.nodes.slice(0, 5).map((node) => node.target),
+      nodes: item.nodes.slice(0, 5).map((node) => ({
+        target: node.target,
+        failure: node.failureSummary,
+      })),
     })),
     'Critical or serious accessibility violations on ' + label,
   ).toEqual([])
