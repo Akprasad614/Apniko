@@ -76,6 +76,7 @@ Implemented on the dedicated branch `feature/phase-6-role-based-app-delivery`; s
 - [x] Shopkeeper order acceptance, fulfilment selection, preparation/ready/delivery transitions, rejection/cancellation rules and order history.
 - [x] Shopkeeper catalogue selection, shop-specific inventory, pricing/availability, restock, low-stock thresholds and movement audit history.
 - [x] Shopkeeper performance view backed by the actual 7/30/90-day analytics endpoints; account-wide totals are labelled separately from selected-shop product rankings.
+- [x] Explainable shopkeeper stock guidance backed by order history and current inventory using the documented weighted-moving-average baseline.
 - [x] Delivery-partner available/assigned/completed workflows, including accept, pickup and delivery actions.
 - [x] Administrator overview, staff provisioning/activation, shop ownership/activation, catalogue administration, product-photo and catalogue moderation.
 - [x] Shared authenticated notifications across customer, shopkeeper, delivery and administrator workspaces, including unread count, mark read, mark all read and dismiss.
