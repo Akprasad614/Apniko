@@ -1730,3 +1730,20 @@
   color: #fff !important;
   background-color: #234914 !important;
 }
+
+
+/* The mobile card variant does not always retain the desktop card wrapper.
+   Target the purchase control itself so its contrast is consistent at every
+   responsive breakpoint. */
+.catalogue-product-card__purchase > button[type="button"] {
+  border-color: #173f12 !important;
+  color: #173f12 !important;
+  background-color: #fff !important;
+}
+
+.catalogue-product-card__purchase > button[type="button"]:hover:not(:disabled),
+.catalogue-product-card__purchase > button[type="button"]:focus-visible {
+  border-color: #173f12 !important;
+  color: #fff !important;
+  background-color: #173f12 !important;
+}
