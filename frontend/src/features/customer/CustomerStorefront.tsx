@@ -7,6 +7,7 @@ import { ApprovedProductImage } from './ApprovedProductImage'
 import {
   buildMarketplaceSearchPath,
   formatRupees,
+  searchMarketplaceShops,
 } from './marketplace'
 import type {
   Basket,
@@ -48,6 +49,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
   const token = session?.token ?? ''
 
   const [shops, setShops] = useState<MarketplaceShop[]>([])
+  const [shopSearchInput, setShopSearchInput] = useState('')
   const [categories, setCategories] = useState<string[]>([])
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
   const [products, setProducts] = useState<MarketplaceInventoryItem[]>([])
@@ -76,6 +78,11 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
   const selectedShop = useMemo(
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
     [shops, selectedShopId],
+  )
+
+  const matchingShops = useMemo(
+    () => searchMarketplaceShops(shops, shopSearchInput),
+    [shops, shopSearchInput],
   )
 
   useEffect(() => {
@@ -314,26 +321,65 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
               <p>There aren't any active shops listed on Apniko yet. Check back when a local shop joins.</p>
             </div>
           ) : (
-            <label className="customer-store-select">
-              <span>Delivering from</span>
-              <select
-                value={selectedShopId ?? ''}
-                onChange={(event) => {
-                  const nextShopId = Number(event.target.value)
-                  if (Number.isSafeInteger(nextShopId) && nextShopId > 0) {
-                    setSelectedShopId(nextShopId)
-                    setNotice('')
-                  }
-                }}
-                aria-label="Choose your neighbourhood shop"
-              >
-                {shops.map((shop) => (
-                  <option value={shop.id} key={shop.id}>
-                    {shop.name}{shop.address ? ` — ${shop.address}` : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="customer-shop-discovery">
+              <label className="customer-shop-search" htmlFor="customer-shop-search">
+                <span>Find a neighbourhood shop</span>
+                <input
+                  id="customer-shop-search"
+                  type="search"
+                  value={shopSearchInput}
+                  onChange={(event) => setShopSearchInput(event.target.value)}
+                  placeholder="Search by shop name or area…"
+                  autoComplete="off"
+                />
+              </label>
+              {shopSearchInput.trim() && (
+                <div className="customer-shop-results" role="list" aria-label="Matching neighbourhood shops">
+                  {matchingShops.length ? matchingShops.map((shop) => (
+                    <button
+                      key={shop.id}
+                      type="button"
+                      role="listitem"
+                      className={selectedShopId === shop.id ? 'is-selected' : ''}
+                      aria-pressed={selectedShopId === shop.id}
+                      onClick={() => {
+                        setSelectedShopId(shop.id)
+                        setNotice('')
+                      }}
+                    >
+                      <span className="customer-shop-results__mark" aria-hidden="true">⌂</span>
+                      <span>
+                        <strong>{shop.name}</strong>
+                        <small>{shop.address || 'Neighbourhood shop'}</small>
+                      </span>
+                      <span className="customer-shop-results__action">{selectedShopId === shop.id ? 'Selected' : 'Choose'}</span>
+                    </button>
+                  )) : (
+                    <p className="customer-shop-results__empty" role="status">No shops match that search. Try a nearby area or a different name.</p>
+                  )}
+                </div>
+              )}
+              <label className="customer-store-select">
+                <span>Delivering from</span>
+                <select
+                  value={selectedShopId ?? ''}
+                  onChange={(event) => {
+                    const nextShopId = Number(event.target.value)
+                    if (Number.isSafeInteger(nextShopId) && nextShopId > 0) {
+                      setSelectedShopId(nextShopId)
+                      setNotice('')
+                    }
+                  }}
+                  aria-label="Choose your neighbourhood shop"
+                >
+                  {shops.map((shop) => (
+                    <option value={shop.id} key={shop.id}>
+                      {shop.name}{shop.address ? ` — ${shop.address}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           )}
         </section>
 
