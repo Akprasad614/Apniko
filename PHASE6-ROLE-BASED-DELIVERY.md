@@ -1,6 +1,6 @@
 # Phase 6 — role-based application delivery
 
-**Status: implementation complete; validation is running in CI.**  
+**Status: implementation complete; all Phase 6 PR checks passed.**  
 **Working branch:** `feature/phase-6-role-based-app-delivery`  
 **Target branch:** `docs/phase-5-foundation-closeout` (stacked on Phase 5 closeout PR #65)
 
@@ -128,6 +128,19 @@ No animation library or external font dependency was added.
 - The existing bearer token storage in sessionStorage remains a known interim limitation: JavaScript can read it. Production authentication still requires separate review.
 
 ## 8. Verification
+
+The Phase 6 PR head `028417a8a13087bd9b2053575d4652fd06e5fec9` passed all six required CI/security workflows:
+
+| Workflow | Run | Result |
+|---|---:|---|
+| Frontend CI — Phase 5/6 verifiers, npm install, ESLint, TypeScript, Vitest and production build | [45214475178](https://github.com/Akprasad614/Apniko/actions/runs/45214475178) | Passed |
+| Backend CI — Phase 10, Phase 2/3 tooling checks and Maven verification/tests | [45214475264](https://github.com/Akprasad614/Apniko/actions/runs/45214475264) | Passed |
+| CodeQL | [45214475115](https://github.com/Akprasad614/Apniko/actions/runs/45214475115) | Passed |
+| Static security scans — Semgrep and Gitleaks | [45214475913](https://github.com/Akprasad614/Apniko/actions/runs/45214475913) | Passed |
+| OSV dependency scan | [45214475778](https://github.com/Akprasad614/Apniko/actions/runs/45214475778) | Passed |
+| CycloneDX SBOM | [45214475241](https://github.com/Akprasad614/Apniko/actions/runs/45214475241) | Passed |
+
+The frontend build artifact was uploaded by Frontend CI. Backend CI used its disposable MySQL service and completed Maven verification; no production database or deployment was involved.
 
 The Phase 6 static verifier is `scripts/verify-phase6.sh`. Frontend CI runs it alongside the Phase 5 verifier, then uses the locked dependency tree to execute:
 
