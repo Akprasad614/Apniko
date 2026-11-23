@@ -1594,3 +1594,98 @@
     font-size: .78rem;
   }
 }
+
+/* Phase 6 role workspace polish */
+.customer-shop-discovery {
+  display: grid;
+  gap: .65rem;
+  min-width: 0;
+}
+.customer-shop-search {
+  display: grid;
+  max-width: 520px;
+  gap: .35rem;
+  color: var(--lc-forest);
+  font-size: .67rem;
+  font-weight: 800;
+}
+.customer-shop-search input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--lc-line);
+  border-radius: 8px;
+  padding: .65rem .8rem;
+  color: var(--lc-ink);
+  background: var(--lc-white);
+  font-size: .78rem;
+}
+.customer-shop-results {
+  display: grid;
+  max-width: 720px;
+  gap: .35rem;
+}
+.customer-shop-results button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .6rem;
+  min-height: 60px;
+  border: 1px solid var(--lc-line);
+  border-radius: 9px;
+  padding: .55rem .7rem;
+  color: var(--lc-ink);
+  background: var(--lc-white);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+.customer-shop-results button:hover {
+  border-color: #a6b99b;
+  transform: translateY(-1px);
+}
+.customer-shop-results button.is-selected {
+  border-color: var(--lc-forest);
+  background: #f0f3e8;
+}
+.customer-shop-results__mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--lc-forest);
+  background: #e9edda;
+  font-size: 1rem;
+}
+.customer-shop-results button > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: .15rem;
+}
+.customer-shop-results button strong {
+  overflow: hidden;
+  color: var(--lc-forest);
+  font-size: .72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-shop-results button small {
+  overflow: hidden;
+  color: var(--lc-muted);
+  font-size: .61rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-shop-results__action {
+  color: var(--lc-moss);
+  font-size: .61rem;
+  font-weight: 850;
+}
+.customer-shop-results__empty {
+  margin: 0;
+  border: 1px dashed var(--lc-line);
+  border-radius: 8px;
+  padding: .9rem;
+  color: var(--lc-muted);
+  font-size: .72rem;
+}
