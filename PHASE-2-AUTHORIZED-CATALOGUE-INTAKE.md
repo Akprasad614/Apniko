@@ -9,24 +9,24 @@
 Prepare an audited, source-attributed packaged-food catalogue seed using the
 *Indian Packaged Foods Nutritional Composition Dataset (2026)* published on
 Mendeley Data. It contains 852 packaged-food records; it is not a complete
-grocery catalogue.
+grocery catalogue and it does not contain product photographs.
 
 Dataset page:
 https://data.mendeley.com/datasets/rhswn9z9xr/1
 
 DOI: https://doi.org/10.17632/rhswn9z9xr.1  
-Licence shown in the supplied README: CC BY 4.0  
+Licence stated in the supplied README and recorded by the NLM Dataset Catalog:
+CC BY 4.0  
 CSV format: UTF-8, 25 variables.
 
-## Excluded sources
+## Source boundary
 
-- Open Food Facts and all related catalogues are prohibited.
-- BigBasket and its website listings, Kaggle copy, images and undocumented APIs
-  are excluded completely.
-- There is no BigBasket fallback in the Phase 2 importer or backend source
-  validation.
-- Do not scrape retailer pages or use retailer images.
-- The catalogue remains empty until a reviewed local/staging apply is
+- Open Food Facts and related catalogues are excluded.
+- Phase 2 accepts only the exact Mendeley version-1 dataset URL, schema and
+  source identifier.
+- No retailer catalogue fallback, scraped product page, undocumented feed or
+  image source is used by the Phase 2 importer.
+- The development catalogue remains empty until a local/staging apply is
   explicitly authorised.
 
 ## Source-file inspection — complete
@@ -63,7 +63,7 @@ source/date/collector metadata and remarks.
   values exceed total fat, five dietary-fibre values exceed carbohydrates,
   one serving size is above 500 g, and one calorie value is above 1,000 kcal.
   These are review alerts only; no values are silently corrected.
-- 1 row has effectively empty/all-zero nutrition fields.
+- 1 row has effectively empty/all-zero nutrition values.
 - The category value `ICEREAMES` appears in 37 records. It is preserved as
   supplied and those rows are flagged for taxonomy review; the importer does
   not silently rename it.
@@ -96,15 +96,26 @@ sparse to make it a live merchant price.
 
 See `PHASE-2-DATASET-INSPECTION.md` for the detailed audit record.
 
-## Rights, citation and provenance
+## Rights, licence and attribution
 
-The supplied README states CC BY 4.0. The Mendeley/NLM catalogue metadata
-also identifies the dataset as CC BY 4.0 and lists its contributors. CC BY 4.0
-allows sharing and adaptation, including commercial use, provided its
-attribution conditions are followed. The licence grants only rights the
-licensor is entitled to grant; it is not a warranty that every embedded
-third-party element is free of separate rights. Keep the apply gate and do
-not imply endorsement by Mendeley or the contributors.
+The supplied README and the NLM Dataset Catalog identify this dataset as
+CC BY 4.0. The CC BY 4.0 licence permits sharing and adaptation, including
+commercial use, provided its conditions are followed: give appropriate
+credit, link to the licence and dataset, indicate Apniko's modifications,
+and do not imply endorsement. No separate written permission from a
+retailer or dataset provider is required for the dataset use described here
+under the stated CC BY 4.0 licence.
+
+The importer's `--license-confirmed` and
+`--commercial-use-confirmed` switches are operator attestations that the
+source files and intended use have been checked against those terms. They
+are not a request for BigBasket permission or for a separate permission
+letter. The dataset DOI is retained as the provenance reference in the
+existing backend import contract.
+
+CC BY 4.0 grants only rights the licensor is entitled to grant. If a
+particular embedded element is subject to a separate third-party right, that
+element must be assessed separately and not treated as automatically cleared.
 
 Dataset attribution used by the importer:
 
@@ -151,12 +162,12 @@ Hard rules:
 - No photo feed is provided by this dataset. Customer product cards remain
   text-first with the neutral no-photo state.
 
-## Importer implementation
+## Importer implementation — complete
 
-The BigBasket-specific Python importer and BigBasket-only backend source
-validation have been replaced with the Mendeley version-1 intake path.
+The Python importer and backend source gate use only the Mendeley version-1
+dataset contract.
 
-The new importer:
+The importer:
 1. Requires the exact 25-column schema from the supplied README and 852 rows.
 2. Validates unique `S.No` values and creates deterministic versioned source
    record IDs.
@@ -165,19 +176,19 @@ The new importer:
 5. Uses the source row ID as the idempotent identity discriminator so rows
    with unknown package variants are not incorrectly merged.
 6. Sends ambiguous and low-quality rows to admin moderation.
-7. Defaults to dry-run. Applying requires an admin JWT, explicit
-   `--license-confirmed` and `--commercial-use-confirmed` flags, plus the
-   dataset DOI as permission reference.
+7. Defaults to dry-run. Applying requires an admin JWT and explicit
+   operator confirmation of the CC BY 4.0 licence and its applicability to
+   Apniko's intended commercial use.
 8. The backend accepts only this exact Mendeley dataset URL and CC-BY-4.0
-   source identifier; BigBasket and arbitrary URLs are rejected.
+   source identifier; arbitrary source URLs are rejected.
 
 The backend uses Hibernate `ddl-auto=update` to add the private
 `source_metadata_json` column on next local backend startup. No database
 import or reset has been run as part of this code change.
 
-## Current dry-run result
+## Local dry-run — complete
 
-Using the supplied CSV with the Phase 2 importer:
+The user ran the full CSV with the Phase 2 importer:
 - 852 source rows read; 852 product records eligible for review/import.
 - 9 repeated name+brand groups affecting 18 rows.
 - 67 rows marked for administrator review.
@@ -188,25 +199,27 @@ Using the supplied CSV with the Phase 2 importer:
   prices and 0 MRPs are populated.
 - Dry-run made no API calls and no database changes.
 
-No products have been imported.
+No products have been imported. The local catalogue remains empty.
 
 ## Phase 2 exit criteria
 
 - [x] Exact CSV and README inspected; schema, row count and SHA-256 recorded.
 - [x] Data-quality gaps, duplicates, malformed numeric tokens and sparse
       collection provenance documented.
-- [x] CC BY 4.0 attribution and rights caveats recorded.
-- [x] BigBasket-specific importer and backend source validation replaced.
-- [x] Mendeley importer defaults to dry-run and has schema/duplicate/gating tests.
-- [x] Full source CSV dry-run completed without API or database changes.
-- [ ] Python and backend CI pass on the committed Phase 2 implementation.
-- [ ] User confirms the dataset licence and intended commercial-use scope
-      before applying the local/staging import.
-- [ ] Local/staging import completed only after explicit approval.
-- [ ] Imported records reviewed and approved by an administrator.
-- [ ] Customer nutrition facts are withheld until the nutrition basis is
+- [x] CC BY 4.0 attribution and use conditions documented.
+- [x] Mendeley-only importer and backend source validation implemented.
+- [x] Python importer/reset tests and backend verification pass on the
+      committed Phase 2 implementation.
+- [x] Full local source CSV dry-run completed without API or database changes.
+- [ ] Operator runs the apply command only after confirming the CC BY 4.0
+      conditions and attribution will be met.
+- [ ] Any local/staging import is completed only after explicit owner approval.
+- [ ] Imported records are reviewed and approved by an administrator.
+- [ ] Customer nutrition facts remain withheld until the nutrition basis is
       confirmed and a typed, validated model is implemented.
 
-**Current status:** source inspection and importer implementation are in
-progress/verification. The import has not been applied. The local catalogue
-remains empty.
+**Current status:** Phase 2 importer implementation, dataset inspection,
+local dry-run and automated verification are complete. The seed import has
+not been applied, so the development catalogue remains empty. This does not
+block Phase 3 engineering; image sourcing is a separate workstream because
+this dataset contains no product photographs.
