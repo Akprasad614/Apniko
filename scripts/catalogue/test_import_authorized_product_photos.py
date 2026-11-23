@@ -97,7 +97,10 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             args.file = self.write_csv(directory)
             output = StringIO()
-            with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-token"}), redirect_stdout(output):
+            with patch.dict(os.environ, {
+                "APNIKO_ADMIN_TOKEN": "test-token",
+                "APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS": "images.brand.example",
+            }), redirect_stdout(output):
                 result = run(args, session=session)
 
         self.assertEqual(result, 0)
@@ -127,7 +130,10 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             args.file = self.write_csv(directory)
             output = StringIO()
-            with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-token"}), redirect_stdout(output):
+            with patch.dict(os.environ, {
+                "APNIKO_ADMIN_TOKEN": "test-token",
+                "APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS": "images.brand.example",
+            }), redirect_stdout(output):
                 result = run(args, session=session)
 
         self.assertEqual(result, 0)
@@ -156,7 +162,10 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             args.file = self.write_csv(directory)
-            with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-token"}):
+            with patch.dict(os.environ, {
+                "APNIKO_ADMIN_TOKEN": "test-token",
+                "APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS": "images.brand.example",
+            }):
                 result = run(args, session=session)
 
         self.assertEqual(result, 0)
