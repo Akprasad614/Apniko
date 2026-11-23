@@ -192,3 +192,66 @@ export function formatShopkeeperRupees(value: number): string {
     maximumFractionDigits: 2,
   }).format(value)
 }
+
+
+export interface ShopkeeperAnalyticsOverview {
+  from: string
+  to: string
+  totalOrders: number
+  deliveredOrders: number
+  cancelledOrders: number
+  openOrders: number
+  customersWithOrders: number
+  unitsInNonCancelledOrders: number
+  grossOrderValue: number
+  nonCancelledOrderValue: number
+  deliveredOrderValue: number
+  averageNonCancelledOrderValue: number
+  shopsCovered: number
+}
+
+export interface ShopkeeperDailyAnalytics {
+  date: string
+  totalOrders: number
+  deliveredOrders: number
+  cancelledOrders: number
+  nonCancelledOrderValue: number
+}
+
+export interface ShopkeeperTopProductAnalytics {
+  shopId: number
+  shopName: string
+  productId: number
+  productName: string
+  unitsSold: number
+  orderValue: number
+}
+
+export type ShopkeeperAnalyticsPeriod = 7 | 30 | 90
+
+function localDateString(value: Date): string {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return year + '-' + month + '-' + day
+}
+
+export function buildShopkeeperAnalyticsDateRange(
+  days: ShopkeeperAnalyticsPeriod,
+  now = new Date(),
+): { from: string; to: string } {
+  const toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const fromDate = new Date(toDate)
+  fromDate.setDate(fromDate.getDate() - (days - 1))
+  return {
+    from: localDateString(fromDate),
+    to: localDateString(toDate),
+  }
+}
+
+export function analyticsBarPercent(value: number, maximum: number): number {
+  if (!Number.isFinite(value) || !Number.isFinite(maximum) || value <= 0 || maximum <= 0) {
+    return 0
+  }
+  return Math.round(Math.min(100, Math.max(0, (value / maximum) * 100)))
+}
