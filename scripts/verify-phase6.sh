@@ -1,32 +1,95 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP="frontend/src/app/App.tsx"
-FEATURE="frontend/src/features/customer/CustomerStorefront.tsx"
-HELPERS="frontend/src/features/customer/marketplace.ts"
-STYLES="frontend/src/features/customer/customer-storefront.css"
-TESTS="frontend/src/features/customer/marketplace.test.ts"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
-for file in "$APP" "$FEATURE" "$HELPERS" "$STYLES" "$TESTS"; do
-  if [[ ! -f "$file" ]]; then
-    echo "Required customer storefront file is missing: $file" >&2
-    exit 1
-  fi
+required_files=(
+  "frontend/src/app/App.tsx"
+  "frontend/src/features/customer/CustomerStorefront.tsx"
+  "frontend/src/features/customer/CustomerCart.tsx"
+  "frontend/src/features/customer/CustomerOrders.tsx"
+  "frontend/src/features/customer/marketplace.ts"
+  "frontend/src/features/customer/marketplace.test.ts"
+  "frontend/src/features/shopkeeper/ShopkeeperDashboard.tsx"
+  "frontend/src/features/shopkeeper/shopkeeper.ts"
+  "frontend/src/features/shopkeeper/shopkeeper.test.ts"
+  "frontend/src/features/delivery/DeliveryDashboard.tsx"
+  "frontend/src/features/admin/AdminDashboard.tsx"
+  "frontend/src/features/shared/operations.css"
+  "frontend/src/styles/global.css"
+)
+
+for file in "${required_files[@]}"; do
+  [[ -s "$file" ]] || { echo "Missing or empty Phase 6 file: $file" >&2; exit 1; }
 done
 
-grep -Fq '<CustomerStorefront />' "$APP"
-grep -Fq "'/api/customer/marketplace/shops'" "$FEATURE"
-grep -Fq "'/api/customer/marketplace/categories'" "$FEATURE"
-grep -Fq 'buildMarketplaceSearchPath' "$FEATURE"
-grep -Fq 'api/customer/cart/${selectedShopId}/items' "$FEATURE"
-grep -Fq 'api/customer/cart/${selectedShopId}/items/${productId}' "$FEATURE"
-grep -Fq 'role="alert"' "$FEATURE"
-grep -Fq 'aria-pressed' "$FEATURE"
-grep -Fq 'prefers-reduced-motion' 'frontend/src/styles/global.css'
+APP="frontend/src/app/App.tsx"
+CUSTOMER="frontend/src/features/customer/CustomerStorefront.tsx"
+CART="frontend/src/features/customer/CustomerCart.tsx"
+ORDERS="frontend/src/features/customer/CustomerOrders.tsx"
+SHOPKEEPER="frontend/src/features/shopkeeper/ShopkeeperDashboard.tsx"
+DELIVERY="frontend/src/features/delivery/DeliveryDashboard.tsx"
+ADMIN="frontend/src/features/admin/AdminDashboard.tsx"
+GLOBAL="frontend/src/styles/global.css"
 
-if grep -Eiq 'demo|mockData|fakeProducts|sampleProducts' "$FEATURE"; then
-  echo "Customer storefront must use live API data, not hardcoded demo data." >&2
+# Role routing and the live customer shopping journey.
+grep -Fq "allowed={['CUSTOMER']}" "$APP"
+grep -Fq "allowed={['SHOPKEEPER']}" "$APP"
+grep -Fq "allowed={['DELIVERY_PARTNER']}" "$APP"
+grep -Fq "allowed={['ADMIN']}" "$APP"
+grep -Fq "'/api/customer/marketplace/shops'" "$CUSTOMER"
+grep -Fq "'/api/customer/marketplace/categories'" "$CUSTOMER"
+grep -Fq 'buildMarketplaceSearchPath' "$CUSTOMER"
+grep -Fq 'searchMarketplaceShops' "$CUSTOMER"
+grep -Fq '/api/customer/cart/' "$CART"
+grep -Fq '/checkout' "$CART"
+grep -Fq '/api/payments/orders/' "$CART"
+grep -Fq '/api/payments/verify' "$CART"
+grep -Fq '/api/customer/orders' "$ORDERS"
+grep -Fq '/api/orders/' "$ORDERS"
+grep -Fq 'cancel' "$ORDERS"
+
+# Shopkeeper order, stock and analytics work uses authenticated backend routes.
+grep -Fq "'/api/shopkeeper/shops'" "$SHOPKEEPER"
+grep -Fq "'/api/shopkeeper/orders'" "$SHOPKEEPER"
+grep -Fq '/inventory' "$SHOPKEEPER"
+grep -Fq '/restock' "$SHOPKEEPER"
+grep -Fq '/movements' "$SHOPKEEPER"
+grep -Fq '/fulfilment?' "$SHOPKEEPER"
+grep -Fq '/analytics/overview?' "$SHOPKEEPER"
+grep -Fq '/analytics/daily?' "$SHOPKEEPER"
+grep -Fq '/analytics/top-products?' "$SHOPKEEPER"
+grep -Fq "['analytics', 'Performance'" "$SHOPKEEPER"
+grep -Fq 'shopkeeper-bottom-nav' "$SHOPKEEPER"
+
+# Delivery partners and administrators have role-specific live operations.
+grep -Fq '/api/delivery/orders/available' "$DELIVERY"
+grep -Fq '/api/delivery/orders' "$DELIVERY"
+grep -Fq '/accept' "$DELIVERY"
+grep -Fq '/pickup' "$DELIVERY"
+grep -Fq '/deliver' "$DELIVERY"
+grep -Fq 'operations-bottom-nav' "$DELIVERY"
+grep -Fq '/api/admin/analytics/overview' "$ADMIN"
+grep -Fq '/api/admin/users' "$ADMIN"
+grep -Fq '/api/admin/shops' "$ADMIN"
+grep -Fq 'CatalogueReviewQueue' "$ADMIN"
+grep -Fq 'ProductPhotoReviewQueue' "$ADMIN"
+grep -Fq 'operations-bottom-nav' "$ADMIN"
+
+# Motion must be small, CSS-only and disabled for reduced-motion users.
+grep -Fq '@keyframes apniko-soft-rise' "$GLOBAL"
+grep -Fq '@keyframes apniko-bar-rise' "$GLOBAL"
+grep -Fq 'prefers-reduced-motion: reduce' "$GLOBAL"
+
+if grep -Eiq 'demo|mockData|fakeProducts|sampleProducts' "$CUSTOMER" "$SHOPKEEPER" "$DELIVERY" "$ADMIN"; then
+  echo "Role workspaces must use live API data, not hardcoded demo data." >&2
   exit 1
 fi
 
-echo "Phase 6 verification passed: customer route uses live marketplace and per-shop basket APIs; no hardcoded demo catalog was detected."
+if grep -Eiq 'Open Food Facts|open food facts' "$ADMIN"; then
+  echo "Excluded catalogue source must not be offered in administration." >&2
+  exit 1
+fi
+
+echo "Phase 6 verification passed: live customer checkout/orders, shopkeeper orders/inventory/analytics, delivery lifecycle, admin operations, responsive navigation and reduced-motion-aware UI are present."
