@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
-import { roleHomePath } from '../../lib/roles'
+import { notificationDestination, formatNotificationDate } from './notifications'
 import './notification-center.css'
 
 interface NotificationItem {
@@ -32,17 +32,6 @@ function describeError(error: unknown): string {
     return error.message
   }
   return error instanceof Error ? error.message : 'Notifications could not be loaded.'
-}
-
-function formatNotificationDate(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date)
 }
 
 export function NotificationCenter() {
@@ -162,11 +151,7 @@ export function NotificationCenter() {
   async function openNotification(item: NotificationItem) {
     await markRead(item)
     setOpen(false)
-    if (item.relatedOrderId && session?.role === 'CUSTOMER') {
-      navigate('/customer/orders?placed=' + item.relatedOrderId)
-      return
-    }
-    if (session) navigate(roleHomePath(session.role))
+    if (session) navigate(notificationDestination(session.role, item.relatedOrderId))
   }
 
   if (!session) return null
