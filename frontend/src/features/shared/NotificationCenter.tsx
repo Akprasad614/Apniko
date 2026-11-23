@@ -163,7 +163,7 @@ export function NotificationCenter() {
         className="notification-trigger"
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={unreadCount ? 'Notifications, ' + unreadCount + ' unread' : 'Notifications'}
+        aria-label={unreadCount ? 'Updates, ' + unreadCount + ' unread notifications' : 'Updates'}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="notification-trigger__icon" aria-hidden="true">♢</span>
