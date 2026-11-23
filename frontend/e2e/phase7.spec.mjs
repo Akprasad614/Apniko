@@ -2,6 +2,10 @@ import { test, expect, request } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import process from 'node:process'
+import { URL } from 'node:url'
+
+/* global document */
 
 const API_BASE = process.env.PHASE7_API_URL || 'http://127.0.0.1:8080'
 const ADMIN_EMAIL = process.env.ADMIN_BOOTSTRAP_EMAIL || 'phase7-admin@local.test'

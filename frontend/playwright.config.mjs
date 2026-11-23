@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import process from 'node:process'
 
 const frontendRoot = path.dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = path.resolve(frontendRoot, '..')
