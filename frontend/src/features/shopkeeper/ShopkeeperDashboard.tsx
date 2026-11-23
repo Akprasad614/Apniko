@@ -1228,7 +1228,7 @@ export function ShopkeeperDashboard() {
           </button>
         ))}
       </nav>
-      <footer className="shopkeeper-footer"><div className="shopkeeper-shell"><Link to="/" className="shopkeeper-wordmark">apniko<span>.</span></Link><span>Good groceries. Closer to home.</span><span>SHOPKEEPER / APNIKO</span></div></footer>
+      <footer className="shopkeeper-footer"><div className="shopkeeper-shell"><Link to="/shopkeeper" className="shopkeeper-wordmark">apniko<span>.</span></Link><span>Good groceries. Closer to home.</span><span>SHOPKEEPER / APNIKO</span></div></footer>
     </div>
   )
 }
