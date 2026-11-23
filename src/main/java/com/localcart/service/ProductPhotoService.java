@@ -418,7 +418,7 @@ public class ProductPhotoService {
     private boolean isAuthorizedImageHost(String imageHost, String sourceHost) {
         String image = imageHost == null ? "" : imageHost.toLowerCase(Locale.ROOT);
         String source = sourceHost == null ? "" : sourceHost.toLowerCase(Locale.ROOT);
-        if (image.equals(source) || image.endsWith("." + source)) return true;
+        if (image.equals(source)) return true;
         if (authorizedImageHosts == null || authorizedImageHosts.isBlank()) return false;
         for (String allowed : authorizedImageHosts.split(",")) {
             if (image.equals(allowed.trim().toLowerCase(Locale.ROOT))) return true;
