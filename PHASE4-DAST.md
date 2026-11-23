@@ -58,8 +58,14 @@ findings on the Swagger UI document. A dedicated `SwaggerUiSecurityHeadersWriter
 now applies a restrictive CSP, COEP, COOP, CORP and Permissions Policy only
 to Swagger UI routes. It deliberately does not impose those policies on
 customer/API routes. Unit tests check both the positive Swagger route and the
-absence of these route-specific headers on customer routes. The next blocking
-baseline run must confirm the header findings are gone.
+absence of these route-specific headers on customer routes. The stricter baseline correctly rejected the first header change: ZAP rule
+`10055` identified an omitted `form-action` directive (which does not inherit
+from `default-src`) and an inline-style allowance. The Swagger-only CSP now
+sets `form-action 'self'` and uses `style-src 'self'` without
+`unsafe-inline`. The writer tests assert the exact policy and verify the
+Swagger-only headers are not applied to customer API routes. The updated
+blocking baseline must verify these directives and all other browser headers
+before Phase 4 can be considered ready.
 
 ## Isolation and safety
 
