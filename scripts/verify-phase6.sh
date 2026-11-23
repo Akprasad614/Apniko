@@ -63,6 +63,8 @@ grep -Fq '/fulfilment?' "$SHOPKEEPER"
 grep -Fq '/analytics/overview?' "$SHOPKEEPER"
 grep -Fq '/analytics/daily?' "$SHOPKEEPER"
 grep -Fq '/analytics/top-products?' "$SHOPKEEPER"
+grep -Fq '/api/shopkeeper/ai-insights/replenishment?' "$SHOPKEEPER"
+grep -Fq 'weighted moving-average baseline' "$SHOPKEEPER"
 grep -Fq "['analytics', 'Performance'" "$SHOPKEEPER"
 grep -Fq 'shopkeeper-bottom-nav' "$SHOPKEEPER"
 
