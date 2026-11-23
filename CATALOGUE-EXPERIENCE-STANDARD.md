@@ -72,7 +72,7 @@ retailer's private image specification.
 
 1. Manufacturer / brand / authorised distributor product feeds with documented rights for Apniko's intended display and commercial use
 2. Product images supplied directly by participating suppliers or shopkeepers with a documented usage grant
-3. Open datasets whose specific image licence permits Apniko's intended use, with required attribution and any share-alike obligations
+3. Specific openly licensed image assets whose licence permits Apniko's intended use, with required attribution and any share-alike obligations (policy-permitted, but not yet accepted by the current supplier-only importer/API path)
 4. No image rather than an unlicensed, unrelated, low-quality or guessed image
 
 Retailer catalogue photographs are not a default source. Do not scrape retailer
