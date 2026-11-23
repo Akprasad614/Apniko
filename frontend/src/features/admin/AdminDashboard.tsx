@@ -327,7 +327,27 @@ export function AdminDashboard() {
           ))}
         </nav>
 
-        {error && <div className="operations-alert operations-alert--error" role="alert">{error}</div>}
+        <nav className="operations-bottom-nav" aria-label="Administration navigation">
+          {([
+            ['overview', 'Overview', '⌂'],
+            ['people', 'People', '♙'],
+            ['shops', 'Shops', '⌖'],
+            ['catalogue', 'Catalogue', '▦'],
+          ] as const).map(([key, label, symbol]) => (
+            <button
+              key={key}
+              type="button"
+              className={tab === key ? 'is-active' : ''}
+              aria-current={tab === key ? 'page' : undefined}
+              onClick={() => { setTab(key); setError(''); setNotice('') }}
+            >
+              <span className="operations-bottom-nav__symbol" aria-hidden="true">{symbol}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {error && <div className="operations-alert operations-alert--error" role="alert">{error}</div>
         {notice && <div className="operations-alert operations-alert--success" role="status">{notice}</div>}
 
         {loading ? (
@@ -427,7 +447,7 @@ export function AdminDashboard() {
                     <label>Barcode (GTIN)<input value={productBarcode} onChange={(event) => setProductBarcode(event.target.value)} inputMode="numeric" maxLength={14} pattern="([0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14})" placeholder="EAN / GTIN barcode" /></label>
                     <label>Pack size<input value={productPackSize} onChange={(event) => setProductPackSize(event.target.value)} maxLength={80} placeholder="e.g. 500 g, 1 L, 10 pcs" /></label>
                     <label>MRP (₹)<input type="number" min="0.01" max="1000000" step="0.01" value={productMrp} onChange={(event) => setProductMrp(event.target.value)} placeholder="Printed pack MRP" /></label>
-                    <label>MRP source<select value={productMrpSource} onChange={(event) => setProductMrpSource(event.target.value)}><option value="">Not recorded</option><option value="pack">Physical pack</option><option value="brand">Brand supplied</option><option value="gov">Government source</option><option value="off">Open Food Facts</option></select></label>
+                    <label>MRP source<select value={productMrpSource} onChange={(event) => setProductMrpSource(event.target.value)}><option value="">Not recorded</option><option value="pack">Physical pack</option><option value="brand">Brand supplied</option><option value="gov">Government source</option></select></label>
                   </div>
                   <label>Product description<textarea value={productDescription} onChange={(event) => setProductDescription(event.target.value)} maxLength={1000} rows={3} placeholder="Product details, pack information or usage notes" /></label>
                   <p className="operations-help">MRP is a sourced reference value, not the shop's selling price. Enter an MRP source only when an MRP is provided.</p>
