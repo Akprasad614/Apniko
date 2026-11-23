@@ -28,7 +28,7 @@ class ProductPhotoServiceTest {
     private static final String BARCODE = "8901234567890";
     private static final String IMAGE = "https://images.catalogue.example/products/8901234567890/front.jpg";
     private static final String SOURCE = "https://catalogue.example/product/" + BARCODE;
-    private static final String BRAND_IMAGE = "https://images.brand.example/products/test-grocery/front.jpg";
+    private static final String BRAND_IMAGE = "https://brand.example/products/test-grocery/front.jpg";
     private static final String BRAND_PAGE = "https://brand.example/products/test-grocery";
     private static final String BRAND_SOURCE = "Brand / supplier authorised catalogue";
     private ProductRepository productRepository;
