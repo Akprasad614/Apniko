@@ -923,7 +923,9 @@ export function ShopkeeperDashboard() {
                           <span>{analyticsOverview.from} — {analyticsOverview.to}</span>
                         </div>
                         {analyticsDaily.length ? (
-                          <div className="shopkeeper-analytics__bars">
+                          <div className={analyticsPeriod > 7
+                            ? 'shopkeeper-analytics__bars shopkeeper-analytics__bars--wide'
+                            : 'shopkeeper-analytics__bars'}>
                             {analyticsDaily.map((day) => {
                               const width = analyticsBarPercent(day.nonCancelledOrderValue, analyticsMaximum)
                               const dateLabel = new Intl.DateTimeFormat('en-IN', {
