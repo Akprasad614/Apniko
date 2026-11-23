@@ -42,14 +42,16 @@ Existing operational features remain connected to live shopkeeper endpoints:
 - Browse the shared catalogue, add a verified catalogue item to shop inventory, set the shop-specific price and opening quantity, edit availability/stock, restock with a note, manage low-stock threshold, and inspect the stock movement audit trail.
 - View operational overview counts based on the real orders and inventory returned by the backend.
 - View performance for 7, 30 or 90 days using the existing analytics API. Summary totals cover all shops linked to the shopkeeper account; the top-product list is scoped to the currently selected shop. Empty periods are shown as empty/zero states, never as sample sales.
+- Review stock guidance from the existing weighted moving-average recommendation service, based on recorded order history and current inventory. The UI shows the 28-day history window and three-day lead-time assumption; this is an explainable baseline, not a trained model or guaranteed purchase quantity.
 
 Performance endpoints:
 
 - `GET /api/shopkeeper/analytics/overview?from=...&to=...`
 - `GET /api/shopkeeper/analytics/daily?from=...&to=...`
 - `GET /api/shopkeeper/analytics/top-products?shopId=...&from=...&to=...&limit=...`
+- `GET /api/shopkeeper/ai-insights/replenishment?shopId=...&historyDays=28&leadTimeDays=3`
 
-All metrics are backend response values. Daily charts are rendered from the response dates and values. They do not estimate revenue, margins or stock turnover.
+All metrics and stock recommendation inputs are backend response values. Daily charts are rendered from the response dates and values. The frontend does not estimate revenue, margins or stock turnover.
 
 ## 3. Delivery-partner workspace
 
