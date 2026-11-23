@@ -45,6 +45,16 @@ async function signIn(page, email) {
 }
 
 async function checkA11y(page, label) {
+  // Run axe after entrance/interaction transitions settle. Sampling opacity
+  // animations mid-frame can create false contrast failures on otherwise
+  // readable controls and product text.
+  await page.evaluate(async () => {
+    const animations = document.getAnimations({ subtree: true })
+    await Promise.all(
+      animations.map((animation) => animation.finished.catch(() => undefined)),
+    )
+  })
+
   const result = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze()
