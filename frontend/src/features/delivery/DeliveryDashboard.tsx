@@ -161,6 +161,25 @@ export function DeliveryDashboard() {
           ] as const).map(([key, label]) => <button type="button" key={key} className={tab === key ? 'is-active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>)}
         </nav>
 
+        <nav className="operations-bottom-nav operations-bottom-nav--three" aria-label="Delivery navigation">
+          {([
+            ['available', 'Available', '⌁'],
+            ['assigned', 'My deliveries', '▣'],
+            ['completed', 'Completed', '✓'],
+          ] as const).map(([key, label, symbol]) => (
+            <button
+              key={key}
+              type="button"
+              className={tab === key ? 'is-active' : ''}
+              aria-current={tab === key ? 'page' : undefined}
+              onClick={() => setTab(key)}
+            >
+              <span className="operations-bottom-nav__symbol" aria-hidden="true">{symbol}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+
         {loading ? <div className="operations-state" role="status">Loading delivery jobs…</div> : currentOrders.length ? (
           <div className="delivery-order-list">
             {currentOrders.map((order) => {
