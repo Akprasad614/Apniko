@@ -16,6 +16,7 @@ class SwaggerUiSecurityHeadersWriterTest {
     void appliesBrowserSecurityHeadersToSwaggerUi() {
         MockHttpServletRequest request =
                 new MockHttpServletRequest("GET", "/swagger-ui/index.html");
+        request.setServletPath("/swagger-ui/index.html");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         writer.writeHeaders(request, response);
@@ -39,6 +40,7 @@ class SwaggerUiSecurityHeadersWriterTest {
     void appliesHeadersToCanonicalSwaggerUiEntryPoint() {
         MockHttpServletRequest request =
                 new MockHttpServletRequest("GET", "/swagger-ui.html");
+        request.setServletPath("/swagger-ui.html");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         writer.writeHeaders(request, response);
@@ -51,6 +53,7 @@ class SwaggerUiSecurityHeadersWriterTest {
     void doesNotApplySwaggerSpecificPoliciesToCustomerApiRoutes() {
         MockHttpServletRequest request =
                 new MockHttpServletRequest("GET", "/api/customer/home");
+        request.setServletPath("/api/customer/home");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         writer.writeHeaders(request, response);
