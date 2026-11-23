@@ -17,6 +17,9 @@ required_files=(
   "frontend/src/features/delivery/DeliveryDashboard.tsx"
   "frontend/src/features/admin/AdminDashboard.tsx"
   "frontend/src/features/shared/operations.css"
+  "frontend/src/features/shared/NotificationCenter.tsx"
+  "frontend/src/features/shared/notifications.ts"
+  "frontend/src/features/shared/notifications.test.ts"
   "frontend/src/styles/global.css"
 )
 
@@ -76,6 +79,14 @@ grep -Fq '/api/admin/shops' "$ADMIN"
 grep -Fq 'CatalogueReviewQueue' "$ADMIN"
 grep -Fq 'ProductPhotoReviewQueue' "$ADMIN"
 grep -Fq 'operations-bottom-nav' "$ADMIN"
+
+# Notifications are loaded and mutated through the authenticated per-user API.
+NOTIFICATIONS="frontend/src/features/shared/NotificationCenter.tsx"
+grep -Fq "'/api/notifications/unread-count'" "$NOTIFICATIONS"
+grep -Fq "'/api/notifications?page=0&size=20'" "$NOTIFICATIONS"
+grep -Fq "'/api/notifications/read-all'" "$NOTIFICATIONS"
+grep -Fq 'NotificationCenter' "frontend/src/features/customer/CustomerShell.tsx" "$SHOPKEEPER" "$DELIVERY" "$ADMIN"
+grep -Fq 'notificationDestination' "frontend/src/features/shared/notifications.test.ts"
 
 # Motion must be small, CSS-only and disabled for reduced-motion users.
 grep -Fq '@keyframes apniko-soft-rise' "$GLOBAL"
