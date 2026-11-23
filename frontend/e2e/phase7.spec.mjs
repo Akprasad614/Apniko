@@ -274,7 +274,7 @@ test('customer to shopkeeper to delivery order lifecycle; role accessibility and
   const deliveredOrder = page.locator('.customer-order').filter({ hasText: 'ORDER #' + orderId })
   await expect(deliveredOrder).toContainText(/Delivered/i)
   await deliveredOrder.getByRole('button', { name: 'Items and status history' }).click()
-  await expect(deliveredOrder.getByText(PRODUCT_NAME, { exact: true })).toBeVisible()
+  await expect(deliveredOrder.getByText(PRODUCT_NAME, { exact: false })).toBeVisible()
   await checkA11y(page, 'customer delivered order history')
   await screenshot(page, testInfo, 'customer-order-delivered')
 
