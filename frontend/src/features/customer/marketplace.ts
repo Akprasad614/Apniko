@@ -29,6 +29,19 @@ export interface MarketplaceInventoryItem {
   imageAttribution?: string | null
 }
 
+export function searchMarketplaceShops(
+  shops: MarketplaceShop[],
+  query: string,
+): MarketplaceShop[] {
+  const term = query.trim().toLocaleLowerCase('en-IN')
+  if (!term) return shops
+
+  return shops.filter((shop) =>
+    [shop.name, shop.address, shop.ownerName]
+      .some((value) => (value ?? '').toLocaleLowerCase('en-IN').includes(term)),
+  )
+}
+
 export interface MarketplacePage<T> {
   content: T[]
   number: number
