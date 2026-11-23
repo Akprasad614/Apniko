@@ -1,0 +1,54 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+.DS_Store
+postman/environments/localcart.local.postman_environment.json
+postman/reports/
+postman/environments/localcart-api.local.postman_environment.json
+
+### Apniko frontend ###
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+### Apniko catalogue source snapshots (downloaded, not committed) ###
+data/catalogue/source/
+data/catalogue/reports/
+.venv-catalogue/
+
+### Phase 7 browser test output ###
+frontend/test-results/
+frontend/playwright-report/

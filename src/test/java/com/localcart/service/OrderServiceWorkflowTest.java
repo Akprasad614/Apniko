@@ -1,0 +1,546 @@
+package com.localcart.service;
+
+import com.localcart.entity.Cart;
+import com.localcart.entity.CartItem;
+import com.localcart.entity.DeliveryMode;
+import com.localcart.entity.Order;
+import com.localcart.entity.OrderDeliveryAddress;
+import com.localcart.entity.Product;
+import com.localcart.entity.ProductCatalogueReviewStatus;
+import com.localcart.entity.OrderStatus;
+import com.localcart.entity.Role;
+import com.localcart.entity.Shop;
+import com.localcart.entity.User;
+import com.localcart.entity.ShopInventory;
+import com.localcart.exception.BadRequestException;
+import com.localcart.repository.CartRepository;
+import com.localcart.repository.InventoryMovementRepository;
+import com.localcart.repository.OrderItemRepository;
+import com.localcart.repository.OrderRepository;
+import com.localcart.repository.OrderStatusHistoryRepository;
+import com.localcart.repository.PaymentRepository;
+import com.localcart.repository.ShopInventoryRepository;
+import com.localcart.repository.ShopRepository;
+import com.localcart.repository.UserRepository;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class OrderServiceWorkflowTest {
+
+    private OrderRepository orderRepository;
+    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private PaymentRepository paymentRepository;
+    private InventoryMovementRepository inventoryMovementRepository;
+    private OrderItemRepository orderItemRepository;
+    private ShopRepository shopRepository;
+    private ShopInventoryRepository shopInventoryRepository;
+    private UserRepository userRepository;
+    private CartRepository cartRepository;
+    private OrderService orderService;
+
+    @BeforeEach
+    void setUp() {
+        orderRepository = mock(OrderRepository.class);
+        orderStatusHistoryRepository = mock(OrderStatusHistoryRepository.class);
+        paymentRepository = mock(PaymentRepository.class);
+        inventoryMovementRepository = mock(InventoryMovementRepository.class);
+        orderItemRepository = mock(OrderItemRepository.class);
+        shopRepository = mock(ShopRepository.class);
+        shopInventoryRepository = mock(ShopInventoryRepository.class);
+        userRepository = mock(UserRepository.class);
+        cartRepository = mock(CartRepository.class);
+
+        orderService = new OrderService(
+                orderRepository,
+                orderStatusHistoryRepository,
+                paymentRepository,
+                inventoryMovementRepository,
+                orderItemRepository,
+                shopRepository,
+                shopInventoryRepository,
+                userRepository,
+                cartRepository
+        );
+    }
+
+    @Test
+    void checkoutRejectsProductThatEnteredCatalogueReviewAfterBeingAddedToCart() {
+        User customer = user(Role.CUSTOMER, 20L, "customer@example.com");
+        Shop shop = mock(Shop.class);
+        when(shop.getId()).thenReturn(1L);
+        when(shop.isActive()).thenReturn(true);
+
+        Product product = new Product();
+        product.setName("100% Micellar Casein");
+        product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+        ReflectionTestUtils.setField(product, "id", 501L);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setProduct(product);
+        cartItem.setQuantity(1);
+        Cart cart = new Cart();
+        cart.setCustomer(customer);
+        cart.setShop(shop);
+        cart.getItems().add(cartItem);
+
+        ShopInventory inventory = new ShopInventory();
+        inventory.setProduct(product);
+        inventory.setAvailable(true);
+        inventory.setStockQuantity(5);
+        inventory.setPrice(100.0);
+
+        when(userRepository.findByEmail("customer@example.com"))
+                .thenReturn(Optional.of(customer));
+        when(shopRepository.findById(1L)).thenReturn(Optional.of(shop));
+        when(cartRepository.findByCustomerIdAndShopId(20L, 1L))
+                .thenReturn(Optional.of(cart));
+        when(shopInventoryRepository.findByShopIdAndProductIdForUpdate(1L, 501L))
+                .thenReturn(Optional.of(inventory));
+        when(orderRepository.save(any(Order.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.checkoutCart("customer@example.com", 1L,
+                        (OrderDeliveryAddress) null));
+
+        verify(shopInventoryRepository, never()).save(any(ShopInventory.class));
+        verify(orderItemRepository, never()).save(any());
+    }
+
+    @Test
+    void shopkeeperCanMovePlacedOrderToAccepted() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, DeliveryMode.CUSTOMER_PICKUP);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail()))
+                .thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> result = orderService.updateShopkeeperOrderStatus(
+                100L, OrderStatus.ACCEPTED, shopkeeper.getEmail()
+        );
+
+        assertTrue(result.isPresent());
+        assertEquals(OrderStatus.ACCEPTED, result.get().getStatus());
+        assertEquals(DeliveryMode.CUSTOMER_PICKUP, result.get().getDeliveryMode());
+        verify(orderStatusHistoryRepository).save(any());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperCannotAcceptUsingAnUnsavedFulfilmentSelection() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        com.localcart.entity.OrderDeliveryAddress address = new com.localcart.entity.OrderDeliveryAddress();
+        address.setAddressLine1("12 Main Road");
+        address.setCity("Bengaluru");
+        order.setDeliveryAddress(address);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(123L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () -> orderService.updateShopkeeperOrderStatus(
+                123L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.PLATFORM_DELIVERY
+        ));
+
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        assertNull(order.getDeliveryMode());
+        assertSame(address, order.getDeliveryAddress());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCanSaveFulfilmentForAnIndividualPlacedOrder() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        com.localcart.entity.OrderDeliveryAddress address = new com.localcart.entity.OrderDeliveryAddress();
+        address.setAddressLine1("12 Main Road");
+        address.setCity("Bengaluru");
+        order.setDeliveryAddress(address);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(126L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> saved = orderService.saveShopkeeperOrderFulfilment(
+                126L, DeliveryMode.SHOP_DELIVERY, shopkeeper.getEmail()
+        );
+
+        assertTrue(saved.isPresent());
+        assertEquals(OrderStatus.PLACED, saved.get().getStatus());
+        assertEquals(DeliveryMode.SHOP_DELIVERY, saved.get().getDeliveryMode());
+        assertSame(address, saved.get().getDeliveryAddress());
+        verify(orderRepository).save(order);
+        verify(orderStatusHistoryRepository, never()).save(any());
+    }
+
+    @Test
+    void shopkeeperCanAcceptAnOrderUsingItsPreviouslySavedFulfilment() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        com.localcart.entity.OrderDeliveryAddress address = new com.localcart.entity.OrderDeliveryAddress();
+        address.setAddressLine1("12 Main Road");
+        order.setDeliveryAddress(address);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(127L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> accepted = orderService.updateShopkeeperOrderStatus(
+                127L, OrderStatus.ACCEPTED, shopkeeper.getEmail()
+        );
+
+        assertTrue(accepted.isPresent());
+        assertEquals(OrderStatus.ACCEPTED, accepted.get().getStatus());
+        assertEquals(DeliveryMode.SHOP_DELIVERY, accepted.get().getDeliveryMode());
+        assertSame(address, accepted.get().getDeliveryAddress());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperCannotSaveDeliveryFulfilmentWithoutAnAddress() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(128L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () -> orderService.saveShopkeeperOrderFulfilment(
+                128L, DeliveryMode.PLATFORM_DELIVERY, shopkeeper.getEmail()
+        ));
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        assertNull(order.getDeliveryMode());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCannotChangeFulfilmentAfterAcceptance() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.ACCEPTED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(129L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () -> orderService.saveShopkeeperOrderFulfilment(
+                129L, DeliveryMode.CUSTOMER_PICKUP, shopkeeper.getEmail()
+        ));
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCannotChooseDeliveryForAnOrderWithoutAnAddress() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(124L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.updateShopkeeperOrderStatus(
+                        124L, OrderStatus.ACCEPTED, shopkeeper.getEmail(), DeliveryMode.SHOP_DELIVERY
+                )
+        );
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        assertNull(order.getDeliveryMode());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCannotAcceptAnOrderWithoutChoosingFulfilment() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, null);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(125L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.updateShopkeeperOrderStatus(125L, OrderStatus.ACCEPTED, shopkeeper.getEmail())
+        );
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCannotSkipOrderLifecycleSteps() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail()))
+                .thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(order));
+
+        Optional<Order> result = orderService.updateShopkeeperOrderStatus(
+                101L, OrderStatus.READY, shopkeeper.getEmail()
+        );
+
+        assertTrue(result.isEmpty());
+        assertEquals(OrderStatus.PLACED, order.getStatus());
+        verify(orderStatusHistoryRepository, never()).save(any());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCanCompleteShopDeliveryAfterReady() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(120L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> dispatched = orderService.updateShopkeeperOrderStatus(
+                120L, OrderStatus.OUT_FOR_DELIVERY, shopkeeper.getEmail()
+        );
+        assertTrue(dispatched.isPresent());
+        assertEquals(OrderStatus.OUT_FOR_DELIVERY, dispatched.get().getStatus());
+
+        Optional<Order> delivered = orderService.updateShopkeeperOrderStatus(
+                120L, OrderStatus.DELIVERED, shopkeeper.getEmail()
+        );
+        assertTrue(delivered.isPresent());
+        assertEquals(OrderStatus.DELIVERED, delivered.get().getStatus());
+        verify(orderStatusHistoryRepository, times(2)).save(any());
+        verify(orderRepository, times(2)).save(order);
+    }
+
+    @Test
+    void shopkeeperCanConfirmCustomerPickupAfterReady() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.CUSTOMER_PICKUP);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(121L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Optional<Order> delivered = orderService.updateShopkeeperOrderStatus(
+                121L, OrderStatus.DELIVERED, shopkeeper.getEmail()
+        );
+
+        assertTrue(delivered.isPresent());
+        assertEquals(OrderStatus.DELIVERED, delivered.get().getStatus());
+        verify(orderStatusHistoryRepository).save(argThat(history ->
+                "Customer collected the order from the shop".equals(history.getNote())
+        ));
+    }
+
+    @Test
+    void shopkeeperCannotCompletePlatformDeliveryOrders() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.PLATFORM_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(122L)).thenReturn(Optional.of(order));
+
+        Optional<Order> result = orderService.updateShopkeeperOrderStatus(
+                122L, OrderStatus.OUT_FOR_DELIVERY, shopkeeper.getEmail()
+        );
+
+        assertTrue(result.isEmpty());
+        assertEquals(OrderStatus.READY, order.getStatus());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCannotUpdateAnOrderOwnedByAnotherShopkeeper() {
+        User currentShopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        User differentOwner = user(Role.SHOPKEEPER, 99L, "other@example.com");
+        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(differentOwner));
+
+        when(userRepository.findByEmail(currentShopkeeper.getEmail()))
+                .thenReturn(Optional.of(currentShopkeeper));
+        when(orderRepository.findByIdForUpdate(102L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.updateShopkeeperOrderStatus(
+                        102L, OrderStatus.ACCEPTED, currentShopkeeper.getEmail()
+                )
+        );
+
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void shopkeeperCanRejectOnlyAPlacedOrder() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.PLACED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(108L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(paymentRepository.findByOrderId(108L)).thenReturn(Optional.empty());
+
+        Optional<Order> rejected = orderService.rejectOrderByShopkeeper(
+                108L, shopkeeper.getEmail(), "Out of stock");
+
+        assertTrue(rejected.isPresent());
+        assertEquals(OrderStatus.CANCELLED, rejected.get().getStatus());
+        verify(orderStatusHistoryRepository).save(argThat(history ->
+                "Out of stock".equals(history.getNote())
+        ));
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shopkeeperCannotRejectAnOrderAfterItWasAccepted() {
+        User shopkeeper = user(Role.SHOPKEEPER, 12L, "shopkeeper@example.com");
+        Order order = order(OrderStatus.ACCEPTED, DeliveryMode.SHOP_DELIVERY);
+        order.setShop(shopOwnedBy(shopkeeper));
+
+        when(userRepository.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(orderRepository.findByIdForUpdate(109L)).thenReturn(Optional.of(order));
+
+        Optional<Order> rejected = orderService.rejectOrderByShopkeeper(
+                109L, shopkeeper.getEmail(), "Too late");
+
+        assertTrue(rejected.isEmpty());
+        assertEquals(OrderStatus.ACCEPTED, order.getStatus());
+        verify(orderStatusHistoryRepository, never()).save(any());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void availableDeliveryQueueContainsOnlyReadyPlatformDeliveryOrders() {
+        Order platformOrder = order(OrderStatus.READY, DeliveryMode.PLATFORM_DELIVERY);
+        Order shopOrder = order(OrderStatus.READY, DeliveryMode.SHOP_DELIVERY);
+        Order pickupOrder = order(OrderStatus.READY, DeliveryMode.CUSTOMER_PICKUP);
+        Order notReadyOrder = order(OrderStatus.PREPARING, DeliveryMode.PLATFORM_DELIVERY);
+
+        when(orderRepository.findByStatusAndDeliveryPartnerIsNull(OrderStatus.READY))
+                .thenReturn(List.of(platformOrder, shopOrder, pickupOrder));
+
+        List<Order> available = orderService.getAvailableDeliveryOrders();
+
+        assertEquals(1, available.size());
+        assertSame(platformOrder, available.get(0));
+        assertFalse(available.contains(notReadyOrder));
+    }
+
+    @Test
+    void deliveryPartnerCanAcceptReadyPlatformOrder() {
+        User partner = user(Role.DELIVERY_PARTNER, 15L, "partner@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.PLATFORM_DELIVERY);
+
+        when(userRepository.findByEmail(partner.getEmail())).thenReturn(Optional.of(partner));
+        when(orderRepository.findByIdForUpdate(103L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Order accepted = orderService.acceptDeliveryOrder(103L, partner.getEmail());
+
+        assertSame(partner, accepted.getDeliveryPartner());
+        assertEquals(OrderStatus.READY, accepted.getStatus());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void deliveryPartnerCannotAcceptShopDeliveryOrder() {
+        User partner = user(Role.DELIVERY_PARTNER, 15L, "partner@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.SHOP_DELIVERY);
+
+        when(userRepository.findByEmail(partner.getEmail())).thenReturn(Optional.of(partner));
+        when(orderRepository.findByIdForUpdate(104L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.acceptDeliveryOrder(104L, partner.getEmail())
+        );
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void assignedDeliveryPartnerCanPickUpReadyOrder() {
+        User partner = user(Role.DELIVERY_PARTNER, 15L, "partner@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.PLATFORM_DELIVERY);
+        order.setDeliveryPartner(partner);
+
+        when(userRepository.findByEmail(partner.getEmail())).thenReturn(Optional.of(partner));
+        when(orderRepository.findByIdForUpdate(105L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Order pickedUp = orderService.pickupOrder(105L, partner.getEmail());
+
+        assertEquals(OrderStatus.OUT_FOR_DELIVERY, pickedUp.getStatus());
+        verify(orderStatusHistoryRepository).save(any());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void assignedDeliveryPartnerCanCompleteDelivery() {
+        User partner = user(Role.DELIVERY_PARTNER, 15L, "partner@example.com");
+        Order order = order(OrderStatus.OUT_FOR_DELIVERY, DeliveryMode.PLATFORM_DELIVERY);
+        order.setDeliveryPartner(partner);
+
+        when(userRepository.findByEmail(partner.getEmail())).thenReturn(Optional.of(partner));
+        when(orderRepository.findByIdForUpdate(106L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Order delivered = orderService.deliverOrder(106L, partner.getEmail());
+
+        assertEquals(OrderStatus.DELIVERED, delivered.getStatus());
+        verify(orderStatusHistoryRepository).save(any());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void deliveryPartnerCannotPickUpAnotherPartnersOrder() {
+        User currentPartner = user(Role.DELIVERY_PARTNER, 15L, "partner@example.com");
+        User assignedPartner = user(Role.DELIVERY_PARTNER, 16L, "otherpartner@example.com");
+        Order order = order(OrderStatus.READY, DeliveryMode.PLATFORM_DELIVERY);
+        order.setDeliveryPartner(assignedPartner);
+
+        when(userRepository.findByEmail(currentPartner.getEmail()))
+                .thenReturn(Optional.of(currentPartner));
+        when(orderRepository.findByIdForUpdate(107L)).thenReturn(Optional.of(order));
+
+        assertThrows(BadRequestException.class, () ->
+                orderService.pickupOrder(107L, currentPartner.getEmail())
+        );
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    private User user(Role role, Long id, String email) {
+        User user = mock(User.class);
+        when(user.getRole()).thenReturn(role);
+        when(user.getId()).thenReturn(id);
+        when(user.getEmail()).thenReturn(email);
+        when(user.getName()).thenReturn("Test " + role.name());
+        when(user.isActive()).thenReturn(true);
+        return user;
+    }
+
+    private Shop shopOwnedBy(User owner) {
+        Shop shop = mock(Shop.class);
+        when(shop.getId()).thenReturn(1L);
+        when(shop.getOwner()).thenReturn(owner);
+        return shop;
+    }
+
+    private Order order(OrderStatus status, DeliveryMode deliveryMode) {
+        Order order = new Order();
+        order.setStatus(status);
+        order.setDeliveryMode(deliveryMode);
+        return order;
+    }
+}
