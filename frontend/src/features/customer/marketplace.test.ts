@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildMarketplaceSearchPath, formatRupees } from './marketplace'
+import { buildMarketplaceSearchPath, formatRupees, searchMarketplaceShops } from './marketplace'
 
 describe('customer marketplace helpers', () => {
   it('builds a search URL from the selected shop and filters', () => {
@@ -48,5 +48,25 @@ describe('customer marketplace helpers', () => {
   it('formats prices in Indian rupees', () => {
     expect(formatRupees(1250)).toContain('1,250')
     expect(formatRupees(1250)).toContain('₹')
+  })
+})
+
+
+describe('neighbourhood shop search', () => {
+  const shops = [
+    { id: 1, name: 'Green Basket', ownerName: 'Anil', address: 'Indiranagar, Bengaluru', active: true },
+    { id: 2, name: 'Corner Stores', ownerName: 'Meera', address: 'Whitefield, Bengaluru', active: true },
+  ]
+
+  it('matches shop name, owner and address without changing the source list', () => {
+    expect(searchMarketplaceShops(shops, 'green').map((shop) => shop.id)).toEqual([1])
+    expect(searchMarketplaceShops(shops, 'MEERA').map((shop) => shop.id)).toEqual([2])
+    expect(searchMarketplaceShops(shops, 'whitefield').map((shop) => shop.id)).toEqual([2])
+    expect(shops).toHaveLength(2)
+  })
+
+  it('returns all shops for an empty search and none for an unmatched query', () => {
+    expect(searchMarketplaceShops(shops, '  ')).toHaveLength(2)
+    expect(searchMarketplaceShops(shops, 'no such neighbourhood')).toEqual([])
   })
 })
