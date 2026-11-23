@@ -1,6 +1,6 @@
 # Phase 7 — end-to-end staging verification
 
-**Status:** automated Phase 7 acceptance passed on the verified application/test commit. The documentation-only update is triggering a final confirmation run.
+**Status:** Phase 7 automated acceptance is validated on this feature branch. The verification record below identifies the green full-stack checks and retained evidence.
 **Branch:** feature/phase-7-e2e-accessibility-staging
 **Parent milestone:** Phase 6 role-based application delivery
 
@@ -18,7 +18,9 @@ The full Phase 7 workflow passed on **23 November 2026**.
 - 390 × 844 mobile overflow checks for all four roles: passed.
 - Nine retained desktop/mobile screenshots were reviewed, including the delivered customer order-history view.
 
-The only change after that passing run is this verification-document update. The workflow listens to this document path, so GitHub Actions will re-run the same isolated acceptance suite on the documentation-updated branch head before the milestone is finally closed.
+The documentation-updated head `356e4d1b24033794cf0c1a9ba852ffe0a8d985f7` was also verified successfully by [GitHub Actions run #45235444350](https://github.com/Akprasad614/Apniko/actions/runs/45235444350). All required checks passed again. Its evidence artifact is [apniko-phase7-e2e-21](https://github.com/Akprasad614/Apniko/actions/runs/45235444350/artifacts/14848927395), retained until 7 December 2026.
+
+The workflow also runs when this verification document changes, so later documentation edits receive the same isolated acceptance checks.
 
 ## What the Phase 7 workflow runs
 
