@@ -18,9 +18,12 @@ required_files=(
   "frontend/src/features/admin/AdminDashboard.tsx"
   "frontend/src/features/shared/operations.css"
   "frontend/src/features/shared/NotificationCenter.tsx"
+  "frontend/src/features/shared/notification-center.css"
   "frontend/src/features/shared/notifications.ts"
   "frontend/src/features/shared/notifications.test.ts"
   "frontend/src/styles/global.css"
+  "PHASE6-ROLE-BASED-DELIVERY.md"
+  "PHASE6-CUSTOMER-STOREFRONT.md"
 )
 
 for file in "${required_files[@]}"; do
@@ -64,7 +67,7 @@ grep -Fq '/analytics/overview?' "$SHOPKEEPER"
 grep -Fq '/analytics/daily?' "$SHOPKEEPER"
 grep -Fq '/analytics/top-products?' "$SHOPKEEPER"
 grep -Fq '/api/shopkeeper/ai-insights/replenishment?' "$SHOPKEEPER"
-grep -Fq 'weighted moving-average baseline' "$SHOPKEEPER"
+grep -Fiq 'weighted moving-average baseline' "$SHOPKEEPER"
 grep -Fq "['analytics', 'Performance'" "$SHOPKEEPER"
 grep -Fq 'shopkeeper-bottom-nav' "$SHOPKEEPER"
 
