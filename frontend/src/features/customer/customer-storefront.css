@@ -1747,3 +1747,28 @@
   color: #fff !important;
   background-color: #173f12 !important;
 }
+
+
+/* Keep product prices and inactive add controls readable on mobile cards too. */
+.catalogue-product-card__price > strong {
+  color: #202a20 !important;
+  opacity: 1 !important;
+}
+
+.catalogue-product-card__purchase > button[type="button"],
+.catalogue-product-card__purchase > button[type="button"]:disabled {
+  border-color: #173f12 !important;
+  color: #173f12 !important;
+  background-color: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-text-fill-color: #173f12 !important;
+}
+
+.catalogue-product-card__purchase > button[type="button"]:hover:not(:disabled),
+.catalogue-product-card__purchase > button[type="button"]:focus-visible {
+  border-color: #173f12 !important;
+  color: #fff !important;
+  background-color: #173f12 !important;
+  -webkit-text-fill-color: #fff !important;
+}
