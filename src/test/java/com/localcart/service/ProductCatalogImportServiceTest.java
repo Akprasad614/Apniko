@@ -203,17 +203,17 @@ class ProductCatalogImportServiceTest {
     }
 
     @Test
-    void rejectsBigBasketAndUnapprovedSourceUrls() {
-        ProductImportBatchRequest bigBasket = new ProductImportBatchRequest(
-                "BigBasket authorised dataset",
-                "https://www.kaggle.com/datasets/surajjha101/bigbasket-entire-product-list-28k-datapoints",
-                "BIGBASKET-WRITTEN-PERMISSION", attribution(), true, true, DOI,
+    void rejectsUnapprovedSourceNamesAndUrls() {
+        ProductImportBatchRequest unapprovedSource = new ProductImportBatchRequest(
+                "Unapproved packaged-food dataset",
+                "https://example.org/catalogue.csv",
+                "UNAPPROVED", attribution(), true, true, DOI,
                 List.of(item("mendeley-ipf-2026-v1:0001")));
         ProductImportBatchRequest unapprovedUrl = new ProductImportBatchRequest(
                 SOURCE_NAME, "https://example.com/dataset.csv", SOURCE_LICENSE,
                 attribution(), true, true, DOI, List.of(item("mendeley-ipf-2026-v1:0001")));
 
-        assertThrows(BadRequestException.class, () -> service.importBatch(bigBasket));
+        assertThrows(BadRequestException.class, () -> service.importBatch(unapprovedSource));
         assertThrows(BadRequestException.class, () -> service.importBatch(unapprovedUrl));
         verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
     }
