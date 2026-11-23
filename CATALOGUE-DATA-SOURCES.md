@@ -7,17 +7,17 @@ zero product photos, zero product-photo candidates, zero source records and
 zero seeded product categories** until a reviewed source is deliberately
 approved and imported.
 
-Open Food Facts and all related catalogues are excluded. BigBasket is also
-excluded; do not use its website, product listings, Kaggle copy, undocumented
-APIs or product images as an Apniko source.
+Open Food Facts and related catalogue feeds are excluded. Retailer websites,
+retailer mirrors, scraped pages and undocumented endpoints are not approved
+catalogue sources.
 
 ## Selected Phase 2 seed — Mendeley packaged foods
 
 The selected first seed is
 [Indian Packaged Foods Nutritional Composition Dataset (2026)](https://data.mendeley.com/datasets/rhswn9z9xr/1),
 Mendeley Data, DOI [10.17632/rhswn9z9xr.1](https://doi.org/10.17632/rhswn9z9xr.1),
-Version 1. The supplied README states CC BY 4.0 and describes 852 records
-across 25 variables.
+Version 1. The supplied README and the NLM Dataset Catalog identify the
+dataset as CC BY 4.0 and describe 852 records across 25 variables.
 
 The exact supplied CSV was inspected: 852 rows, 25 expected headers,
 UTF-8, SHA-256
@@ -27,8 +27,21 @@ seed only, not a complete grocery catalogue and not an image feed.
 
 The README does not specify whether nutrition values are per serving or per
 100 g. It also contains malformed numeric tokens, less-than values, repeated
-product/brand identities, a likely misspelled category label and sparse
+product/brand identities, a questionable category label and sparse
 collection-source/date metadata. See `PHASE-2-DATASET-INSPECTION.md`.
+
+## Licence and attribution
+
+CC BY 4.0 permits sharing and adaptation, including commercial use, provided
+appropriate attribution, a link to the licence and an indication of
+modifications are supplied. The Mendeley DOI and full dataset attribution
+are retained in source provenance. The importer confirmation flags are
+internal operator checks for licence compliance; they are not a request for
+separate written permission from the dataset provider.
+
+The licence grants only rights the licensor is entitled to grant. Any
+specific embedded element with separate third-party rights must be assessed
+on its own.
 
 ## Field and data-quality boundaries
 
@@ -53,26 +66,29 @@ collection-source/date metadata. See `PHASE-2-DATASET-INSPECTION.md`.
 
 ## Importer
 
-`scripts/catalogue/import_catalogue.py` is now the Mendeley version-1
+`scripts/catalogue/import_catalogue.py` is the Mendeley version-1
 file-based importer. It does not download the dataset. Dry-run is the
 default; the exact schema and 852-row count are required. The backend source
 gate accepts only the Mendeley dataset URL and CC-BY-4.0 source identifier.
 
-Applying is blocked unless an administrator token is present and the
-operator explicitly confirms both the CC BY 4.0 licence and that the licence
-covers Apniko's intended commercial use. Do not import without that check.
-The source metadata is retained privately in the catalogue source-record
-table.
+Applying requires an administrator token and explicit operator confirmation
+that the supplied files identify CC BY 4.0 and that Apniko's intended
+commercial use complies with that licence. This is a compliance attestation,
+not a separate permission request. The dataset DOI is retained as the source
+reference in the existing import API contract. Source metadata is stored
+privately in the catalogue source-record table.
 
-No products have been imported. The development catalogue remains empty.
+The full local dry-run read 852 records and made no API calls or database
+changes. No products have been imported; the development catalogue remains
+empty.
 
 ## Product images
 
 The Mendeley dataset is not a product-image source. Products remain
-text-first with a neutral no-photo state. Do not use Open Food Facts or
-BigBasket images, retailer scraping, stock placeholders or generated package
-imagery. Any future manufacturer/supplier photograph requires separate
-written rights for Apniko's intended use, exact product/variant matching and
+text-first with a neutral no-photo state. Do not use Open Food Facts images,
+scraped retailer images, stock placeholders or generated package imagery.
+Any future manufacturer/supplier photograph requires a documented usage
+right for Apniko's intended use, exact product/variant matching and
 administrator approval. See `PRODUCT-PHOTOS.md`.
 
 ## Resetting the local development catalogue
