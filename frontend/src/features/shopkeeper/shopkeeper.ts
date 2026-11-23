@@ -255,3 +255,22 @@ export function analyticsBarPercent(value: number, maximum: number): number {
   }
   return Math.round(Math.min(100, Math.max(0, (value / maximum) * 100)))
 }
+
+
+export interface ShopkeeperReplenishmentRecommendation {
+  shopId: number
+  shopName: string
+  inventoryId: number
+  productId: number
+  productName: string
+  currentStock: number
+  lowStockThreshold: number
+  predictedDailyDemand: number
+  leadTimeDays: number
+  expectedDemandDuringLeadTime: number
+  safetyStock: number
+  suggestedReorderQuantity: number
+  estimatedDaysOfCover: number | null
+  status: 'REORDER_NOW' | 'REORDER_SOON' | 'HEALTHY' | string
+  explanation: string
+}
