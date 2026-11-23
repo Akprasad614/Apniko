@@ -61,12 +61,15 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
         self.assertFalse(valid_https_url("http://brand.example/products/masoor-dal"))
         self.assertFalse(valid_https_url(SOURCE + "?download=1"))
 
-    def test_only_source_domain_or_configured_authorised_cdn_is_accepted(self):
-        self.assertTrue(allowed_image_host(IMAGE, SOURCE, set()))
+    def test_only_exact_source_domain_or_configured_authorised_cdn_is_accepted(self):
+        self.assertTrue(allowed_image_host(SOURCE, SOURCE, set()))
         self.assertTrue(allowed_image_host(
             "https://cdn.apniko-supplier.example/masoor.jpg",
             SOURCE,
             {"cdn.apniko-supplier.example"},
+        ))
+        self.assertFalse(allowed_image_host(
+            "https://images.brand.example/masoor.jpg", SOURCE, set()
         ))
         self.assertFalse(allowed_image_host(
             "https://unrelated.example/masoor.jpg", SOURCE, set()
