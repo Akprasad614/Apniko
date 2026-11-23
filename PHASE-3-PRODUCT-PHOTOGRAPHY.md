@@ -14,9 +14,9 @@ Phase 3 is a separate image-rights workflow. It does not add another product-dat
 
 1. Manufacturer, brand or authorised distributor image feed with documented rights covering Apniko's intended display and commercial use.
 2. A participating supplier/shopkeeper image submission with a documented usage grant covering the same use.
-3. A specific openly licensed image asset only when its own licence permits the intended use and all attribution, modification and share-alike conditions can be met.
+3. An openly licensed image asset may be considered only when its specific licence permits the intended use and all attribution, modification and share-alike conditions can be met. **The current Phase 3 importer/backend contract does not yet accept open-licence candidates**; a separate licence-aware intake path and tests are required before those assets can be submitted.
 
-A public URL, search result, CDN URL or supplier relationship alone is not evidence of image reuse rights. Do not require a separate permission letter when a valid open licence already grants the required rights; retain the licence and attribution evidence instead.
+A public URL, search result, CDN URL or supplier relationship alone is not evidence of image reuse rights. For the current supplier importer, retain a documented permission reference and attribution. Do not require a separate permission letter when a valid open licence already grants the required rights; retain the licence and attribution evidence instead, but do not submit such assets through the current supplier-only importer.
 
 ## Import manifest and execution
 
