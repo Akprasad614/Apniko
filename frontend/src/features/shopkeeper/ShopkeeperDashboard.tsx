@@ -590,6 +590,7 @@ export function ShopkeeperDashboard() {
 
   return (
     <div className="shopkeeper-app">
+      <a className="skip-link" href="#shopkeeper-main">Skip to shopkeeper content</a>
       <header className="shopkeeper-header">
         <div className="shopkeeper-shell shopkeeper-header__inner">
           <Link to="/shopkeeper" className="shopkeeper-wordmark">apniko<span>.</span></Link>
@@ -602,8 +603,8 @@ export function ShopkeeperDashboard() {
         </div>
       </header>
 
-      <main className="shopkeeper-shell shopkeeper-main">
-        <section className="shopkeeper-intro">
+      <main id="shopkeeper-main" className="shopkeeper-main">
+        <section className="shopkeeper-shell shopkeeper-intro">
           <div>
             <p className="shopkeeper-eyebrow">YOUR DAILY COUNTER</p>
             <h1>Good to see you,<br /><em>{greeting}.</em></h1>
@@ -655,6 +656,7 @@ export function ShopkeeperDashboard() {
           <span className="shopkeeper-tabs__shop">{selectedShop?.name ?? 'No shop selected'}</span>
         </nav>
 
+        <div className="shopkeeper-shell shopkeeper-content">
         {error && <div className="shopkeeper-alert shopkeeper-alert--error" role="alert">{error}</div>}
         {notice && <div className="shopkeeper-alert shopkeeper-alert--success" role="status">{notice}</div>}
 
@@ -1261,6 +1263,7 @@ export function ShopkeeperDashboard() {
             )}
           </>
         )}
+        </div>
       </main>
       <nav className="shopkeeper-bottom-nav" aria-label="Shopkeeper navigation">
         {([

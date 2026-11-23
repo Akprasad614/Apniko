@@ -1687,9 +1687,12 @@
   z-index: 12;
   top: 0;
   align-items: center;
+  justify-content: center;
   gap: clamp(.45rem, 2vw, 1.8rem);
+  width: 100%;
   margin-bottom: 1.55rem;
-  padding: .15rem 0 0;
+  border-bottom: 1px solid var(--lc-line);
+  padding: .15rem max(32px, calc((100% - var(--lc-page-width)) / 2)) 0;
   background: rgb(245 242 232 / 94%);
   backdrop-filter: blur(12px);
 }
@@ -1705,9 +1708,9 @@
   color: var(--lc-muted);
   font-size: .76rem;
   font-weight: 800;
-  transition: color 150ms ease, border-color 150ms ease;
+  transition: color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
-.shopkeeper-tabs button:hover,
+.shopkeeper-tabs button:hover:not(:disabled),
 .shopkeeper-tabs button.is-active {
   color: var(--lc-forest);
   background: transparent;
@@ -1921,6 +1924,50 @@
 .shopkeeper-inventory-card:nth-child(3) { animation-delay: 90ms; }
 .shopkeeper-order:nth-child(4),
 .shopkeeper-inventory-card:nth-child(4) { animation-delay: 135ms; }
+
+
+
+/* Shopkeeper controls use the same restrained tactile feedback as the customer app. */
+.shopkeeper-action-button,
+.shopkeeper-primary-button,
+.shopkeeper-order__save-fulfilment,
+.shopkeeper-danger-button,
+.shopkeeper-inventory-card__actions button,
+.shopkeeper-bottom-nav button {
+  transition: transform 150ms cubic-bezier(.2,.7,.2,1), background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.shopkeeper-action-button:hover:not(:disabled),
+.shopkeeper-primary-button:hover:not(:disabled),
+.shopkeeper-order__save-fulfilment:hover:not(:disabled),
+.shopkeeper-danger-button:hover:not(:disabled),
+.shopkeeper-inventory-card__actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.shopkeeper-action-button:active:not(:disabled),
+.shopkeeper-primary-button:active:not(:disabled),
+.shopkeeper-order__save-fulfilment:active:not(:disabled),
+.shopkeeper-danger-button:active:not(:disabled),
+.shopkeeper-inventory-card__actions button:active:not(:disabled),
+.shopkeeper-bottom-nav button:active:not(:disabled) {
+  transform: translateY(1px) scale(.99);
+}
+
+.shopkeeper-tabs button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.shopkeeper-tabs button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.shopkeeper-overview .shopkeeper-stats article {
+  animation: apniko-soft-rise 420ms cubic-bezier(.2,.7,.2,1) both;
+}
+.shopkeeper-overview .shopkeeper-stats article:nth-child(2) { animation-delay: 45ms; }
+.shopkeeper-overview .shopkeeper-stats article:nth-child(3) { animation-delay: 90ms; }
+.shopkeeper-overview .shopkeeper-stats article:nth-child(4) { animation-delay: 135ms; }
 
 @media (max-width: 760px) {
   .shopkeeper-shell {
