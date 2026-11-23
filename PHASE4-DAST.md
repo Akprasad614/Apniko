@@ -28,7 +28,7 @@ The 22 November 2026 baseline run on the disposable PR environment (workflow run
 - The spider reported only 4 endpoints, so this is not broad API route coverage.
 
 The workflow's green conclusion means the scanner completed; it does **not**
-mean there were no findings. Warnings are currently report-only under `-I`.
+mean there were no findings. This workflow now fails on warning-level passive findings; only informational observations remain report-only.
 Treat the Swagger UI 500 as an open application issue until a subsequent run
 confirms the endpoint returns the intended response and the response is reviewed.
 The informational cache observations should remain separate from security
@@ -63,9 +63,18 @@ absence of these route-specific headers on customer routes. The stricter baselin
 from `default-src`) and an inline-style allowance. The Swagger-only CSP now
 sets `form-action 'self'` and uses `style-src 'self'` without
 `unsafe-inline`. The writer tests assert the exact policy and verify the
-Swagger-only headers are not applied to customer API routes. The updated
-blocking baseline must verify these directives and all other browser headers
-before Phase 4 can be considered ready.
+Swagger-only headers are not applied to customer API routes.
+
+The final blocking baseline on commit
+`7f9f9a38bcd9aeaffa3ee10a08f8c44cb84b87b8` (workflow run `45206450967`,
+ZAP 2.17.0) passed with **0 High, 0 Medium and 0 Low alerts**. The scanner
+reported only two informational categories: Modern Web Application (Swagger UI)
+and Non-Storable Content (four `no-store` responses). All three diagnostic
+endpoints returned HTTP 200. Keep `no-store`; the informational alert is not
+a reason to weaken caching for responses that may contain sensitive or
+user-specific data. The spider covered four unauthenticated endpoints only,
+so this is a passing baseline for the documented scope, not proof that every
+authenticated business flow has been security-tested.
 
 ## Isolation and safety
 
