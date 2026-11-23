@@ -54,8 +54,8 @@ describe('customer marketplace helpers', () => {
 
 describe('neighbourhood shop search', () => {
   const shops = [
-    { id: 1, name: 'Green Basket', ownerName: 'Anil', address: 'Indiranagar, Bengaluru', active: true },
-    { id: 2, name: 'Corner Stores', ownerName: 'Meera', address: 'Whitefield, Bengaluru', active: true },
+    { id: 1, name: 'Green Basket', ownerName: 'Anil', phone: '', address: 'Indiranagar, Bengaluru', active: true },
+    { id: 2, name: 'Corner Stores', ownerName: 'Meera', phone: '', address: 'Whitefield, Bengaluru', active: true },
   ]
 
   it('matches shop name, owner and address without changing the source list', () => {
