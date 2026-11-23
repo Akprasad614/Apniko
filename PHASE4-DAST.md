@@ -40,6 +40,18 @@ password-redacted tail of the disposable app startup log. These diagnostics are
 retained with the ZAP reports to make the 500 traceable without using production
 data or credentials.
 
+The follow-up diagnostic run `45203543836` captured the server-side cause:
+Spring MVC raised `NoResourceFoundException` because `index.html` was not
+found under `/swagger-ui/`. The project pins Springdoc `3.2.0` while
+overriding the Swagger UI WebJar to `5.34.1`, but did not set the matching
+`springdoc.swagger-ui.version` property. Springdoc's
+[version override guidance](https://springdoc.org/faq.html) says the explicit
+property must match the WebJar version with Springdoc versions before 3.2.1.
+Phase 4 now sets `springdoc.swagger-ui.version=5.34.1` in
+`application.properties`. This is a targeted configuration correction; the
+Swagger 500 is not considered resolved until the next DAST run verifies the UI
+resource returns its expected response.
+
 ## Isolation and safety
 
 - GitHub Actions creates a disposable MySQL 8.4 service and `localcart_dast` database for each run.
