@@ -8,6 +8,7 @@ import { ApiError, apiRequest } from '../../lib/api'
 import { CatalogueReviewQueue } from './CatalogueReviewQueue'
 import { ProductPhotoReviewQueue } from './ProductPhotoReviewQueue'
 import '../shared/operations.css'
+import { NotificationCenter } from '../shared/NotificationCenter'
 
 type StaffRole = 'SHOPKEEPER' | 'DELIVERY_PARTNER'
 type AdminTab = 'overview' | 'people' | 'shops' | 'catalogue'
@@ -296,6 +297,7 @@ export function AdminDashboard() {
           <Wordmark />
           <div className="operations-user">
             <span>{session?.name}</span>
+            <NotificationCenter />
             <span className="operations-role">ADMIN</span>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
