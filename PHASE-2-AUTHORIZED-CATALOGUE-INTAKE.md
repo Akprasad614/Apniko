@@ -108,9 +108,7 @@ under the stated CC BY 4.0 licence.
 
 The importer's `--license-confirmed` and
 `--commercial-use-confirmed` switches are operator attestations that the
-source files and intended use have been checked against those terms. They
-are not a request for BigBasket permission or for a separate permission
-letter. The dataset DOI is retained as the provenance reference in the
+source files and intended use have been checked against those terms. They are not a request for a separate written permission letter. The dataset DOI is retained as the provenance reference in the
 existing backend import contract.
 
 CC BY 4.0 grants only rights the licensor is entitled to grant. If a
