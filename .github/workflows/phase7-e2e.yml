@@ -102,9 +102,9 @@ jobs:
         working-directory: frontend
         run: bash ../scripts/install-phase7-tooling.sh
 
-      - name: Install Chromium and required system libraries
+      - name: Install Chromium browser
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run full-stack browser journeys, axe checks and responsive screenshots
         working-directory: frontend
