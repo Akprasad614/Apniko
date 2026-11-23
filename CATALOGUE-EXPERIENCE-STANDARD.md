@@ -138,9 +138,11 @@ included in that dataset.
 
 Manufacturer/brand images cannot be imported in bulk until the supplier
 provides an authorised feed and a written image-use grant or another
-documented permission basis. Openly licensed image assets may instead be used
-under their own licence and attribution conditions. Public reachability alone
-is not evidence of reuse rights.
+documented permission basis. Openly licensed image assets may be considered
+under their own licence and attribution conditions, but the current
+supplier-only importer/API path does not yet accept them; a separate
+licence-aware intake implementation and tests are required first. Public
+reachability alone is not evidence of reuse rights.
 
 ## Release boundary
 
