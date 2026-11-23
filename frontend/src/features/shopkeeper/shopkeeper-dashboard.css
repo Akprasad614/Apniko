@@ -2026,3 +2026,27 @@
     font-size: .47rem;
   }
 }
+
+
+.shopkeeper-analytics__bars--wide {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 48px;
+  grid-template-columns: none;
+  justify-content: start;
+  overflow-x: auto;
+  padding-bottom: .4rem;
+  scrollbar-color: #a9b79e transparent;
+  scrollbar-width: thin;
+}
+.shopkeeper-analytics__bars--wide .shopkeeper-analytics__day {
+  width: 48px;
+}
+@media (max-width: 760px) {
+  .shopkeeper-analytics__bars--wide {
+    grid-auto-columns: 44px;
+  }
+  .shopkeeper-analytics__bars--wide .shopkeeper-analytics__day {
+    width: 44px;
+  }
+}
