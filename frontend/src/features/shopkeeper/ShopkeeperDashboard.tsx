@@ -27,6 +27,7 @@ import type {
   ShopkeeperAnalyticsOverview,
   ShopkeeperDailyAnalytics,
   ShopkeeperTopProductAnalytics,
+  ShopkeeperReplenishmentRecommendation,
   ShopkeeperAnalyticsPeriod,
   ShopDeliveryMode,
 } from './shopkeeper'
@@ -107,6 +108,8 @@ export function ShopkeeperDashboard() {
   const [analyticsOverview, setAnalyticsOverview] = useState<ShopkeeperAnalyticsOverview | null>(null)
   const [analyticsDaily, setAnalyticsDaily] = useState<ShopkeeperDailyAnalytics[]>([])
   const [analyticsTopProducts, setAnalyticsTopProducts] = useState<ShopkeeperTopProductAnalytics[]>([])
+  const [replenishmentRecommendations, setReplenishmentRecommendations] = useState<ShopkeeperReplenishmentRecommendation[]>([])
+  const [replenishmentError, setReplenishmentError] = useState('')
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [analyticsError, setAnalyticsError] = useState('')
 
@@ -211,6 +214,11 @@ export function ShopkeeperDashboard() {
         apiRequest<ShopkeeperTopProductAnalytics[]>(
           '/api/shopkeeper/analytics/top-products?' + productParams.toString(), {}, token,
         ),
+        apiRequest<ShopkeeperReplenishmentRecommendation[]>(
+          '/api/shopkeeper/ai-insights/replenishment?shopId=' + selectedShopId + '&historyDays=28&leadTimeDays=3',
+          {},
+          token,
+        ),
       ] as const)
 
       const failures: string[] = []
@@ -220,6 +228,12 @@ export function ShopkeeperDashboard() {
       else failures.push(messageFor(results[1].reason))
       if (results[2].status === 'fulfilled') setAnalyticsTopProducts(results[2].value)
       else failures.push(messageFor(results[2].reason))
+      if (results[3].status === 'fulfilled') {
+        setReplenishmentRecommendations(results[3].value)
+        setReplenishmentError('')
+      } else {
+        setReplenishmentError(messageFor(results[3].reason))
+      }
       setAnalyticsError(failures.join(' '))
     } catch (loadError) {
       setAnalyticsError(messageFor(loadError))
@@ -982,6 +996,45 @@ export function ShopkeeperDashboard() {
                         )}
                       </section>
                     </div>
+
+                    <section className="shopkeeper-analytics__panel shopkeeper-analytics__replenishment" aria-labelledby="shopkeeper-replenishment-title">
+                      <div className="shopkeeper-panel-heading">
+                        <div>
+                          <p className="shopkeeper-eyebrow">INVENTORY PLANNING</p>
+                          <h3 id="shopkeeper-replenishment-title">Stock guidance</h3>
+                          <p>Weighted moving-average baseline from recorded orders, using a 28-day history and 3-day lead-time assumption. Review before ordering.</p>
+                        </div>
+                      </div>
+                      {replenishmentError && <p className="shopkeeper-analytics__insight-error" role="alert">{replenishmentError}</p>}
+                      {replenishmentRecommendations.length ? (
+                        <div className="shopkeeper-analytics__recommendations">
+                          {replenishmentRecommendations.map((recommendation) => (
+                            <article key={recommendation.inventoryId} className="shopkeeper-recommendation">
+                              <div className="shopkeeper-recommendation__top">
+                                <div>
+                                  <strong>{recommendation.productName}</strong>
+                                  <small>{recommendation.currentStock} in stock · threshold {recommendation.lowStockThreshold}</small>
+                                </div>
+                                <span className={'shopkeeper-recommendation__status shopkeeper-recommendation__status--' + recommendation.status.toLowerCase()}>
+                                  {formatShopkeeperStatus(recommendation.status)}
+                                </span>
+                              </div>
+                              <div className="shopkeeper-recommendation__metrics">
+                                <span><small>Expected lead demand</small><strong>{recommendation.expectedDemandDuringLeadTime} units</strong></span>
+                                <span><small>Suggested top-up</small><strong>{recommendation.suggestedReorderQuantity} units</strong></span>
+                                <span><small>Estimated cover</small><strong>{recommendation.estimatedDaysOfCover === null ? '—' : recommendation.estimatedDaysOfCover.toFixed(1) + ' days'}</strong></span>
+                              </div>
+                              <p>{recommendation.explanation}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="shopkeeper-analytics__empty">
+                          <strong>{replenishmentError ? 'Stock guidance is unavailable.' : 'No inventory to review yet.'}</strong>
+                          <p>{replenishmentError ? 'The restock service could not return recommendations.' : 'Add verified catalogue items to this shop to see demand-based stock guidance.'}</p>
+                        </div>
+                      )}
+                    </section>
                   </>
                 ) : (
                   <div className="shopkeeper-empty">
