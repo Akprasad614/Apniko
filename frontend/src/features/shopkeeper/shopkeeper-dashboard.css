@@ -2050,3 +2050,110 @@
     width: 44px;
   }
 }
+
+
+.shopkeeper-analytics__replenishment .shopkeeper-panel-heading > div > p:last-child {
+  max-width: 760px;
+  margin: .4rem 0 0;
+  color: var(--lc-muted);
+  font-size: .68rem;
+  line-height: 1.55;
+}
+.shopkeeper-analytics__recommendations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+.shopkeeper-recommendation {
+  display: grid;
+  min-width: 0;
+  gap: .65rem;
+  border: 1px solid var(--lc-line);
+  border-radius: 9px;
+  padding: .8rem;
+  background: #fffefa;
+  animation: apniko-soft-rise 420ms both;
+}
+.shopkeeper-recommendation__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .6rem;
+}
+.shopkeeper-recommendation__top > div {
+  display: grid;
+  min-width: 0;
+  gap: .2rem;
+}
+.shopkeeper-recommendation__top strong {
+  color: var(--lc-forest);
+  font-size: .74rem;
+  line-height: 1.4;
+}
+.shopkeeper-recommendation__top small {
+  color: var(--lc-muted);
+  font-size: .6rem;
+}
+.shopkeeper-recommendation__status {
+  flex: 0 0 auto;
+  border: 1px solid var(--lc-line);
+  border-radius: 999px;
+  padding: .28rem .45rem;
+  color: var(--lc-muted);
+  font-size: .54rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+.shopkeeper-recommendation__status--reorder_now {
+  border-color: #e5b4a3;
+  color: #8c3829;
+  background: #fbefeb;
+}
+.shopkeeper-recommendation__status--reorder_soon {
+  border-color: #e7d6a3;
+  color: #80621d;
+  background: #faf6e7;
+}
+.shopkeeper-recommendation__status--healthy {
+  border-color: #c4d4bd;
+  color: #355d40;
+  background: #f0f5ec;
+}
+.shopkeeper-recommendation__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .4rem;
+  border-top: 1px solid #ededE5;
+  padding-top: .6rem;
+}
+.shopkeeper-recommendation__metrics span {
+  display: grid;
+  gap: .14rem;
+  min-width: 0;
+}
+.shopkeeper-recommendation__metrics small {
+  color: var(--lc-muted);
+  font-size: .55rem;
+  line-height: 1.35;
+}
+.shopkeeper-recommendation__metrics strong {
+  color: var(--lc-forest);
+  font-size: .73rem;
+  font-variant-numeric: tabular-nums;
+}
+.shopkeeper-recommendation > p {
+  margin: 0;
+  color: var(--lc-muted);
+  font-size: .62rem;
+  line-height: 1.5;
+}
+.shopkeeper-analytics__insight-error {
+  margin: 0 0 .75rem;
+  color: var(--lc-danger);
+  font-size: .68rem;
+}
+@media (max-width: 760px) {
+  .shopkeeper-analytics__recommendations {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
