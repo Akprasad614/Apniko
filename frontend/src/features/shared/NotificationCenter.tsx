@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { roleHomePath } from '../../lib/roles'
+import './notification-center.css'
 
 interface NotificationItem {
   id: number
@@ -131,7 +132,7 @@ export function NotificationCenter() {
         { method: 'PATCH' },
         token,
       )
-      setItems((current) => current.map((item) => ({ ...item, read: true, readAt: item.readAt ?? new Date().toISOString() })))
+      setItems((current) => current.map((item) => ({ ...item, read: true })))
       setUnreadCount(0)
     } catch (actionError) {
       setError(describeError(actionError))
