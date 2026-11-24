@@ -57,7 +57,7 @@ Backend authorization, product availability, stock validation and price calculat
 
 - The Mendeley packaged-food source does not supply retail barcodes, pack sizes, product photos, current shop prices or verified MRPs.
 - No sample catalogue, fake inventory, generated product packshots, Open Food Facts data or scraped retailer data is used.
-- Candidate supplier photographs remain in the separate source-review and image-approval workflow; customer-facing image display is not enabled by this change.
+- Product photographs, image imports, image URLs and photo-approval workflows are excluded from Apniko. Customer, shopkeeper and administrator product surfaces remain text-only.
 - COD/Razorpay availability depends on backend and merchant configuration in the target environment.
 
 ## Verification

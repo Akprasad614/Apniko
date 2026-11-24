@@ -58,7 +58,7 @@ class ProductCatalogImportServiceTest {
     }
 
     @Test
-    void importsMendeleyIdentityAndStoresRawSourceMetadataWithoutRetailFacts() {
+    void importsMendeleyReferenceRowsAsReviewCandidatesWithoutRetailFacts() {
         mockCategory();
         when(productRepository.findByIdentityKey(anyString())).thenReturn(Optional.empty());
         when(sourceRecordRepository.findBySourceNameAndSourceRecordId(SOURCE_NAME, "mendeley-ipf-2026-v1:0001"))
@@ -84,7 +84,8 @@ class ProductCatalogImportServiceTest {
                         && product.getMrp() == null
                         && product.getCategory().equals("SNACKS")
                         && product.getSubcategory().equals("CHIPS")
-                        && product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.ACTIVE));
+                        && product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.NEEDS_REVIEW
+                        && product.getCatalogueReviewReason().contains("verified retail GTIN and pack size")));
         verify(sourceRecordRepository).save(argThat(source ->
                 source.getSourceName().equals(SOURCE_NAME)
                         && source.getSourceLicense().equals(SOURCE_LICENSE)

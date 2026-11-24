@@ -80,6 +80,14 @@ public class ProductCatalogueModerationService {
                 && (reason == null || reason.isBlank())) {
             throw new BadRequestException("A reason is required when hiding a product");
         }
+        if (request.status() == ProductCatalogueReviewStatus.ACTIVE
+                && "Mendeley Indian Packaged Foods Dataset (2026)".equals(product.getCatalogueSource())
+                && (product.getBarcode() == null || product.getBarcode().isBlank()
+                    || product.getPackSize() == null || product.getPackSize().isBlank())) {
+            throw new BadRequestException(
+                    "This Mendeley row is reference data, not a verified retail variant. "
+                    + "A verified GTIN and retail pack size are required before publishing.");
+        }
 
         product.setCatalogueReviewStatus(request.status());
         if (request.status() == ProductCatalogueReviewStatus.NEEDS_REVIEW) {

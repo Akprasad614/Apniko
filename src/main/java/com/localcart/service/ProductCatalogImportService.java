@@ -347,9 +347,26 @@ public class ProductCatalogImportService {
             changed = true;
         }
 
-        // Automatic checks apply to imported records until an administrator
-        // explicitly reviews them. A later source refresh must not undo that decision.
-        if (product.getCatalogueReviewedAt() == null
+        // Mendeley is a nutrition/reference dataset, not a retail-SKU feed.
+        // It contains no verified GTIN or retail pack size, so none of its rows
+        // may become customer-visible until those facts are independently supplied.
+        boolean mendeleyReferenceRow = MENDELEY_SOURCE.equals(request.sourceName().trim());
+        boolean retailIdentityIncomplete = blank(product.getBarcode()) || blank(product.getPackSize());
+        if (mendeleyReferenceRow && retailIdentityIncomplete) {
+            String reason = "Reference dataset row only: verified retail GTIN and pack size are not supplied. "
+                    + "Complete the retail identity from an approved source before publishing.";
+            if (item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()) {
+                reason += " Source quality review: " + item.sourceReviewReason().trim();
+            }
+            if (product.getCatalogueReviewStatus() != ProductCatalogueReviewStatus.NEEDS_REVIEW) {
+                product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+                changed = true;
+            }
+            if (!Objects.equals(product.getCatalogueReviewReason(), reason)) {
+                product.setCatalogueReviewReason(reason);
+                changed = true;
+            }
+        } else if (product.getCatalogueReviewedAt() == null
                 && (authoritative || product.getCatalogueReviewStatus() == null)) {
             ProductCatalogueQualityService.Assessment assessment =
                     item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()
@@ -357,9 +374,8 @@ public class ProductCatalogImportService {
                                     ProductCatalogueReviewStatus.NEEDS_REVIEW,
                                     item.sourceReviewReason().trim())
                             : catalogueQualityService.assess(product);
-            ProductCatalogueReviewStatus nextStatus = assessment.status();
-            if (product.getCatalogueReviewStatus() != nextStatus) {
-                product.setCatalogueReviewStatus(nextStatus);
+            if (product.getCatalogueReviewStatus() != assessment.status()) {
+                product.setCatalogueReviewStatus(assessment.status());
                 changed = true;
             }
             if (!Objects.equals(product.getCatalogueReviewReason(), assessment.reason())) {

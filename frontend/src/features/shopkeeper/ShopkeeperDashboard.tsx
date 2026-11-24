@@ -4,7 +4,6 @@ import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
-import { ProductPhotoCredit } from '../../components/ProductPhotoCredit'
 import {
   canAcceptShopkeeperOrderWithSavedFulfilment,
   canCancelShopkeeperOrder,
@@ -1092,16 +1091,6 @@ export function ShopkeeperDashboard() {
                                   className={newProductId === String(product.id) ? 'shopkeeper-catalogue-choice is-selected' : 'shopkeeper-catalogue-choice'}
                                   aria-pressed={newProductId === String(product.id)}
                                   onClick={() => setNewProductId(String(product.id))}>
-                                  <span className="shopkeeper-catalogue-choice__image">
-                                    {product.imageUrl
-                                      ? <img src={product.imageUrl} alt={product.name} loading="lazy" />
-                                      : (
-                                        <span className="shopkeeper-catalogue-choice__photo-missing">
-                                          <span aria-hidden="true">▧</span>
-                                          <small>Photo not yet available</small>
-                                        </span>
-                                      )}
-                                  </span>
                                   <span className="shopkeeper-catalogue-choice__copy">
                                     <strong>{product.name}</strong>
                                     <small>{[
@@ -1113,13 +1102,6 @@ export function ShopkeeperDashboard() {
                                   </span>
                                   <span className="shopkeeper-catalogue-choice__select">{newProductId === String(product.id) ? 'Selected' : 'Select'}</span>
                                 </button>
-                                <ProductPhotoCredit
-                                  sourceName={product.imageSourceName}
-                                  sourceUrl={product.imageSourceUrl}
-                                  license={product.imageLicense}
-                                  attribution={product.imageAttribution}
-                                  className="shopkeeper-product-photo-credit"
-                                />
                               </div>
                             ))}
                           </div>
@@ -1177,28 +1159,10 @@ export function ShopkeeperDashboard() {
                       const isLow = item.lowStock || item.stockQuantity <= item.lowStockThreshold
                       return (
                         <article className="shopkeeper-inventory-card" key={item.id}>
-                          <div className="shopkeeper-inventory-card__media">
-                            {item.imageUrl
-                              ? <img src={item.imageUrl} alt={item.productName} loading="lazy" />
-                              : (
-                                <div className="shopkeeper-inventory-card__photo-placeholder" role="img"
-                                  aria-label={'Verified product photo not yet available for ' + item.productName}>
-                                  <span aria-hidden="true">▧</span>
-                                  <small>Photo not yet available</small>
-                                </div>
-                              )}
+                          <div className="shopkeeper-inventory-card__body">
                             <span className={'shopkeeper-inventory-card__listing' + (isVisible ? ' is-visible' : '')}>
                               {isVisible ? 'Listed for customers' : 'Not listed'}
                             </span>
-                          </div>
-                          <ProductPhotoCredit
-                            sourceName={item.imageSourceName}
-                            sourceUrl={item.imageSourceUrl}
-                            license={item.imageLicense}
-                            attribution={item.imageAttribution}
-                            className="shopkeeper-product-photo-credit"
-                          />
-                          <div className="shopkeeper-inventory-card__body">
                             <p className="shopkeeper-inventory-card__brand">{item.brand || 'Brand not listed'}</p>
                             <h3>{item.productName}</h3>
                             <p className="shopkeeper-inventory-card__pack">

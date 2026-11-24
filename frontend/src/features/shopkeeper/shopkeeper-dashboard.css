@@ -1232,23 +1232,6 @@
   border-color: #789d5d;
   background: #f6f9f1;
 }
-.shopkeeper-catalogue-choice__image {
-  display: grid;
-  width: 64px;
-  height: 64px;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 7px;
-  color: #849078;
-  background: #f5f6f1;
-  font-size: 1.3rem;
-}
-.shopkeeper-catalogue-choice__image img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #fff;
-}
 .shopkeeper-catalogue-choice__copy {
   display: grid;
   min-width: 0;
@@ -1285,24 +1268,6 @@
   min-width: 210px;
   align-items: center;
   gap: .65rem;
-}
-.shopkeeper-product-cell__image {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid #eceee8;
-  border-radius: 7px;
-  color: #849078;
-  background: #f7f8f4;
-}
-.shopkeeper-product-cell__image img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #fff;
 }
 .shopkeeper-product-cell__copy {
   display: grid;
@@ -1349,7 +1314,7 @@
 }
 
 
-/* Product-first shopkeeper catalogue: the same approved pack image used by customers. */
+/* Text-first product selection keeps verified item details easy to scan. */
 .shopkeeper-catalogue-picker {
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: .75rem;
@@ -1363,18 +1328,6 @@
   border-radius: 12px;
   padding: .55rem;
   box-shadow: 0 1px 3px rgb(28 39 25 / 4%);
-}
-.shopkeeper-catalogue-choice__image {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  border: 1px solid #edf0e9;
-  border-radius: 9px;
-  background: #fff;
-}
-.shopkeeper-catalogue-choice__image img {
-  padding: .5rem;
-  object-fit: contain;
 }
 .shopkeeper-catalogue-choice__copy {
   min-height: 58px;
@@ -1422,58 +1375,17 @@
   box-shadow: 0 7px 18px rgb(28 39 25 / 8%);
   transform: translateY(-1px);
 }
-.shopkeeper-inventory-card__media {
-  position: relative;
-  display: grid;
-  min-height: 185px;
-  aspect-ratio: 1 / .92;
-  place-items: center;
-  overflow: hidden;
-  border-bottom: 1px solid #eef0e9;
-  background: #fff;
-}
-.shopkeeper-inventory-card__media > img {
-  width: 100%;
-  height: 100%;
-  padding: .75rem;
-  object-fit: contain;
-}
-.shopkeeper-inventory-card__photo-placeholder {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  min-height: 185px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  color: #71806f;
-  background: radial-gradient(circle at 50% 28%, #fff 0, #f4f7f0 78%);
-}
-.shopkeeper-inventory-card__photo-placeholder span {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border: 1px dashed #d1dccb;
-  border-radius: 50%;
-  color: #78936a;
-  font-size: 1.4rem;
-}
-.shopkeeper-inventory-card__photo-placeholder small {
-  font-size: .62rem;
-}
 .shopkeeper-inventory-card__listing {
-  position: absolute;
-  top: .65rem;
-  left: .65rem;
+  position: static;
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 0 .65rem;
   border: 1px solid #e6e8e1;
   border-radius: 5px;
   padding: .25rem .45rem;
   color: #687166;
-  background: rgb(255 255 255 / 94%);
+  background: #fff;
   font-size: .56rem;
-  font-weight: 850;
 }
 .shopkeeper-inventory-card__listing.is-visible {
   border-color: #d1e1c7;
@@ -1602,10 +1514,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: .6rem;
   }
-  .shopkeeper-inventory-card__media,
-  .shopkeeper-inventory-card__photo-placeholder {
-    min-height: 132px;
-  }
   .shopkeeper-inventory-card__body {
     padding: .6rem;
   }
@@ -1636,26 +1544,6 @@
   }
 }
 
-.shopkeeper-catalogue-choice__photo-missing {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .4rem;
-  color: #71806f;
-  background: #f5f8f2;
-}
-.shopkeeper-catalogue-choice__photo-missing > span {
-  color: #78936a;
-  font-size: 1.5rem;
-}
-.shopkeeper-catalogue-choice__photo-missing small {
-  color: #7a8478;
-  font-size: .55rem;
-}
-
 
 .shopkeeper-catalogue-choice-wrap {
   display: grid;
@@ -1665,20 +1553,6 @@
 }
 .shopkeeper-catalogue-choice-wrap > .shopkeeper-catalogue-choice {
   width: 100%;
-}
-.shopkeeper-product-photo-credit {
-  display: block;
-  min-width: 0;
-  padding-inline: .15rem;
-  color: var(--lc-muted);
-  font-size: .52rem;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-.shopkeeper-product-photo-credit a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 /* Phase 6 role workspace polish */

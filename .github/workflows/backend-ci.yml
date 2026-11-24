@@ -74,10 +74,13 @@ jobs:
       - name: Verify Phase 2 catalogue import tools
         run: bash scripts/verify-phase2.sh
 
-      - name: Verify Phase 3 authentic product photo tooling
+      - name: Verify Phase 3 authentic product catalogue intake
         run: bash scripts/verify-phase3.sh
 
-      - name: Verify Phase 4 passive DAST guardrails
+      - name: Verify Phase 4 text-only catalogue architecture
+        run: bash scripts/verify-phase4-text-only.sh
+
+      - name: Verify passive DAST security guardrails
         run: bash scripts/verify-phase4.sh
 
       - name: Run Maven verification and tests

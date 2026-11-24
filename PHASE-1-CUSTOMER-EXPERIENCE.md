@@ -52,7 +52,7 @@ The customer shell provides the five primary destinations — Home, Categories, 
 
 Phase 1 must work while the catalogue is empty. The storefront shows empty states for no shops, categories and products, and the cart and orders screens show their own empty states. It must not add sample products, fake prices, invented stock, generated product images or historical retailer prices.
 
-Phase 1 did not import catalogue data. The later Phase 2 decision selected only the inspected Mendeley Indian Packaged Foods Nutritional Composition Dataset (2026), Version 1, DOI `10.17632/rhswn9z9xr.1`, under its stated CC BY 4.0 terms. Its importer and dry-run are documented in `PHASE-2-AUTHORIZED-CATALOGUE-INTAKE.md`. Open Food Facts and related catalogue feeds remain excluded. Phase 3 photographs are governed separately by `PHASE-3-PRODUCT-PHOTOGRAPHY.md`; Mendeley's dataset licence does not cover photographs absent from the dataset.
+Phase 1 did not import catalogue data. The later Phase 2 decision selected only the inspected Mendeley Indian Packaged Foods Nutritional Composition Dataset (2026), Version 1, DOI `10.17632/rhswn9z9xr.1`, under its stated CC BY 4.0 terms. Its importer and dry-run are documented in `PHASE-2-AUTHORIZED-CATALOGUE-INTAKE.md`. Open Food Facts and related catalogue feeds remain excluded. Phase 3 governs source integrity and authentic product identity. Phase 4 makes the catalogue product-information-only: product photographs, product-image fields, image imports and photo moderation are excluded.
 
 ## Test and review checklist
 

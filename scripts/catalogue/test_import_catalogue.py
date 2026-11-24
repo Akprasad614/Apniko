@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from import_catalogue import (
     DOI, EXPECTED_HEADERS, SOURCE_LICENSE, SOURCE_NAME,
-    load_mendeley_csv, run, validate_api_url,
+    load_mendeley_csv, run, validate_api_url, sha256_file,
 )
 
 ROW_COUNT = 852
@@ -99,6 +99,8 @@ class MendeleyImportTests(unittest.TestCase):
         self.assertIsNone(item["mrp"])
         self.assertIsNone(item["description"])
         self.assertEqual(stats["eligible"], ROW_COUNT)
+        self.assertEqual(stats["review_required_rows"], ROW_COUNT)
+        self.assertIn("verified retail GTIN/barcode and retail pack size are not supplied", item["sourceReviewReason"])
 
         metadata = json.loads(item["sourceMetadataJson"])
         self.assertEqual(metadata["sourceValues"]["Ingredients"], "  Potato, salt  ")
@@ -117,6 +119,7 @@ class MendeleyImportTests(unittest.TestCase):
 
         self.assertEqual(stats["duplicate_identity_groups"], 1)
         self.assertEqual(stats["duplicate_identity_rows"], 2)
+        self.assertEqual(stats["review_required_rows"], ROW_COUNT)
         self.assertIn("Repeated item name and brand", records[0]["sourceReviewReason"])
         self.assertIn("Repeated item name and brand", records[1]["sourceReviewReason"])
         self.assertNotEqual(records[0]["sourceRecordId"], records[1]["sourceRecordId"])
@@ -176,6 +179,18 @@ class MendeleyImportTests(unittest.TestCase):
         self.assertEqual(result, 2)
         session.post.assert_not_called()
 
+    def test_apply_rejects_csv_that_differs_from_inspected_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = self.make_csv(folder)
+            session = Mock()
+            with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
+                result = run(self.args(
+                    path, apply=True, license_confirmed=True,
+                    commercial_use_confirmed=True,
+                ), session=session)
+        self.assertEqual(result, 2)
+        session.post.assert_not_called()
+
     def test_apply_sends_mendeley_provenance_and_never_sets_retail_facts(self):
         with tempfile.TemporaryDirectory() as folder:
             path = self.make_csv(folder)
@@ -187,10 +202,11 @@ class MendeleyImportTests(unittest.TestCase):
             response.raise_for_status.return_value = None
             session.post.return_value = response
             with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
-                result = run(self.args(
-                    path, apply=True, license_confirmed=True,
-                    commercial_use_confirmed=True,
-                ), session=session)
+                with patch("import_catalogue.APPROVED_SOURCE_SHA256", sha256_file(path)):
+                    result = run(self.args(
+                        path, apply=True, license_confirmed=True,
+                        commercial_use_confirmed=True,
+                    ), session=session)
 
         self.assertEqual(result, 0)
         payload = session.post.call_args.kwargs["json"]
@@ -203,7 +219,7 @@ class MendeleyImportTests(unittest.TestCase):
         self.assertIsNone(item["mrp"])
         self.assertIsNone(item["packSize"])
         self.assertIsNone(item["barcode"])
-        self.assertNotIn("imageUrl", item)
+        self.assertFalse(any("image" in field.casefold() or "photo" in field.casefold() for field in item))
         self.assertTrue(item["sourceMetadataJson"].startswith("{"))
 
     def test_api_url_requires_https_except_localhost(self):
