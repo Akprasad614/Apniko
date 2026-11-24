@@ -1,28 +1,26 @@
 # Phase 7 — end-to-end staging verification
 
-**Status: Original Phase 7 branch acceptance passed; consolidated integration is being revalidated.** The historical evidence below records the pre-integration branch. The current integrated tree must pass Phase 7 again before being marked complete.
+**Status: Phase 7 implementation and its initial acceptance passed. Final acceptance is being rerun against the latest Phase 3–4 text-only development base before closeout.**
 **Integration branch:** feature/phase-7-e2e-accessibility-staging
 **Parent milestone:** Phase 6 role-based application delivery
 
 ## Verification record
 
-Final acceptance was run on **23 November 2026** on the current Phase 7 branch head:
+The latest pre-integration acceptance ran on **24 November 2026**:
 
-- Verified final branch head: `768fad50bbd7ce56204e56c8ced1d6161d4cf407`
-- Dedicated GitHub Actions run: [#45235967198 — browser, accessibility and staging verification](https://github.com/Akprasad614/Apniko/actions/runs/45235967198) — **passed**
-- Frontend CI: [#45235967217](https://github.com/Akprasad614/Apniko/actions/runs/45235967217) — **passed**
-- Retained evidence artifact: [apniko-phase7-e2e-22](https://github.com/Akprasad614/Apniko/actions/runs/45235967198/artifacts/14849856177), retained until **7 December 2026**.
+- Verified Phase 7 head: `8b71a4c3c7f03e4d267874616d3ab935c9605eee`
+- Dedicated browser/accessibility/staging workflow: [run #45403357732](https://github.com/Akprasad614/Apniko/actions/runs/45403357732) — **passed**.
+- Frontend CI: [run #45403357561](https://github.com/Akprasad614/Apniko/actions/runs/45403357561) — **passed**.
+- Backend CI: [run #45403357874](https://github.com/Akprasad614/Apniko/actions/runs/45403357874) — **passed**.
+- CodeQL: [run #45403357593](https://github.com/Akprasad614/Apniko/actions/runs/45403357593) — **passed**.
+- Static security (Semgrep/Gitleaks): [run #45403357547](https://github.com/Akprasad614/Apniko/actions/runs/45403357547) — **passed**.
+- CycloneDX SBOM: [run #45403357921](https://github.com/Akprasad614/Apniko/actions/runs/45403357921) — **passed**.
+- OSV dependency scan: [run #45403358455](https://github.com/Akprasad614/Apniko/actions/runs/45403358455) — **passed**.
+- Retained artifact: [apniko-phase7-e2e-29](https://github.com/Akprasad614/Apniko/actions/runs/45403357732/artifacts/14923598874), containing the Playwright report and nine desktop/mobile screenshots; retention ends **8 December 2026**.
 
-The successful dedicated workflow confirms:
+The dedicated run completed every step, including the Phase 7 safety verifier, catalogue contract verifiers, Maven verification, Chromium installation, the full Playwright journey and artifact upload. Its browser run passed the customer checkout → shopkeeper fulfilment → delivery-partner pickup/delivery → customer order-history lifecycle, shopkeeper-to-admin HTTP 403 isolation, axe checks and mobile overflow checks.
 
-- Backend Maven verification and tests passed against disposable MySQL 8.4.
-- The real API-backed customer checkout → shopkeeper fulfilment → delivery-partner pickup/delivery → customer order-history journey passed.
-- The shopkeeper-to-admin access-isolation request returned HTTP 403 as expected.
-- axe-core WCAG 2.0/2.1 A/AA checks passed for customer, shopkeeper, delivery and administrator workspaces; the test fails on any critical or serious violation.
-- 390 × 844 mobile overflow checks passed for all four roles.
-- Frontend lint, typecheck, unit tests and production build passed in the paired frontend CI run.
-
-The final artifact was downloaded and visually reviewed during closeout on **24 November 2026**. It contains nine screenshots: desktop and mobile views for customer, shopkeeper, delivery and administrator, plus the delivered customer order-history view. The layouts are present at both target sizes, with no obvious clipped or horizontally overflowing workspace in the retained evidence. The artifact also contains the Playwright HTML report and test attachments.
+**Integration qualification:** the above run started before the development base received the final Phase 3–4 text-only catalogue changes. Its screenshots therefore are not the final visual acceptance for the text-only catalogue requirement. A new pull-request run against the latest development base is required; only that run can close Phase 7.
 
 ## What the Phase 7 workflow runs
 
