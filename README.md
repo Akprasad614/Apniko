@@ -27,3 +27,14 @@ workflow. See `frontend/README.md` for frontend setup and checks.
 
 See `COPYRIGHT.md` and `OWNERSHIP.md`. Third-party dependencies and assets
 remain subject to their own licences.
+
+## Production readiness and operations
+
+Phase 8 deployment preparation, secure browser authentication and release gates are documented in:
+
+- [Phase 8 production readiness](PHASE8-PRODUCTION-READINESS.md)
+- [Operations runbook](OPERATIONS-RUNBOOK.md)
+- [Main branch protection setup](MAIN-BRANCH-PROTECTION.md)
+- [Production environment example](.env.production.example)
+
+The Compose stack is designed for a managed MySQL database and a host with a public DNS name. Do not use it against an empty production database until a reviewed schema migration baseline has been created. Real production secrets, hosting, DNS, GitHub ruleset activation, monitoring and offsite backup configuration remain owner-controlled release gates.
