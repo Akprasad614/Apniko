@@ -201,7 +201,7 @@ test('customer to shopkeeper to delivery order lifecycle; role accessibility and
   expect(Number.isSafeInteger(orderId)).toBeTruthy()
 
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.locator('.customer-primary-nav')
+  await page.locator('.customer-bottom-nav')
     .getByRole('link', { name: 'Home', exact: true }).click()
   await expect(page.getByRole('heading', { name: /Good food/i })).toBeVisible()
   await checkMobile(page, 'customer mobile storefront')
