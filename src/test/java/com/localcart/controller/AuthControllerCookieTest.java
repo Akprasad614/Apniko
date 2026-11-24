@@ -3,6 +3,7 @@ package com.localcart.controller;
 import com.localcart.dto.AuthResponse;
 import com.localcart.dto.LoginRequest;
 import com.localcart.service.AuthService;
+import com.localcart.security.AuthenticationRateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -15,12 +16,14 @@ import static org.mockito.Mockito.*;
 class AuthControllerCookieTest {
 
     private AuthService authService;
+    private AuthenticationRateLimiter rateLimiter;
     private AuthController controller;
 
     @BeforeEach
     void setUp() {
         authService = mock(AuthService.class);
-        controller = new AuthController(authService);
+        rateLimiter = mock(AuthenticationRateLimiter.class);
+        controller = new AuthController(authService, rateLimiter);
         ReflectionTestUtils.setField(controller, "cookieAuthenticationEnabled", true);
         ReflectionTestUtils.setField(controller, "secureCookie", true);
         ReflectionTestUtils.setField(controller, "cookieName", "APNIKO_SESSION");
