@@ -2044,9 +2044,9 @@
 
 .catalogue-product-card {
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
-  align-items: center;
-  gap: .9rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
   border: 1px solid #eee6d7;
   border-radius: 16px;
   padding: .7rem;
