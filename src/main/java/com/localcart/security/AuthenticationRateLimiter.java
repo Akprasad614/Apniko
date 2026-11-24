@@ -26,6 +26,7 @@ public class AuthenticationRateLimiter {
     private final long windowMillis;
     private final Clock clock;
     private final ConcurrentMap<String, Window> windows = new ConcurrentHashMap<>();
+    private final Object capacityLock = new Object();
 
     @Autowired
     public AuthenticationRateLimiter(
@@ -65,11 +66,18 @@ public class AuthenticationRateLimiter {
     private void consume(String key, int maximumAttempts) {
         long now = clock.millis();
 
-        if (!windows.containsKey(key) && windows.size() >= MAX_TRACKED_KEYS) {
-            windows.entrySet().removeIf(entry ->
-                    entry.getValue().isExpired(now, windowMillis));
-            if (windows.size() >= MAX_TRACKED_KEYS) {
-                throw new TooManyRequestsException(1);
+        // Serialize only new-key admission so concurrent requests cannot grow
+        // the tracked-key map past its hard ceiling.
+        synchronized (capacityLock) {
+            if (!windows.containsKey(key)) {
+                if (windows.size() >= MAX_TRACKED_KEYS) {
+                    windows.entrySet().removeIf(entry ->
+                            entry.getValue().isExpired(now, windowMillis));
+                }
+                if (windows.size() >= MAX_TRACKED_KEYS) {
+                    throw new TooManyRequestsException(1);
+                }
+                windows.put(key, new Window(now, 0));
             }
         }
 
