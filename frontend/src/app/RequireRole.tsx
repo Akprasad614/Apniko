@@ -5,8 +5,12 @@ import { roleHomePath } from '../lib/roles'
 import type { AppRole } from '../lib/roles'
 
 export function RequireRole({ allowed, children }: { allowed: AppRole[]; children: ReactNode }) {
-  const { session } = useAuth()
+  const { session, loading } = useAuth()
   const location = useLocation()
+
+  if (loading) {
+    return <main className="auth-page"><p role="status">Restoring your secure session…</p></main>
+  }
 
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
