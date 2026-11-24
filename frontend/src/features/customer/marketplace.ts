@@ -3,6 +3,9 @@ export interface MarketplaceShop {
   name: string
   address: string | null
   active: boolean
+  latitude?: number | null
+  longitude?: number | null
+  distanceKm?: number | null
 }
 
 export function getPublicShopHeading(shop: Pick<MarketplaceShop, 'name' | 'address'>) {

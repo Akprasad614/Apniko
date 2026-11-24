@@ -4,6 +4,7 @@ import com.localcart.dto.InventoryResponse;
 import com.localcart.dto.PriceComparisonResponse;
 import com.localcart.dto.CustomerMarketplaceShopResponse;
 import com.localcart.service.CustomerMarketplaceService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

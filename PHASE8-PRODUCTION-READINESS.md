@@ -79,3 +79,28 @@ schema; actual hosting/domain/DNS; production secret provisioning; GitHub
 ruleset activation; and externally managed monitoring/offsite backup plus a
 successful restore drill. These require access to the owner's real target
 infrastructure. No guessed migration or production secret is committed.
+
+
+## Razorpay HTTP contract verification
+
+The application gateway client accepts the official HTTPS endpoint
+`https://api.razorpay.com/v1`. A development-only override is accepted only
+for loopback HTTP hosts so the Maven suite can run a real HTTP contract test
+without credentials or any internet call. Remote custom hosts, URL credentials,
+query strings and fragments are rejected; the configured public key/secret are
+never sent to an untrusted base URL.
+
+`RazorpayGatewayClientHttpTest` runs against an ephemeral local HTTP server
+and checks:
+
+- Basic authentication header construction.
+- Razorpay order creation method/path and INR amount, receipt and local IDs.
+- Payment fetch method/path.
+- Full-refund method/path and order note.
+- A non-2xx provider response is returned as a sanitized application error.
+
+This is a provider-request contract test, **not** a real Razorpay sandbox
+transaction. Before production, the owner must configure test keys and webhook
+secret in the provider dashboard, set the webhook URL/events, and complete
+the provider's end-to-end test-payment and refund checks. No live credentials
+are stored in the repository or in this chat.
