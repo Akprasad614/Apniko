@@ -132,6 +132,7 @@ Implementation is on `feature/phase-8-production-readiness`; see `PHASE8-PRODUCT
 - [x] Add multi-stage backend/frontend Dockerfiles, same-origin Nginx API proxy, Caddy automatic HTTPS and baseline CSP/HSTS/security headers.
 - [x] Keep backend and Actuator off public host ports; mount DB/JWT secrets as Docker secrets.
 - [x] Add TLS-verified database backup, checksum and explicit-confirmation restore scripts.
+- [x] Add immutable workflow pin verification.
 - [x] Pin third-party GitHub Actions and reusable workflows to full commit SHAs; add a verifier workflow to prevent mutable references.
 - [x] Add a Phase 8 CI gate for production-contract checks, Docker Compose validation, Maven, frontend checks, Playwright order lifecycle, axe and mobile evidence.
 - [x] Add branch-protection instructions, deployment environment example and operations runbook.
@@ -143,7 +144,7 @@ Implementation is on `feature/phase-8-production-readiness`; see `PHASE8-PRODUCT
 - [ ] Create and review a versioned schema migration baseline. Existing development relies on Hibernate `update`; production deliberately uses `validate` and must not bootstrap an empty database automatically.
 - [ ] Configure an external uptime/logging/alerting provider and encrypted offsite backup retention; complete and record a restore drill.
 
-Phase 8 repository code preparation is complete when the dedicated Phase 8 workflow passes. A public production release remains gated on the owner-controlled items above; no deployment or production data change is part of this milestone.
+The authentication limiter is in-memory and intended for one backend replica; multiple replicas require a shared atomic limiter or trusted gateway. Phase 8 repository code preparation is complete when the dedicated Phase 8 workflow passes. A public production release remains gated on the owner-controlled items above; no deployment or production data change is part of this milestone.
 
 ## Completion policy
 
