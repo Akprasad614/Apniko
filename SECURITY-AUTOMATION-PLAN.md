@@ -123,14 +123,33 @@ Final integrated acceptance ran on 24 November 2026 against the current Phase 3�
 
 **Phase 7 completion gate: satisfied.** The integrated browser journey, text-only product contract, accessibility checks, responsive tests and paired CI/security workflows all passed. Phase 7 is complete; Phase 8 work has not started.
 
-## Phase 8 — Production readiness and release controls
+## Phase 8 — Production readiness and release controls (implementation integrated)
 
-- Configure protected `main` branch rules and required checks after the workflows have passed at least once.
-- Require review for security-sensitive changes.
-- Configure production secrets in the hosting provider, not in the repository.
-- Add HTTPS, content security policy, other security headers, restricted database access, monitoring, backups and rollback procedures.
-- Replace the temporary browser token storage design with the reviewed production authentication approach.
-- Keep a release checklist and a security findings register.
+Merged to the development branch through
+[PR #70](https://github.com/Akprasad614/Apniko/pull/70). No change was made to
+main.
+
+- [x] Production browser authentication moved to HttpOnly/Secure/SameSite
+  cookies with CSRF-protected write requests and session restoration/logout.
+- [x] Strong password validation, bounded authentication rate limiting,
+  Retry-After throttling and payment row locks.
+- [x] Hardened production Spring profile, safe health probes and external
+  database/JWT secret requirements.
+- [x] Multi-stage Docker images, non-root backend, private backend/database
+  network, Nginx same-origin API proxy and Caddy HTTPS/security headers.
+- [x] TLS-verified backup and explicitly guarded restore utilities.
+- [x] Full Phase 8, Phase 7, backend, frontend, CodeQL, Semgrep/Gitleaks, OSV,
+  SBOM, strict passive DAST and action-pin acceptance passed.
+- [ ] Generate and review a versioned Flyway baseline from the real,
+  known-good, backed-up development schema.
+- [ ] Configure a real production host/domain/DNS and ingress.
+- [ ] Provision production DB/JWT secrets in the host secret manager.
+- [ ] Apply and test the GitHub main branch ruleset.
+- [ ] Configure external monitoring, encrypted offsite backup retention and
+  complete a successful restore drill.
+
+**Implementation and CI acceptance are complete; production release remains
+blocked on the five owner-controlled items above.**
 
 ## Completion policy
 
