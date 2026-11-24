@@ -31,6 +31,11 @@ public class JwtService {
         this.expirationMs = expirationMs;
     }
 
+    // Kept for focused unit tests that use the default 24-hour lifetime.
+    public JwtService(String secret) {
+        this(secret, 86400000L);
+    }
+
     public String generateToken(String email, String role) {
 
         return Jwts.builder()
