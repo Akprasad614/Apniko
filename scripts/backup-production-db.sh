@@ -51,7 +51,7 @@ mysqldump \
 gzip -t "$temporary"
 mv "$temporary" "$output"
 chmod 600 "$output"
-sha256sum "$output" > "$output.sha256"
+(cd "$BACKUP_DIR" && sha256sum "$(basename "$output")" > "$(basename "$output").sha256")
 chmod 600 "$output.sha256"
 
 echo "Database backup created: $output"
