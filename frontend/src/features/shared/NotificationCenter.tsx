@@ -37,7 +37,7 @@ function describeError(error: unknown): string {
 export function NotificationCenter() {
   const { session } = useAuth()
   const navigate = useNavigate()
-  const token = session?.token ?? ''
+  const token = session?.token
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -47,17 +47,17 @@ export function NotificationCenter() {
   const [markingAll, setMarkingAll] = useState(false)
 
   const refreshUnreadCount = useCallback(async () => {
-    if (!token) return
+    if (!session) return
     try {
       const result = await apiRequest<UnreadCountResponse>('/api/notifications/unread-count', {}, token)
       setUnreadCount(Math.max(0, result.unreadCount))
     } catch {
       // Keep the last known count visible if a short poll fails.
     }
-  }, [token])
+  }, [session, token])
 
   const loadNotifications = useCallback(async () => {
-    if (!token) return
+    if (!session) return
     setLoading(true)
     setError('')
     try {
@@ -71,7 +71,7 @@ export function NotificationCenter() {
     } finally {
       setLoading(false)
     }
-  }, [refreshUnreadCount, token])
+  }, [refreshUnreadCount, session, token])
 
   useEffect(() => {
     void refreshUnreadCount()

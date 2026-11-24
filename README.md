@@ -78,3 +78,18 @@ against a live database.
 
 See `COPYRIGHT.md` and `OWNERSHIP.md`. Third-party dependencies and assets
 remain subject to their own licences.
+
+
+## Production readiness
+
+Phase 8 implementation and release controls are tracked in
+[PHASE8-PRODUCTION-READINESS.md](PHASE8-PRODUCTION-READINESS.md) and
+[OPERATIONS-RUNBOOK.md](OPERATIONS-RUNBOOK.md). The repository includes
+cookie-based browser authentication, CSRF protections, production runtime
+configuration, container deployment files and guarded backup/restore tooling.
+
+**Production release is not authorised by these files alone.** A reviewed
+versioned schema migration baseline, a chosen host/domain, production secrets,
+GitHub branch protection, external monitoring and a proven offsite backup
+restore must be completed and verified before a live deployment. Never put
+production secrets in this repository or in chat.

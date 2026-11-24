@@ -18,7 +18,8 @@ import { DeliveryDashboard } from '../features/delivery/DeliveryDashboard'
 import { roleHomePath } from '../lib/roles'
 
 function AccountRedirect() {
-  const { session } = useAuth()
+  const { session, loading } = useAuth()
+  if (loading) return <main className="auth-page"><p role="status">Restoring your secure session…</p></main>
   return <Navigate to={session ? roleHomePath(session.role) : '/'} replace />
 }
 

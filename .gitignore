@@ -49,10 +49,11 @@ data/catalogue/source/
 data/catalogue/reports/
 .venv-catalogue/
 
-# Python generated files
-__pycache__/
-*.py[cod]
-
 ### Phase 7 browser test output ###
 frontend/test-results/
 frontend/playwright-report/
+
+# Production runtime secrets and environment files
+.env.production
+secrets/*.txt
+!secrets/.gitkeep

@@ -12,6 +12,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
+
 @Service
 public class AuthService {
 
@@ -33,8 +35,9 @@ public class AuthService {
 
     /** Public registration is intentionally limited to CUSTOMER accounts. */
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already registered");
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new BadRequestException("Unable to register with the provided details");
         }
 
         if (request.getRole() != Role.CUSTOMER) {
@@ -45,7 +48,7 @@ public class AuthService {
 
         User user = new User();
         user.setName(request.getName().trim());
-        user.setEmail(request.getEmail().trim());
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         // Never trust a client-supplied role as an authority source.
         user.setRole(Role.CUSTOMER);
@@ -65,14 +68,32 @@ public class AuthService {
         );
     }
 
+    public AuthResponse currentSession(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("Invalid session"));
+
+        if (!user.isActive()) {
+            throw new BadRequestException("Account is not active");
+        }
+
+        return new AuthResponse(
+                null,
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+    }
+
     public AuthResponse login(LoginRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(), request.getPassword()
+                        normalizedEmail, request.getPassword()
                 )
         );
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new BadRequestException("Invalid email or password"));
 
         String token = jwtService.generateToken(

@@ -6,6 +6,7 @@ import com.localcart.dto.CreateShopRequest;
 import com.localcart.dto.InitiatePaymentRequest;
 import com.localcart.dto.UpdateCartItemRequest;
 import com.localcart.dto.VerifyPaymentRequest;
+import com.localcart.dto.UserResponse;
 import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
@@ -242,7 +243,7 @@ class CustomerAndGeneralControllersCoverageTest {
     }
 
     @Test
-    void profileControllerReturnsUnauthorizedNotFoundAndRemovesPasswordFromResponse() {
+    void profileControllerReturnsUnauthorizedNotFoundAndSafeResponseDto() {
         ProfileController controller = new ProfileController(userRepository);
         securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn(null);
         assertEquals(401, controller.getProfile().getStatusCode().value());
@@ -259,7 +260,10 @@ class CustomerAndGeneralControllersCoverageTest {
         when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(user));
         var response = controller.getProfile();
         assertEquals(200, response.getStatusCode().value());
-        assertNull(response.getBody().getPassword());
+        assertInstanceOf(UserResponse.class, response.getBody());
+        assertEquals("Test User", response.getBody().getName());
+        assertEquals("customer@example.com", response.getBody().getEmail());
+        assertThrows(NoSuchFieldException.class, () -> UserResponse.class.getDeclaredField("password"));
     }
 
     private static User user(Long id, Role role, boolean active) {
