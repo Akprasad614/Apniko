@@ -3,6 +3,7 @@ package com.localcart.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.localcart.security.StrongPassword;
 
 public class CreateManagedUserRequest {
 
