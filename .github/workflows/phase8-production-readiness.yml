@@ -109,6 +109,9 @@ jobs:
           export APNIKO_IMAGE_TAG='phase8-ci'
           docker compose config --quiet
 
+      - name: Build production backend and frontend container images
+        run: docker compose build --pull
+
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
 
