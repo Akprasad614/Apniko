@@ -2536,3 +2536,8 @@
 
 /* WCAG AA: retain the treats card text at full foreground opacity. */
 .customer-featured-category__copy { opacity: 1; }
+
+
+/* WCAG AA: metadata and price qualifiers must remain legible on pale surfaces. */
+.product-area__heading > span,
+.catalogue-product-card__price > span { color: #59645d; }
