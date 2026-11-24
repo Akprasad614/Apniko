@@ -231,7 +231,6 @@ export function AdminDashboard() {
     }
   }
 
-  async function toggleShop(shop: AdminShop) {
   function updateShopLocationDraft(shopId: number, field: 'latitude' | 'longitude', value: string) {
     setShopLocationDrafts((current) => ({
       ...current,
@@ -309,6 +308,7 @@ export function AdminDashboard() {
     )
   }
 
+  async function toggleShop(shop: AdminShop) {
     setBusyKey('shop-' + shop.id)
     setError('')
     setNotice('')
