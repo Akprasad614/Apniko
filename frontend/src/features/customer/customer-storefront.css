@@ -1040,7 +1040,7 @@
   .category-row {
     flex-wrap: nowrap;
     overflow-x: auto;
-    margin-inline: -18px;
+    margin-inline: -14px;
     padding: 0 18px 1rem;
     scrollbar-width: thin;
   }
@@ -2363,8 +2363,8 @@
   }
 
   .catalogue-product-card {
-    grid-template-columns: 54px minmax(0, 1fr);
-    gap: .6rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
     border-radius: 14px;
     padding: .55rem;
   }
@@ -2430,8 +2430,8 @@
   }
 
   .catalogue-product-card {
-    grid-template-columns: 46px minmax(0, 1fr);
-    gap: .45rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
   .catalogue-product-card__body {
