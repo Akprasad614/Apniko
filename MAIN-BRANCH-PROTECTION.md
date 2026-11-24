@@ -35,6 +35,7 @@ Select these job/check names exactly as GitHub presents them for the current wor
 | `Check newly introduced dependency vulnerabilities / osv-scan` | Apniko OSV Dependency Scan |
 | `Generate Maven dependency inventory` | Apniko CycloneDX SBOM |
 | `Production readiness, tests and browser acceptance` | Apniko Phase 8 — production readiness |
+| `Reject mutable third-party GitHub Actions references` | Verify GitHub Actions Pins |
 
 The Phase 8 check is deliberately part of the same required set. The passive DAST baseline can also be selected after its check name is confirmed on a main-targeted PR. Do not select checks that are not consistently triggered for every main PR.
 
