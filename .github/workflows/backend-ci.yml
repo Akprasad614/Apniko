@@ -83,6 +83,12 @@ jobs:
       - name: Verify Phase 4 text-only catalogue architecture
         run: bash scripts/verify-phase4-text-only.sh
 
+      - name: Verify Phase 5 admin catalogue intake and moderation
+        run: bash scripts/verify-phase5-admin-catalogue.sh
+
+      - name: Verify Phase 10 nearby-shop geolocation
+        run: bash scripts/verify-phase10-geolocation.sh
+
       - name: Verify passive DAST security guardrails
         run: bash scripts/verify-phase4.sh
 

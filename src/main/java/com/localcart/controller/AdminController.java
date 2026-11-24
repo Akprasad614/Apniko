@@ -4,6 +4,7 @@ import com.localcart.dto.AdminShopResponse;
 import com.localcart.dto.AssignShopOwnerRequest;
 import com.localcart.dto.CreateManagedUserRequest;
 import com.localcart.dto.UpdateActiveStatusRequest;
+import com.localcart.dto.ShopLocationRequest;
 import com.localcart.dto.UserResponse;
 import com.localcart.entity.Role;
 import com.localcart.security.SecurityUtils;
@@ -74,6 +75,13 @@ public class AdminController {
     }
 
     @PatchMapping("/shops/{shopId}/active")
+    @PatchMapping("/shops/{shopId}/location")
+    public ResponseEntity<AdminShopResponse> updateShopLocation(
+            @PathVariable Long shopId,
+            @Valid @RequestBody ShopLocationRequest request) {
+        return ResponseEntity.ok(adminService.updateShopLocation(shopId, request));
+    }
+
     public ResponseEntity<AdminShopResponse> updateShopActiveStatus(
             @PathVariable Long shopId,
             @Valid @RequestBody UpdateActiveStatusRequest request) {

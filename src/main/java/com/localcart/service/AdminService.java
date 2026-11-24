@@ -4,6 +4,7 @@ import com.localcart.dto.AdminShopResponse;
 import com.localcart.dto.AssignShopOwnerRequest;
 import com.localcart.dto.CreateManagedUserRequest;
 import com.localcart.dto.UpdateActiveStatusRequest;
+import com.localcart.dto.ShopLocationRequest;
 import com.localcart.dto.UserResponse;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
@@ -141,6 +142,16 @@ public class AdminService {
     }
 
     private UserResponse toUserResponse(User user) {
+    public AdminShopResponse updateShopLocation(Long shopId, ShopLocationRequest request) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Shop not found with id " + shopId
+                ));
+        shop.setLatitude(request.latitude());
+        shop.setLongitude(request.longitude());
+        return toAdminShopResponse(shopRepository.save(shop));
+    }
+
         return new UserResponse(
                 user.getId(), user.getName(), user.getEmail(),
                 user.getRole(), user.isActive()
@@ -157,7 +168,9 @@ public class AdminService {
                 owner == null ? null : owner.getEmail(),
                 shop.getPhone(),
                 shop.getAddress(),
-                shop.isActive()
+                shop.isActive(),
+                shop.getLatitude(),
+                shop.getLongitude()
         );
     }
 }
