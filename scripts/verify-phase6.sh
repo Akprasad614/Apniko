@@ -84,7 +84,11 @@ grep -Fq '/api/admin/analytics/overview' "$ADMIN"
 grep -Fq '/api/admin/users' "$ADMIN"
 grep -Fq '/api/admin/shops' "$ADMIN"
 grep -Fq 'CatalogueReviewQueue' "$ADMIN"
-grep -Fq 'ProductPhotoReviewQueue' "$ADMIN"
+# Phase 4 makes the entire product catalogue text-only, including administration.
+if grep -Eiq 'ProductPhotoReviewQueue|ProductPhoto|ApprovedProductImage|FallbackImage|imageUrl|imageSourceName|approvedImageUrl|candidateImageUrl|<img[[:space:]>]' "$ADMIN" "$CUSTOMER" "$SHOPKEEPER"; then
+  echo "Product catalogue interfaces must remain text-only; product-photo UI is not supported." >&2
+  exit 1
+fi
 grep -Fq 'operations-bottom-nav' "$ADMIN"
 
 # Notifications are loaded and mutated through the authenticated per-user API.
