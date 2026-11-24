@@ -65,6 +65,23 @@ public class AuthService {
         );
     }
 
+    public AuthResponse currentSession(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("Invalid session"));
+
+        if (!user.isActive()) {
+            throw new BadRequestException("Account is not active");
+        }
+
+        return new AuthResponse(
+                null,
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+    }
+
     public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
