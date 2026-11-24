@@ -61,12 +61,15 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
         self.assertFalse(valid_https_url("http://brand.example/products/masoor-dal"))
         self.assertFalse(valid_https_url(SOURCE + "?download=1"))
 
-    def test_only_source_domain_or_configured_authorised_cdn_is_accepted(self):
-        self.assertTrue(allowed_image_host(IMAGE, SOURCE, set()))
+    def test_only_exact_source_domain_or_configured_authorised_cdn_is_accepted(self):
+        self.assertTrue(allowed_image_host(SOURCE, SOURCE, set()))
         self.assertTrue(allowed_image_host(
             "https://cdn.apniko-supplier.example/masoor.jpg",
             SOURCE,
             {"cdn.apniko-supplier.example"},
+        ))
+        self.assertFalse(allowed_image_host(
+            "https://images.brand.example/masoor.jpg", SOURCE, set()
         ))
         self.assertFalse(allowed_image_host(
             "https://unrelated.example/masoor.jpg", SOURCE, set()
@@ -94,7 +97,10 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             args.file = self.write_csv(directory)
             output = StringIO()
-            with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-token"}), redirect_stdout(output):
+            with patch.dict(os.environ, {
+                "APNIKO_ADMIN_TOKEN": "test-token",
+                "APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS": "images.brand.example",
+            }), redirect_stdout(output):
                 result = run(args, session=session)
 
         self.assertEqual(result, 0)
@@ -124,7 +130,10 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             args.file = self.write_csv(directory)
             output = StringIO()
-            with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-token"}), redirect_stdout(output):
+            with patch.dict(os.environ, {
+                "APNIKO_ADMIN_TOKEN": "test-token",
+                "APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS": "images.brand.example",
+            }), redirect_stdout(output):
                 result = run(args, session=session)
 
         self.assertEqual(result, 0)
@@ -153,7 +162,10 @@ class AuthorizedProductPhotoImporterTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             args.file = self.write_csv(directory)
-            with patch.dict(os.environ, {"APNIKO_ADMIN_TOKEN": "test-token"}):
+            with patch.dict(os.environ, {
+                "APNIKO_ADMIN_TOKEN": "test-token",
+                "APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS": "images.brand.example",
+            }):
                 result = run(args, session=session)
 
         self.assertEqual(result, 0)

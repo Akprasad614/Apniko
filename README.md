@@ -30,20 +30,30 @@ acceptance boundaries.
 
 ## Catalogue and product media
 
-Apniko's development catalogue has been reset to an empty state. Open Food
-Facts and BigBasket are excluded. No external product dataset is currently
-approved or imported.
+Apniko's development catalogue is intentionally empty until a reviewed import
+is explicitly approved. Open Food Facts and related catalogue feeds are
+excluded.
 
-The Indian Packaged Foods Nutritional Composition Dataset (2026) on Mendeley
-Data is the proposed Phase 2 seed dataset only. Its actual CSV, README,
-field-level provenance and licence scope must be inspected before an importer
-is implemented or any row is applied. It is a packaged-food dataset, not a
-complete grocery catalogue, and it is not a product-image source.
+Phase 2 uses only the inspected *Indian Packaged Foods Nutritional Composition
+Dataset (2026)*, Mendeley Data, Version 1, DOI
+[10.17632/rhswn9z9xr.1](https://doi.org/10.17632/rhswn9z9xr.1), identified as
+CC BY 4.0. Its 852-row CSV and README have been inspected, and a dry-run of
+the Mendeley-only importer completed without API calls or database changes.
+The dataset is a packaged-food seed, not a complete grocery catalogue and
+contains no product photographs, GTINs or retail pack sizes. Its licence does
+not grant rights to media that is not included in the dataset.
+
+Phase 3 is a separate authorised product-photo intake and admin-review
+workflow. Use only manufacturer/brand/authorised distributor submissions,
+participating supplier/shopkeeper submissions with a documented usage grant,
+or individual openly licensed images whose own licence permits Apniko's use.
+Exact product identity and image rights must be checked independently.
 
 Do not add sample products, synthetic product photographs, guessed barcodes,
 pack sizes, live prices, ratings or stock. Shopkeepers remain responsible for
-shop-specific prices and stock. See `CATALOGUE-DATA-SOURCES.md` and
-`PRODUCT-PHOTOS.md` before changing catalogue intake or product media.
+shop-specific prices and stock. See `CATALOGUE-DATA-SOURCES.md`,
+`PRODUCT-PHOTOS.md` and `PHASE-3-PRODUCT-PHOTOGRAPHY.md` before changing
+catalogue intake or product media.
 
 ## Project rights
 
