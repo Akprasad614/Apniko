@@ -9,6 +9,12 @@ required=(
   "src/main/java/com/localcart/controller/AuthController.java"
   "src/main/java/com/localcart/security/SecurityConfig.java"
   "src/main/java/com/localcart/security/JwtAuthenticationFilter.java"
+  "src/main/java/com/localcart/security/AuthenticationRateLimiter.java"
+  "src/main/java/com/localcart/security/StrongPasswordValidator.java"
+  "src/main/java/com/localcart/repository/PaymentRepository.java"
+  "src/test/java/com/localcart/security/AuthenticationRateLimiterTest.java"
+  "src/test/java/com/localcart/security/StrongPasswordValidatorTest.java"
+  "src/test/java/com/localcart/controller/AuthControllerCookieTest.java"
   "frontend/src/auth/AuthProvider.tsx"
   "frontend/src/lib/api.ts"
   "Dockerfile"
@@ -50,6 +56,15 @@ grep -Fq 'CookieCsrfTokenRepository.withHttpOnlyFalse()' "$SECURITY"
 grep -Fq 'X-XSRF-TOKEN' "$API"
 grep -Fq "apiRequest<AuthResponse>('/api/auth/session')" "$AUTH"
 grep -Fq 'cookieName.equals(cookie.getName())' "$FILTER"
+grep -Fq 'rateLimiter.checkLoginAllowed' "$CONTROLLER"
+grep -Fq 'rateLimiter.checkRegistrationAllowed' "$CONTROLLER"
+grep -Fq 'BCRYPT_MAXIMUM_UTF8_BYTES = 72' src/main/java/com/localcart/security/StrongPasswordValidator.java
+grep -Fq 'HttpStatus.TOO_MANY_REQUESTS' src/main/java/com/localcart/exception/GlobalExceptionHandler.java
+grep -Fq 'HttpHeaders.RETRY_AFTER' src/main/java/com/localcart/exception/GlobalExceptionHandler.java
+grep -Fq '@Lock(LockModeType.PESSIMISTIC_WRITE)' src/main/java/com/localcart/repository/PaymentRepository.java
+grep -Fq 'ResponseEntity<UserResponse> getProfile()' src/main/java/com/localcart/controller/ProfileController.java
+grep -Fq '"/api/auth/csrf"' "$SECURITY"
+grep -Fq '"/api/auth/logout"' "$SECURITY"
 
 # The production profile must fail closed for schema drift and secret exposure.
 grep -Fq 'spring.jpa.hibernate.ddl-auto=validate' "$PROD"
