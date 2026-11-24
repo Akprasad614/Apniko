@@ -1314,7 +1314,7 @@
 }
 
 
-/* Product-first shopkeeper catalogue: the same approved pack image used by customers. */
+/* Text-first product selection keeps verified item details easy to scan. */
 .shopkeeper-catalogue-picker {
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: .75rem;

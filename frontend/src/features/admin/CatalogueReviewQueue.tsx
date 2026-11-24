@@ -213,7 +213,6 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
           <div className="catalogue-review__list">
             {result.content.map((item) => (
               <article className="catalogue-review-card" key={item.id}>
-                {(() => null)()}
                 <div className="catalogue-review-card__top">
                   <div className="catalogue-review-card__identity">
                     <span className={'catalogue-review-status catalogue-review-status--' + (item.status?.toLowerCase() ?? 'legacy')}>

@@ -11,10 +11,14 @@ if [[ ! -x "$PYTHON" ]]; then
   exit 1
 fi
 
-"$PYTHON" -m py_compile scripts/catalogue/import_authorized_product_photos.py
 (
   cd scripts/catalogue
-  "$PYTHON" -m unittest -v test_import_authorized_product_photos
+  "$PYTHON" -m unittest -v test_import_catalogue
 )
+"$PYTHON" -m py_compile scripts/catalogue/import_catalogue.py
 
-echo "Authorised supplier-photo tests passed."
+grep -Fq 'APPROVED_SOURCE_SHA256' scripts/catalogue/import_catalogue.py
+grep -Fq 'Reference dataset row only' scripts/catalogue/import_catalogue.py
+grep -Fq '"review_required_rows": review_rows' scripts/catalogue/import_catalogue.py
+
+echo "Phase 3 catalogue intake verification passed. All Mendeley rows remain review candidates."
