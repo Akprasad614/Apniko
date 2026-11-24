@@ -3,7 +3,6 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
-import { CategoryMark } from './CategoryMark'
 import { CustomerDiscoverySearch } from './CustomerDiscoverySearch'
 import {
   buildMarketplaceSearchPath,
@@ -590,7 +589,6 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                       const busy = busyProductId === product.productId
                       return (
                         <article className="catalogue-product-card" key={product.id}>
-                          <CategoryMark category={product.category} size="product" />
                           <div className="catalogue-product-card__body">
                             <div className="catalogue-product-card__details">
                               <p className="catalogue-product-card__brand">{product.brand || 'Brand not listed'}</p>
