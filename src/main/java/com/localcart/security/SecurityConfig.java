@@ -27,6 +27,9 @@ public class SecurityConfig {
     @Value("${app.auth.cookie.enabled:true}")
     private boolean cookieAuthenticationEnabled;
 
+    @Value("${app.auth.cookie.secure:false}")
+    private boolean secureCookie;
+
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomUserDetailsService userDetailsService) {
@@ -63,7 +66,10 @@ public class SecurityConfig {
                     if (cookieAuthenticationEnabled) {
                         CookieCsrfTokenRepository csrfRepository =
                                 CookieCsrfTokenRepository.withHttpOnlyFalse();
-                        csrfRepository.setCookiePath("/");
+                        csrfRepository.setCookieCustomizer(cookie -> cookie
+                                .path("/")
+                                .sameSite("Lax")
+                                .secure(secureCookie));
                         csrf.csrfTokenRepository(csrfRepository)
                                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                                 .ignoringRequestMatchers("/api/payments/webhook/razorpay");
@@ -82,7 +88,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/**",\n                                "/actuator/health/**",
                                 "/api/test",
                                 "/api/catalogue/categories",
                                 "/api/payments/webhook/razorpay",
