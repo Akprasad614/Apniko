@@ -12,6 +12,10 @@
 - Added authenticated session restoration and a CSRF-protected logout endpoint.
 - Production profile accepts the session cookie, not a JavaScript-readable bearer token. Bearer mode remains explicit for isolated CI fixtures/API regression tests only.
 - Added configurable JWT lifetime and a minimum 32-byte secret guard.
+- Added bounded fixed-window login and registration rate limits keyed by client address and normalized email, with HTTP 429 and `Retry-After` responses.
+- Applied one UTF-8 byte-aware password policy to customer registration and administrator-provisioned accounts; it enforces 12–72 bytes and the required character classes before BCrypt.
+- Added pessimistic write locks for payment rows used by verification, COD collection, refunds and provider webhook state transitions; checkout also locks the owning order.
+- Changed the profile endpoint to return an explicit `UserResponse` DTO instead of a managed JPA user object.
 - Authenticated users are reloaded and checked for active status on each request.
 
 ### Production application settings
