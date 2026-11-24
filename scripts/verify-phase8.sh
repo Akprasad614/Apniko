@@ -110,5 +110,7 @@ grep -Fq 'VERIFY_IDENTITY' scripts/backup-production-db.sh
 grep -Fq 'gzip -t' scripts/restore-production-db.sh
 
 grep -Fq 'springdoc.swagger-ui.version=5.34.1' src/main/resources/application.properties
+grep -Fq 'new SwaggerUiSecurityHeadersWriter()' "$SECURITY"
+grep -Fq 'headers.addHeaderWriter' "$SECURITY"
 
 echo "Phase 8 verifier passed: cookie/CSRF auth, production profile, private runtime topology, TLS headers and guarded recovery scripts."

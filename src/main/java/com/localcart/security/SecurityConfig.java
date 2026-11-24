@@ -79,6 +79,9 @@ public class SecurityConfig {
                     }
                 })
 
+                .headers(headers -> headers
+                        .addHeaderWriter(new SwaggerUiSecurityHeadersWriter()))
+
                 .authenticationProvider(authenticationProvider)
 
                 .sessionManagement(session ->
