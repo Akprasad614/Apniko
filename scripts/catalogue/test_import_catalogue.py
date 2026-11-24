@@ -219,7 +219,7 @@ class MendeleyImportTests(unittest.TestCase):
         self.assertIsNone(item["mrp"])
         self.assertIsNone(item["packSize"])
         self.assertIsNone(item["barcode"])
-        self.assertNotIn("imageUrl", item)
+        self.assertFalse(any("image" in field.casefold() or "photo" in field.casefold() for field in item))
         self.assertTrue(item["sourceMetadataJson"].startswith("{"))
 
     def test_api_url_requires_https_except_localhost(self):
