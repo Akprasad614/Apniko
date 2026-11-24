@@ -65,6 +65,13 @@ grep -Fq '@Lock(LockModeType.PESSIMISTIC_WRITE)' src/main/java/com/localcart/rep
 grep -Fq 'ResponseEntity<UserResponse> getProfile()' src/main/java/com/localcart/controller/ProfileController.java
 grep -Fq '"/api/auth/csrf"' "$SECURITY"
 grep -Fq '"/api/auth/logout"' "$SECURITY"
+grep -Fq '@StrongPassword' src/main/java/com/localcart/dto/RegisterRequest.java
+grep -Fq '@StrongPassword' src/main/java/com/localcart/dto/CreateManagedUserRequest.java
+grep -Fq 'MAX_TRACKED_KEYS = 10_000' src/main/java/com/localcart/security/AuthenticationRateLimiter.java
+grep -Fq 'security.auth.rate-limit.login.max-attempts' src/main/resources/application.properties
+grep -Fq 'checkLoginAllowed' "$CONTROLLER"
+grep -Fq 'checkRegistrationAllowed' "$CONTROLLER"
+grep -Fq 'findByIdForUpdate' src/main/java/com/localcart/repository/OrderRepository.java
 
 # The production profile must fail closed for schema drift and secret exposure.
 grep -Fq 'spring.jpa.hibernate.ddl-auto=validate' "$PROD"
