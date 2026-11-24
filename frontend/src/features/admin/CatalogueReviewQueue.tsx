@@ -213,6 +213,7 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
           <div className="catalogue-review__list">
             {result.content.map((item) => (
               <article className="catalogue-review-card" key={item.id}>
+                {(() => null)()}
                 <div className="catalogue-review-card__top">
                   <div className="catalogue-review-card__identity">
                     <span className={'catalogue-review-status catalogue-review-status--' + (item.status?.toLowerCase() ?? 'legacy')}>
@@ -243,7 +244,10 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
                 )}
 
                 <div className="catalogue-review-card__actions">
-                  {item.status !== 'ACTIVE' && (
+                  {item.status !== 'ACTIVE' && !(
+                    item.catalogueSource === 'Mendeley Indian Packaged Foods Dataset (2026)'
+                    && (!item.barcode?.trim() || !item.packSize?.trim())
+                  ) && (
                     <button
                       type="button"
                       className="operations-button"
@@ -252,6 +256,13 @@ export function CatalogueReviewQueue({ token }: CatalogueReviewQueueProps) {
                     >
                       {busyId === item.id ? 'Saving…' : 'Approve & publish'}
                     </button>
+                  )}
+                  {item.catalogueSource === 'Mendeley Indian Packaged Foods Dataset (2026)'
+                    && (!item.barcode?.trim() || !item.packSize?.trim()) && (
+                    <div className="catalogue-review-card__reason" role="note">
+                      <span>Publishing blocked</span>
+                      <p>This dataset row has no verified retail barcode or pack size. It must remain a reference candidate until an approved source supplies the exact retail variant.</p>
+                    </div>
                   )}
                   {item.status !== 'NEEDS_REVIEW' && (
                     <button
