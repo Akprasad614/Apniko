@@ -18,10 +18,10 @@ public class Shop {
 
     private String address;
 
-    @Column(name = "latitude", precision = 10, scale = 7)
+    @Column(name = "latitude")
     private Double latitude;
 
-    @Column(name = "longitude", precision = 10, scale = 7)
+    @Column(name = "longitude")
     private Double longitude;
 
     @Enumerated(EnumType.STRING)
