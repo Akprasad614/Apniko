@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - feature/phase-6-role-based-app-delivery
+      - chore/phase-0-foundation-cleanup
     paths:
       - "frontend/**"
       - "src/**"
