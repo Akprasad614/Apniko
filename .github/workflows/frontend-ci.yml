@@ -17,6 +17,9 @@ on:
       - ".github/dependabot.yml"
       - "scripts/verify-phase5.sh"
       - "scripts/verify-phase6.sh"
+      - "scripts/verify-phase7.sh"
+      - "scripts/install-phase7-tooling.sh"
+      - "PHASE7-STAGING-VERIFICATION.md"
       - "PHASE6-ROLE-BASED-DELIVERY.md"
       - "PHASE6-CUSTOMER-STOREFRONT.md"
       - ".github/workflows/frontend-ci.yml"
@@ -65,6 +68,9 @@ jobs:
 
       - name: Verify Phase 6 role-based workflows
         run: bash scripts/verify-phase6.sh
+
+      - name: Verify Phase 7 end-to-end harness and safety boundaries
+        run: bash scripts/verify-phase7.sh
 
       - name: Install locked frontend dependencies
         working-directory: frontend

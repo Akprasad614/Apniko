@@ -2499,3 +2499,36 @@
     flex-direction: column;
   }
 }
+
+ 
+/* Phase 7 WCAG contrast refinements for catalogue and metadata text. */
+.marketplace-heading__owner span,
+.customer-catalogue-section-heading > a { color: #8c4328; }
+.catalogue-product-card__pack,
+.catalogue-product-card__brand { color: #5c665d; }
+.catalogue-product-card__purchase button {
+  border-color: #365f21;
+  color: #365f21;
+}
+.catalogue-product-card__purchase button:hover:not(:disabled) {
+  border-color: #365f21;
+  color: #fff;
+  background: #365f21;
+}
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"],
+.catalogue-product-card__purchase > button[type="button"] {
+  border-color: #173f12 !important;
+  color: #173f12 !important;
+  background-color: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-text-fill-color: #173f12 !important;
+}
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"]:hover:not(:disabled),
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"]:focus-visible {
+  border-color: #173f12 !important;
+  color: #fff !important;
+  background-color: #173f12 !important;
+  -webkit-text-fill-color: #fff !important;
+}
+.catalogue-product-card__price > strong { color: #202a20 !important; opacity: 1 !important; }
