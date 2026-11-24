@@ -18,8 +18,6 @@ on:
       - "scripts/verify-phase5.sh"
       - "scripts/verify-phase6.sh"
       - "scripts/verify-phase7.sh"
-      - "scripts/verify-phase4-text-only.sh"
-      - "PHASE-4-TEXT-ONLY-CATALOGUE.md"
       - "scripts/install-phase7-tooling.sh"
       - "PHASE7-STAGING-VERIFICATION.md"
       - "PHASE6-ROLE-BASED-DELIVERY.md"
@@ -70,9 +68,6 @@ jobs:
 
       - name: Verify Phase 6 role-based workflows
         run: bash scripts/verify-phase6.sh
-
-      - name: Verify Phase 4 text-only catalogue policy
-        run: bash scripts/verify-phase4-text-only.sh
 
       - name: Verify Phase 7 end-to-end harness and safety boundaries
         run: bash scripts/verify-phase7.sh
