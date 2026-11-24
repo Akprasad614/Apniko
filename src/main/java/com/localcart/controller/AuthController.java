@@ -8,6 +8,7 @@ import com.localcart.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -44,16 +45,18 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public ResponseEntity<Map<String, String>> csrf(CsrfToken csrfToken) {
-        return ResponseEntity.ok(Map.of("token", csrfToken.getToken()));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(Map.of("token", csrfToken.getToken()));
     }
 
     @GetMapping("/session")
     public ResponseEntity<AuthResponse> session(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(401).build();
+            return ResponseEntity.status(401).cacheControl(CacheControl.noStore()).build();
         }
-        return ResponseEntity.ok(authService.currentSession(authentication.getName()));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(authService.currentSession(authentication.getName()));
     }
 
     @PostMapping("/register")
@@ -87,13 +90,14 @@ public class AuthController {
                 .build();
 
         return ResponseEntity.noContent()
+                .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
                 .build();
     }
 
     private ResponseEntity<AuthResponse> createAuthenticatedResponse(AuthResponse response) {
         if (!cookieAuthenticationEnabled) {
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
         }
 
         ResponseCookie sessionCookie = ResponseCookie.from(cookieName, response.getToken())
@@ -113,6 +117,7 @@ public class AuthController {
         );
 
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, sessionCookie.toString())
                 .body(safeResponse);
     }
