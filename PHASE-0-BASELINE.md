@@ -61,20 +61,23 @@ database, or rebuild the frontend.
   history, catalogue source records, product categories, shop inventory, cart
   items, order items and orders.
 - Open Food Facts and related catalogues are excluded.
-- BigBasket is excluded. No external dataset is currently approved or
-  imported.
-- The Indian Packaged Foods Nutritional Composition Dataset (2026) on
-  Mendeley Data is a proposed Phase 2 packaged-food seed only. It must not be
-  imported until the actual CSV/README, field semantics, provenance and
-  licence scope have been inspected and a tested importer is approved.
+- Phase 2 selected only the Indian Packaged Foods Nutritional Composition
+  Dataset (2026) on Mendeley Data, Version 1, DOI
+  `10.17632/rhswn9z9xr.1`, identified as CC BY 4.0.
+- The supplied CSV/README, field semantics, provenance and licence terms
+  were inspected; a Mendeley-only importer and dry-run were completed.
+- The dataset contains no product photographs, GTINs or retail pack sizes.
+  Phase 3 photo sourcing is a separate rights and identity workflow.
 - Do not invent GTINs, barcodes, pack sizes, prices, ratings, stock levels or
   product photographs.
 - A nutritional serving size is not automatically a retail pack size.
 - Dataset prices must not be shown as current shop prices or verified MRP.
 - Preserve the distinction between shared master product identity and
   shop-specific inventory, price and stock.
-- The old BigBasket-specific importer is transitional code and is not an
-  approved source path. Phase 2 must replace or remove it before any import.
+- No retailer catalogue, retailer scraping or retailer-owned imagery is an
+  approved source path. The Phase 2 importer accepts only the exact Mendeley
+  dataset contract; Phase 3 accepts only authorised or appropriately
+  openly licensed image assets.
 
 ## Safety boundaries
 
@@ -91,12 +94,11 @@ The owner also ran a working-tree inspection. `git status --short --ignored`
 showed only ignored generated/development directories:
 `.venv-catalogue/`, `frontend/.venv-catalogue/`, `frontend/dist/`,
 `frontend/node_modules/`, `scripts/catalogue/__pycache__/` and
-`target/`. The image/Open Food Facts filename scan returned no matches
+`target/`. The image/catalogue-feed filename scan returned no matches
 outside the explicitly pruned Git, dependency, build-output and virtualenv
 directories. The GitHub tracked-tree scan at the recorded code head found
-339 tracked files, no tracked image files and no Open Food Facts-named paths.
-This is a repository/worktree scan, not a claim about unrelated files elsewhere
-on the Mac.
+339 tracked files and no tracked image files. This is a repository/worktree
+scan, not a claim about unrelated files elsewhere on the Mac.
 
 `git worktree list` showed only the current checkout, on
 `feature/phase-2-authorized-catalogue-intake`. The legacy branch

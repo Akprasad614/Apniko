@@ -16,16 +16,18 @@ rights.
 
 ## Future permitted image source
 
-Phase 3 uses manufacturer, brand, authorised distributor, participating
-supplier or shopkeeper image submissions, or an image dataset whose licence
-explicitly permits Apniko's intended use.
+The current Phase 3 importer accepts manufacturer, brand, authorised
+distributor or participating supplier submissions with a documented usage
+grant. An openly licensed image may be considered under its own licence, but
+the current supplier importer/backend contract does not accept open-licence
+candidates; a separate licence-aware intake implementation is required first.
 
 For supplier-provided images, keep a written usage grant covering Apniko's
-intended display and commercial use. For an openly licensed image dataset,
-record and follow that dataset's specific licence and attribution conditions;
-do not request a separate permission letter where the licence already grants
-the required rights. A missing documented rights basis means no image is
-used.
+intended display and commercial use. For an openly licensed image asset, record and follow its specific licence
+and attribution conditions; do not request a separate permission letter
+where the licence already grants the required rights. Do not submit an
+open-licence asset through the current supplier-only importer. A missing
+documented rights basis means no image is used.
 
 For a packaged product, confirm the actual product name, brand,
 variant/flavour/formulation, printed pack size and the exact front-package
@@ -37,8 +39,9 @@ product name/brand/pack size, a licence or internal permission reference and
 attribution. If the image uses a separate CDN, configure its exact hostname in
 APNIKO_CATALOGUE_PHOTO_AUTHORIZED_IMAGE_HOSTS; wildcard hosts are not allowed.
 
-The server accepts only 'Brand / supplier authorised catalogue' candidates
-with the MANUFACTURER_AUTHORIZED permission classification. All candidates
+The server currently accepts only 'Brand / supplier authorised catalogue'
+candidates with the MANUFACTURER_AUTHORIZED permission classification.
+Open-licence candidate support is not implemented in this importer/API path. All candidates
 enter the pending admin queue. Only an administrator can approve after
 verifying image identity and the documented reuse rights. Pending/rejected
 candidates are never customer-visible.
