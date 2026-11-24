@@ -142,8 +142,9 @@ export function AdminDashboard() {
     if (results[1].status === 'fulfilled') setUsers(results[1].value)
     else failures.push(messageFor(results[1].reason))
     if (results[2].status === 'fulfilled') {
-      setShops(results[2].value)
-      setShopLocationDrafts((current) => Object.fromEntries(results[2].value.map((shop) => [
+      const loadedShops: AdminShop[] = results[2].value
+      setShops(loadedShops)
+      setShopLocationDrafts((current) => Object.fromEntries(loadedShops.map((shop) => [
         shop.id,
         current[shop.id] ?? {
           latitude: shop.latitude == null ? '' : String(shop.latitude),
