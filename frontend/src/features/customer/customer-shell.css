@@ -1770,3 +1770,7 @@
   border-color: #d4e4c8;
   box-shadow: 0 7px 18px rgb(46 55 39 / 7%);
 }
+
+
+/* WCAG AA: keep inactive customer navigation text above 4.5:1 on the warm header surface. */
+.customer-nav-link { color: #5f7366; }

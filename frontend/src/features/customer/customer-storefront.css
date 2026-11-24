@@ -2532,3 +2532,7 @@
   -webkit-text-fill-color: #fff !important;
 }
 .catalogue-product-card__price > strong { color: #202a20 !important; opacity: 1 !important; }
+
+
+/* WCAG AA: retain the treats card text at full foreground opacity. */
+.customer-featured-category__copy { opacity: 1; }
