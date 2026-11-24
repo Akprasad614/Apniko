@@ -1,26 +1,28 @@
 # Phase 7 — end-to-end staging verification
 
-**Status:** Phase 7 automated acceptance is validated on this feature branch. The verification record below identifies the green full-stack checks and retained evidence.
+**Status: COMPLETE.** The final full-stack, accessibility, responsive and visual-evidence acceptance checks have passed on the current Phase 7 branch head.
 **Branch:** feature/phase-7-e2e-accessibility-staging
 **Parent milestone:** Phase 6 role-based application delivery
 
 ## Verification record
 
-The full Phase 7 workflow passed on **23 November 2026**.
+Final acceptance was run on **23 November 2026** on the current Phase 7 branch head:
 
-- Verified application/test commit: `436113884168ccc2e64f21db51da13aa5bed43f6`
-- GitHub Actions run: [#45234820213 — browser, accessibility and staging verification](https://github.com/Akprasad614/Apniko/actions/runs/45234820213)
-- Browser evidence artifact: [apniko-phase7-e2e-20](https://github.com/Akprasad614/Apniko/actions/runs/45234820213/artifacts/14849260915) (retained until 7 December 2026)
-- Frontend lint, typecheck, unit tests and production build: passed.
-- Backend Maven `verify` against disposable MySQL 8.4: passed.
-- Real API Playwright customer → shopkeeper → delivery → customer order-history journey: passed.
-- Customer, shopkeeper, delivery and administrator axe checks: passed with no critical or serious violations.
-- 390 × 844 mobile overflow checks for all four roles: passed.
-- Nine retained desktop/mobile screenshots were reviewed, including the delivered customer order-history view.
+- Verified final branch head: `768fad50bbd7ce56204e56c8ced1d6161d4cf407`
+- Dedicated GitHub Actions run: [#45235967198 — browser, accessibility and staging verification](https://github.com/Akprasad614/Apniko/actions/runs/45235967198) — **passed**
+- Frontend CI: [#45235967217](https://github.com/Akprasad614/Apniko/actions/runs/45235967217) — **passed**
+- Retained evidence artifact: [apniko-phase7-e2e-22](https://github.com/Akprasad614/Apniko/actions/runs/45235967198/artifacts/14849856177), retained until **7 December 2026**.
 
-The documentation-updated head `356e4d1b24033794cf0c1a9ba852ffe0a8d985f7` was also verified successfully by [GitHub Actions run #45235444350](https://github.com/Akprasad614/Apniko/actions/runs/45235444350). All required checks passed again. Its evidence artifact is [apniko-phase7-e2e-21](https://github.com/Akprasad614/Apniko/actions/runs/45235444350/artifacts/14848927395), retained until 7 December 2026.
+The successful dedicated workflow confirms:
 
-The workflow also runs when this verification document changes, so later documentation edits receive the same isolated acceptance checks.
+- Backend Maven verification and tests passed against disposable MySQL 8.4.
+- The real API-backed customer checkout → shopkeeper fulfilment → delivery-partner pickup/delivery → customer order-history journey passed.
+- The shopkeeper-to-admin access-isolation request returned HTTP 403 as expected.
+- axe-core WCAG 2.0/2.1 A/AA checks passed for customer, shopkeeper, delivery and administrator workspaces; the test fails on any critical or serious violation.
+- 390 × 844 mobile overflow checks passed for all four roles.
+- Frontend lint, typecheck, unit tests and production build passed in the paired frontend CI run.
+
+The final artifact was downloaded and visually reviewed during closeout on **24 November 2026**. It contains nine screenshots: desktop and mobile views for customer, shopkeeper, delivery and administrator, plus the delivered customer order-history view. The layouts are present at both target sizes, with no obvious clipped or horizontally overflowing workspace in the retained evidence. The artifact also contains the Playwright HTML report and test attachments.
 
 ## What the Phase 7 workflow runs
 
@@ -91,4 +93,4 @@ The Playwright config starts Spring Boot and Vite. The disposable MySQL instance
 
 ## Completion gate
 
-The automation is implemented, not yet validated. Mark Phase 7 complete only after the workflow passes on the final branch head and the uploaded axe report/screenshots are reviewed. A green automated check is not proof that the application has no accessibility or security issues.
+**Satisfied on the final Phase 7 branch head.** The dedicated full-stack workflow and paired frontend CI passed, the API lifecycle and role-isolation checks succeeded, all four role workspaces passed the configured axe/mobile checks, and the nine retained screenshots were visually reviewed. Phase 7 is complete on its feature branch. This does not merge the pull request, deploy the application, or claim that the application is free of all accessibility or security issues.
