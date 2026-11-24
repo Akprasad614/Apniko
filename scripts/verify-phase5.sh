@@ -22,6 +22,7 @@ required_files=(
   "DESIGN.md"
   "FRONTEND_RULES.md"
   "SECURITY-AUTOMATION-PLAN.md"
+  "PHASE5-FRONTEND-FOUNDATION.md"
 )
 
 for file in "${required_files[@]}"; do
@@ -39,5 +40,6 @@ grep -Fq 'npm run test:ci' .github/workflows/frontend-ci.yml
 grep -Fq 'npm run build' .github/workflows/frontend-ci.yml
 grep -Fq 'package-ecosystem: npm' .github/dependabot.yml
 grep -Fq 'directory: "/frontend"' .github/dependabot.yml
+grep -Fq "Status: completed" PHASE5-FRONTEND-FOUNDATION.md
 
-echo "Phase 5 static verification passed: React/TypeScript/Vite foundation, customer-only registration, role routes, design system, CI and npm Dependabot are present."
+echo "Phase 5 static verification passed: React/TypeScript/Vite foundation, customer-only registration, role routes, design system, CI, npm Dependabot and completion record are present."

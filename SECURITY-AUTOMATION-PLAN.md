@@ -49,16 +49,19 @@ Safety gates:
 - The DAST job uses only the disposable `localcart_dast` MySQL service; it never connects to local developer or production databases.
 - ZAP warning findings remain visible in reports and can be promoted to a blocking policy after review.
 
-## Phase 5 — Frontend foundation and design system (this change)
+## Phase 5 — Frontend foundation and design system (completed)
 
-- Add React, TypeScript and Vite under `frontend/`, separate from the Spring Boot backend.
-- Add a deliberate Apniko visual direction, central design tokens, reusable controls, responsive public landing page and role-aware route shells.
-- Wire customer registration and sign-in to the verified backend contract. Public registration remains CUSTOMER-only; privileged account types are provisioned by Apniko administration.
-- Add a typed API request helper, local `/api` development proxy, ESLint, TypeScript checks and Vitest unit tests.
-- Add GitHub Actions frontend CI for lint, typecheck, tests and production build.
-- Add Dependabot coverage for npm dependencies under `/frontend`.
+Implemented in [PR #10](https://github.com/Akprasad614/Apniko/pull/10), merged into `main` on 11 November 2026.
 
-Authentication note:
+- [x] React, TypeScript and Vite under `frontend/`, separate from the Spring Boot backend.
+- [x] Apniko visual direction, central design tokens, reusable controls, responsive public landing page and role-aware route shells.
+- [x] Customer registration and sign-in wired to the verified backend contract. Public registration is CUSTOMER-only; privileged account types are provisioned by Apniko administration.
+- [x] Typed API request helper, local `/api` development proxy, ESLint, TypeScript checks and Vitest unit tests.
+- [x] GitHub Actions frontend CI for lint, typecheck, tests and production build.
+- [x] Dependabot coverage for npm dependencies under `/frontend`.
+- [x] Original frontend and security CI checks passed; see [run 42993829874](https://github.com/Akprasad614/Apniko/actions/runs/42993829874) and the completion evidence in `PHASE5-FRONTEND-FOUNDATION.md`.
+
+Authentication and security boundaries:
 
 - The existing backend returns a bearer token in the JSON authentication response. The first frontend foundation keeps it in `sessionStorage` rather than `localStorage` to limit persistence. This is not an XSS defence because JavaScript can still read it. A production auth design should prefer secure HttpOnly SameSite cookies or another reviewed approach.
 - Frontend route guards are navigation aids only. All roles, ownership, inventory, pricing, order and payment decisions must continue to be enforced by the backend.
