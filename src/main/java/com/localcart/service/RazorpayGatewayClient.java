@@ -66,16 +66,21 @@ public class RazorpayGatewayClient {
                     && host != null
                     && host.equalsIgnoreCase("api.razorpay.com")
                     && (uri.getPort() == -1 || uri.getPort() == 443);
+            String path = uri.getPath() == null ? "" : uri.getPath();
+            boolean validPath = secureHttps
+                    ? (path.isEmpty() || "/".equals(path) || "/v1".equals(path))
+                    : (path.isEmpty() || "/".equals(path));
             if ((!localHttp && !secureHttps)
+                    || !validPath
                     || uri.getUserInfo() != null
                     || uri.getQuery() != null
-                    || uri.getFragment() != null
-                    || (uri.getPath() != null && !uri.getPath().isEmpty() && !"/".equals(uri.getPath()))) {
+                    || uri.getFragment() != null) {
                 throw new IllegalArgumentException(
                         "Razorpay API base URL must use the official HTTPS endpoint; HTTP is allowed only for local tests");
             }
             return scheme.toLowerCase(java.util.Locale.ROOT) + "://" + host
-                    + (uri.getPort() == -1 ? "" : ":" + uri.getPort());
+                    + (uri.getPort() == -1 ? "" : ":" + uri.getPort())
+                    + (secureHttps ? "/v1" : "");
         } catch (IllegalArgumentException exception) {
             if (exception.getMessage() != null
                     && exception.getMessage().startsWith("Razorpay API base URL")) {
