@@ -108,6 +108,36 @@ jobs:
           cat /tmp/localcart-dast-app.log >&2
           exit 1
 
+      - name: Capture Swagger and OpenAPI diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p zap-reports
+
+          capture_endpoint() {
+            local name="$1"
+            local url="$2"
+            local status
+            status="$(curl --silent --show-error --max-time 15 \
+              --dump-header "zap-reports/$name.headers" \
+              --output "zap-reports/$name.body" \
+              --write-out '%{http_code}' "$url" || true)"
+            printf '%s %s\n' "$name" "${status:-000}" >> zap-reports/endpoint-status.txt
+          }
+
+          capture_endpoint swagger-ui "http://127.0.0.1:8080/swagger-ui/index.html"
+          capture_endpoint openapi-docs "http://127.0.0.1:8080/v3/api-docs"
+          capture_endpoint swagger-config "http://127.0.0.1:8080/v3/api-docs/swagger-config"
+
+          if [[ -f /tmp/localcart-dast-app.log ]]; then
+            tail -n 300 /tmp/localcart-dast-app.log \
+              | sed -E 's/(password[=:])[[:graph:]]+/\1[REDACTED]/Ig' \
+              > zap-reports/apniko-app-diagnostics.log
+          fi
+
+          echo "Captured Swagger/OpenAPI response status:"
+          cat zap-reports/endpoint-status.txt
+
       - name: Run OWASP ZAP passive baseline scan
         shell: bash
         run: |
@@ -123,7 +153,6 @@ jobs:
               -r localcart-zap-baseline.html \
               -J localcart-zap-baseline.json \
               -w localcart-zap-baseline.md \
-              -I \
               --autooff
 
           # ZAP's Automation Framework resolves report filenames relative to
@@ -148,6 +177,10 @@ jobs:
             echo "## OWASP ZAP passive baseline scan"
             echo "Target: disposable Apniko instance on localhost:8080 (Swagger UI entry point)."
             echo "Scan mode: spider + passive rules only; no active attack scan."
+            if [[ -f zap-reports/endpoint-status.txt ]]; then
+              echo "### Swagger/OpenAPI endpoint diagnostics"
+              cat zap-reports/endpoint-status.txt
+            fi
             if [[ -f zap-reports/localcart-zap-baseline.md ]]; then
               cat zap-reports/localcart-zap-baseline.md
             else

@@ -5,9 +5,13 @@ on:
     branches:
       - main
       - "automation/**"
+      - "chore/**"
+      - "feature/**"
   pull_request:
     branches:
       - main
+      - "feature/**"
+      - "chore/**"
   workflow_dispatch:
 
 permissions:
@@ -52,9 +56,14 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Generate an ephemeral JWT secret for this CI run
+      - name: Generate and mask an ephemeral JWT secret for this CI run
         shell: bash
-        run: echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
+        run: |
+          set -euo pipefail
+          jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
+          echo "::add-mask::$jwt_secret"
+          printf 'JWT_SECRET=%s\n' "$jwt_secret" >> "$GITHUB_ENV"
+          unset jwt_secret
 
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
@@ -67,6 +76,9 @@ jobs:
 
       - name: Verify Phase 3 authentic product photo tooling
         run: bash scripts/verify-phase3.sh
+
+      - name: Verify Phase 4 passive DAST guardrails
+        run: bash scripts/verify-phase4.sh
 
       - name: Run Maven verification and tests
         run: ./mvnw -B -ntp verify
