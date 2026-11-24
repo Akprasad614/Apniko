@@ -202,7 +202,10 @@ test('customer to shopkeeper to delivery order lifecycle; role accessibility and
   expect(Number.isSafeInteger(orderId)).toBeTruthy()
 
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/customer/home')
+  // CI uses an in-memory bearer fixture; keep this as SPA navigation so the
+  // deliberately non-persistent test token is not lost to a full page reload.
+  await page.locator('.customer-bottom-nav')
+    .getByRole('link', { name: 'Home', exact: true }).click()
   await expect(page.getByRole('heading', { name: /Good food/i })).toBeVisible()
   await checkMobile(page, 'customer mobile storefront')
   await screenshot(page, testInfo, 'customer-mobile')
