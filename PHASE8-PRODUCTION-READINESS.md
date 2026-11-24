@@ -1,7 +1,8 @@
 # Phase 8 — production readiness and release controls
 
-**Implementation status:** application and infrastructure-as-code preparation is implemented on `feature/phase-8-production-readiness-integration`.  
-**Release status:** not deployed. Domain, hosting account, production secrets, verified schema migration baseline and GitHub ruleset activation require owner-controlled environment setup.
+**Implementation status:** integrated into the development branch through [PR #70](https://github.com/Akprasad614/Apniko/pull/70), merge commit 37b9c2a7251ef44ed9e0b3a7efea0d0b9acf2cd6.  
+**Verification status:** all ten PR workflow groups passed on head 1efd962977f43af855275d0f5e8a2a78c5eb9735.  
+**Release status:** not deployed. The remaining schema, hosting, secrets, GitHub ruleset, monitoring and offsite recovery steps require owner-controlled infrastructure setup.
 
 ## Delivered in this phase
 
@@ -63,19 +64,53 @@ These are not silently marked complete:
 4. **GitHub ruleset:** apply the settings in `MAIN-BRANCH-PROTECTION.md` from repository Settings and verify them with a test PR. The connected GitHub file/PR capability does not expose ruleset administration.
 5. **External monitoring and offsite backups:** select the provider, configure alert contacts/retention, and prove a restore drill.
 
-Phase 8 code preparation is complete when the Phase 8 checks pass. A public production release remains gated on the above owner-controlled steps; no production environment or customer data has been touched.
+**Phase 8 implementation and CI acceptance are complete.** A public production release remains gated on the above owner-controlled steps; no production environment, production database or real customer data has been touched.
 
 
-## Integration against the current development baseline
+## Integrated development verification — 24 November 2026
 
-The Phase 8 application and deployment work is being re-integrated on top of
-the latest text-only development branch, rather than merging the older
-pre-Phase-7 history. The integrated acceptance run includes the Phase 4
-text-only verifier as well as Phase 5–7 verification.
+The Phase 8 code was synchronized with the latest Phase 7/text-only
+development base and merged through [PR #70](https://github.com/Akprasad614/Apniko/pull/70)
+at commit 37b9c2a7251ef44ed9e0b3a7efea0d0b9acf2cd6. The PR did not target
+or modify main.
 
-The following are deliberately **not** marked complete by repository CI:
-the Flyway baseline generated and reviewed from the known-good development
-schema; actual hosting/domain/DNS; production secret provisioning; GitHub
-ruleset activation; and externally managed monitoring/offsite backup plus a
-successful restore drill. These require access to the owner's real target
-infrastructure. No guessed migration or production secret is committed.
+All ten PR workflow groups passed on integration head
+1efd962977f43af855275d0f5e8a2a78c5eb9735:
+
+- [Phase 8 production readiness, containers and browser acceptance — run 45453768019](https://github.com/Akprasad614/Apniko/actions/runs/45453768019) — passed.
+- [Phase 7 end-to-end/accessibility/mobile regression — run 45453767836](https://github.com/Akprasad614/Apniko/actions/runs/45453767836) — passed.
+- [Backend CI — run 45453768042](https://github.com/Akprasad614/Apniko/actions/runs/45453768042) — passed.
+- [Frontend CI — run 45453767721](https://github.com/Akprasad614/Apniko/actions/runs/45453767721) — passed.
+- [OWASP ZAP passive DAST — run 45453768122](https://github.com/Akprasad614/Apniko/actions/runs/45453768122) — passed with the warning gate enabled.
+- [CodeQL — run 45453768090](https://github.com/Akprasad614/Apniko/actions/runs/45453768090) — passed.
+- [Semgrep/Gitleaks — run 45453767888](https://github.com/Akprasad614/Apniko/actions/runs/45453767888) — passed.
+- [OSV dependency scan — run 45453769374](https://github.com/Akprasad614/Apniko/actions/runs/45453769374) — passed.
+- [CycloneDX SBOM — run 45453767797](https://github.com/Akprasad614/Apniko/actions/runs/45453767797) — passed.
+- [GitHub Actions pin verification — run 45453768001](https://github.com/Akprasad614/Apniko/actions/runs/45453768001) — passed.
+
+The Phase 8 artifact
+[apniko-phase8-e2e-101](https://github.com/Akprasad614/Apniko/actions/runs/45453768019/artifacts/14950090734)
+contains the Playwright report, traces and screenshots. It is retained until
+8 December 2026. The Phase 7 regression and ZAP report artifacts are also
+retained for the same period.
+
+## Remaining production-release gates
+
+These are **not** represented as complete by CI and still require owner
+access to the real environment:
+
+1. Generate and review the Flyway baseline from a known-good, backed-up
+   development schema. The repository does not have a trustworthy full
+   versioned migration baseline yet; do not infer one from partial entity
+   metadata or apply a guessed baseline to production.
+2. Select the hosting provider and configure the real domain, DNS and
+   inbound HTTPS ingress.
+3. Provision production database/JWT secrets directly on the host or secret
+   manager. Never commit or send these values in chat.
+4. Apply the documented GitHub main-branch ruleset and verify it with a test
+   pull request. The available repository integration cannot administer
+   repository rulesets.
+5. Configure external monitoring/alerting, encrypted offsite backup
+   retention and complete a successful restore drill.
+
+**Implementation/CI milestone: complete. Production release: gated.**
