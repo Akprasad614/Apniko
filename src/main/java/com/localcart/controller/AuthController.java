@@ -3,7 +3,9 @@ package com.localcart.controller;
 import com.localcart.dto.AuthResponse;
 import com.localcart.dto.LoginRequest;
 import com.localcart.dto.RegisterRequest;
+import com.localcart.security.AuthenticationRateLimiter;
 import com.localcart.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthenticationRateLimiter rateLimiter;
 
     @Value("${app.auth.cookie.enabled:true}")
     private boolean cookieAuthenticationEnabled;
@@ -34,8 +37,9 @@ public class AuthController {
     @Value("${jwt.expiration-ms:86400000}")
     private long tokenExpirationMs;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AuthenticationRateLimiter rateLimiter) {
         this.authService = authService;
+        this.rateLimiter = rateLimiter;
     }
 
     @GetMapping("/csrf")
@@ -54,13 +58,17 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody RegisterRequest request) {
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest servletRequest) {
+        rateLimiter.checkRegistrationAllowed(servletRequest.getRemoteAddr());
         return createAuthenticatedResponse(authService.register(request));
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
-            @Valid @RequestBody LoginRequest request) {
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest servletRequest) {
+        rateLimiter.checkLoginAllowed(servletRequest.getRemoteAddr(), request.getEmail());
         return createAuthenticatedResponse(authService.login(request));
     }
 
