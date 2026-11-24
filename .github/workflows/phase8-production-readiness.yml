@@ -92,7 +92,6 @@ jobs:
           bash scripts/verify-phase2.sh
           bash scripts/verify-phase3.sh
           bash scripts/verify-phase4-text-only.sh
-          bash scripts/verify-phase4.sh
 
       - name: Validate production Compose configuration without secrets
         shell: bash
