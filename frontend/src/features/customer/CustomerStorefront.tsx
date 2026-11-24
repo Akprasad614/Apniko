@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
 import { CustomerDiscoverySearch } from './CustomerDiscoverySearch'
+import { NearbyShops } from './NearbyShops'
 import {
   buildMarketplaceSearchPath,
   formatRupees,
@@ -444,6 +445,8 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
         )}
 
         <section className="shop-section" aria-labelledby="shop-section-title">
+        <NearbyShops token={token} onShopSelect={selectDiscoveredShop} />
+
           <div className="customer-section-heading">
             <div>
               <p className="customer-eyebrow">SHOP LOCAL</p>

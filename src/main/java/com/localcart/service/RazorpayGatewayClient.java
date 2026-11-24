@@ -3,6 +3,7 @@ package com.localcart.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.localcart.exception.BadRequestException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -21,24 +22,72 @@ import java.util.Map;
 @Component
 public class RazorpayGatewayClient {
 
-    private static final String API_BASE_URL = "https://api.razorpay.com/v1";
+    private static final String DEFAULT_API_BASE_URL = "https://api.razorpay.com/v1";
 
     private final String keyId;
     private final String keySecret;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
+    private final String apiBaseUrl;
 
+    @Autowired
     public RazorpayGatewayClient(
             @Value("${RAZORPAY_KEY_ID:}") String keyId,
             @Value("${RAZORPAY_KEY_SECRET:}") String keySecret,
+            @Value("${RAZORPAY_API_BASE_URL:https://api.razorpay.com/v1}") String apiBaseUrl,
             ObjectMapper objectMapper) {
-
         this.keyId = keyId == null ? "" : keyId.trim();
         this.keySecret = keySecret == null ? "" : keySecret.trim();
+        this.apiBaseUrl = validateApiBaseUrl(apiBaseUrl);
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
+    }
+
+    public RazorpayGatewayClient(String keyId, String keySecret, ObjectMapper objectMapper) {
+        this(keyId, keySecret, DEFAULT_API_BASE_URL, objectMapper);
+    }
+
+    private static String validateApiBaseUrl(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Razorpay API base URL is required");
+        }
+        try {
+            URI uri = URI.create(value.trim());
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            boolean localHttp = "http".equalsIgnoreCase(scheme)
+                    && host != null
+                    && (host.equalsIgnoreCase("localhost")
+                    || host.equals("127.0.0.1")
+                    || host.equals("::1"));
+            boolean secureHttps = "https".equalsIgnoreCase(scheme)
+                    && host != null
+                    && host.equalsIgnoreCase("api.razorpay.com")
+                    && (uri.getPort() == -1 || uri.getPort() == 443);
+            String path = uri.getPath() == null ? "" : uri.getPath();
+            boolean validPath = secureHttps
+                    ? (path.isEmpty() || "/".equals(path) || "/v1".equals(path))
+                    : (path.isEmpty() || "/".equals(path));
+            if ((!localHttp && !secureHttps)
+                    || !validPath
+                    || uri.getUserInfo() != null
+                    || uri.getQuery() != null
+                    || uri.getFragment() != null) {
+                throw new IllegalArgumentException(
+                        "Razorpay API base URL must use the official HTTPS endpoint; HTTP is allowed only for local tests");
+            }
+            return scheme.toLowerCase(java.util.Locale.ROOT) + "://" + host
+                    + (uri.getPort() == -1 ? "" : ":" + uri.getPort())
+                    + (secureHttps ? "/v1" : "");
+        } catch (IllegalArgumentException exception) {
+            if (exception.getMessage() != null
+                    && exception.getMessage().startsWith("Razorpay API base URL")) {
+                throw exception;
+            }
+            throw new IllegalArgumentException("Razorpay API base URL is invalid", exception);
+        }
     }
 
     public boolean isConfigured() {
@@ -72,7 +121,7 @@ public class RazorpayGatewayClient {
         payload.put("partial_payment", false);
         payload.put("notes", notes);
 
-        return send("POST", API_BASE_URL + "/orders", payload);
+        return send("POST", apiBaseUrl + "/orders", payload);
     }
 
     public JsonNode createFullRefund(
@@ -87,7 +136,7 @@ public class RazorpayGatewayClient {
         payload.put("notes", notes);
         return send(
                 "POST",
-                API_BASE_URL + "/payments/" + razorpayPaymentId + "/refund",
+                apiBaseUrl + "/payments/" + razorpayPaymentId + "/refund",
                 payload
         );
     }
@@ -96,7 +145,7 @@ public class RazorpayGatewayClient {
         requireConfigured();
         return send(
                 "GET",
-                API_BASE_URL + "/payments/" + razorpayPaymentId,
+                apiBaseUrl + "/payments/" + razorpayPaymentId,
                 null
         );
     }

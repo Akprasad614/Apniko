@@ -41,6 +41,7 @@ public class ShopService {
         shop.setOwnerName(owner.getName());
         shop.setPhone(request.getPhone());
         shop.setAddress(request.getAddress());
+        applyCoordinates(shop, request.getLatitude(), request.getLongitude(), true);
         shop.setActive(true);
         shop.setOwner(owner);
 
@@ -96,6 +97,7 @@ public class ShopService {
         shop.setName(request.getName());
         shop.setPhone(request.getPhone());
         shop.setAddress(request.getAddress());
+        applyCoordinates(shop, request.getLatitude(), request.getLongitude(), false);
 
         return toResponse(
                 shopRepository.save(shop)
@@ -137,7 +139,6 @@ public class ShopService {
     }
 
     private User getShopkeeper(String email) {
-
         if (email == null) {
             throw new BadRequestException(
                     "User is not authenticated"
@@ -163,6 +164,21 @@ public class ShopService {
         }
 
         return owner;
+    }
+
+    private void applyCoordinates(Shop shop, Double latitude, Double longitude, boolean creating) {
+        if ((latitude == null) != (longitude == null)) {
+            throw new BadRequestException("Provide both shop latitude and longitude");
+        }
+        if (latitude == null) {
+            if (creating) {
+                shop.setLatitude(null);
+                shop.setLongitude(null);
+            }
+            return;
+        }
+        shop.setLatitude(latitude);
+        shop.setLongitude(longitude);
     }
 
     private Shop getShop(Long id) {
@@ -196,7 +212,9 @@ public class ShopService {
                 shop.getPhone(),
                 shop.getAddress(),
                 shop.isActive(),
-                shop.getDeliveryMode()
+                shop.getDeliveryMode(),
+                shop.getLatitude(),
+                shop.getLongitude()
         );
     }
 }

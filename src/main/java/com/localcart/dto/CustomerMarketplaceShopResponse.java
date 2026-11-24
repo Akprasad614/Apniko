@@ -12,6 +12,9 @@ public record CustomerMarketplaceShopResponse(
         String name,
         String address,
         boolean active,
-        DeliveryMode deliveryMode
+        DeliveryMode deliveryMode,
+        Double latitude,
+        Double longitude,
+        Double distanceKm
 ) {
 }

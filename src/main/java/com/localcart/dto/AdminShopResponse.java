@@ -10,10 +10,13 @@ public class AdminShopResponse {
     private String phone;
     private String address;
     private boolean active;
+    private Double latitude;
+    private Double longitude;
 
     public AdminShopResponse(Long id, String name, Long ownerId,
                              String ownerName, String ownerEmail,
-                             String phone, String address, boolean active) {
+                             String phone, String address, boolean active,
+                             Double latitude, Double longitude) {
         this.id = id;
         this.name = name;
         this.ownerId = ownerId;
@@ -22,6 +25,8 @@ public class AdminShopResponse {
         this.phone = phone;
         this.address = address;
         this.active = active;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public Long getId() { return id; }
@@ -32,4 +37,6 @@ public class AdminShopResponse {
     public String getPhone() { return phone; }
     public String getAddress() { return address; }
     public boolean isActive() { return active; }
+    public Double getLatitude() { return latitude; }
+    public Double getLongitude() { return longitude; }
 }

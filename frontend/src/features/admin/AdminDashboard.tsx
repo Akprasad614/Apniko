@@ -29,6 +29,8 @@ interface AdminShop {
   phone?: string | null
   address?: string | null
   active: boolean
+  latitude?: number | null
+  longitude?: number | null
 }
 
 interface AdminProduct {
@@ -95,6 +97,7 @@ export function AdminDashboard() {
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [shops, setShops] = useState<AdminShop[]>([])
+  const [shopLocationDrafts, setShopLocationDrafts] = useState<Record<number, { latitude: string; longitude: string }>>({})
   const [categories, setCategories] = useState<AdminCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -138,8 +141,17 @@ export function AdminDashboard() {
     else failures.push(messageFor(results[0].reason))
     if (results[1].status === 'fulfilled') setUsers(results[1].value)
     else failures.push(messageFor(results[1].reason))
-    if (results[2].status === 'fulfilled') setShops(results[2].value)
-    else failures.push(messageFor(results[2].reason))
+    if (results[2].status === 'fulfilled') {
+      const loadedShops: AdminShop[] = results[2].value
+      setShops(loadedShops)
+      setShopLocationDrafts((current) => Object.fromEntries(loadedShops.map((shop) => [
+        shop.id,
+        current[shop.id] ?? {
+          latitude: shop.latitude == null ? '' : String(shop.latitude),
+          longitude: shop.longitude == null ? '' : String(shop.longitude),
+        },
+      ])))
+    } else failures.push(messageFor(results[2].reason))
     if (results[3].status === 'fulfilled') setCategories(results[3].value)
     else failures.push(messageFor(results[3].reason))
     if (failures.length) setError(failures.join(' '))
@@ -218,6 +230,83 @@ export function AdminDashboard() {
     } finally {
       setBusyKey('')
     }
+  }
+
+  function updateShopLocationDraft(shopId: number, field: 'latitude' | 'longitude', value: string) {
+    setShopLocationDrafts((current) => ({
+      ...current,
+      [shopId]: {
+        latitude: current[shopId]?.latitude ?? '',
+        longitude: current[shopId]?.longitude ?? '',
+        [field]: value,
+      },
+    }))
+  }
+
+  async function saveShopLocation(shop: AdminShop) {
+    const draft = shopLocationDrafts[shop.id]
+    const latitude = Number(draft?.latitude)
+    const longitude = Number(draft?.longitude)
+    if (!draft || !draft.latitude.trim() || !draft.longitude.trim()
+      || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+      || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      setError('Enter a valid latitude (-90 to 90) and longitude (-180 to 180).')
+      return
+    }
+
+    setBusyKey('shop-location-' + shop.id)
+    setError('')
+    setNotice('')
+    try {
+      const updated = await apiRequest<AdminShop>(
+        '/api/admin/shops/' + shop.id + '/location',
+        { method: 'PATCH', body: JSON.stringify({ latitude, longitude }) },
+        token,
+      )
+      setShops((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setShopLocationDrafts((current) => ({
+        ...current,
+        [updated.id]: {
+          latitude: updated.latitude == null ? '' : String(updated.latitude),
+          longitude: updated.longitude == null ? '' : String(updated.longitude),
+        },
+      }))
+      setNotice(updated.name + ' has been pinned for nearby-shop discovery.')
+    } catch (locationError) {
+      setError(messageFor(locationError))
+    } finally {
+      setBusyKey('')
+    }
+  }
+
+  function useCurrentLocationForShop(shop: AdminShop) {
+    if (!navigator.geolocation) {
+      setError('This browser does not provide location access. Enter the shop coordinates manually.')
+      return
+    }
+    setError('')
+    setNotice('')
+    setBusyKey('shop-geolocate-' + shop.id)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setShopLocationDrafts((current) => ({
+          ...current,
+          [shop.id]: {
+            latitude: position.coords.latitude.toFixed(6),
+            longitude: position.coords.longitude.toFixed(6),
+          },
+        }))
+        setNotice('Device location captured for ' + shop.name + '. Confirm you are physically at this shop, then save the pin.')
+        setBusyKey('')
+      },
+      (locationError) => {
+        setError(locationError.code === locationError.PERMISSION_DENIED
+          ? 'Location permission was denied. Enter the shop coordinates manually.'
+          : 'The device location could not be read. Try again or enter the shop coordinates manually.')
+        setBusyKey('')
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    )
   }
 
   async function toggleShop(shop: AdminShop) {
@@ -428,6 +517,33 @@ export function AdminDashboard() {
                     <div className="operations-shop-card__top"><div><p className="operations-eyebrow">SHOP / {shop.id}</p><h3>{shop.name}</h3></div><span className={shop.active ? 'operations-status operations-status--active' : 'operations-status'}>{shop.active ? 'Active' : 'Inactive'}</span></div>
                     <p>{shop.address || 'No address recorded'}{shop.phone ? ' · ' + shop.phone : ''}</p>
                     <div className="operations-owner"><span>Current owner</span><strong>{shop.ownerName || 'Not assigned'}</strong><small>{shop.ownerEmail || 'Choose an active shopkeeper below'}</small></div>
+                    <div className="operations-form-grid operations-form-grid--two operations-shop-location">
+                      <label>Shop latitude
+                        <input type="number" min="-90" max="90" step="0.000001"
+                          value={shopLocationDrafts[shop.id]?.latitude ?? ''}
+                          onChange={(event) => updateShopLocationDraft(shop.id, 'latitude', event.target.value)}
+                          placeholder="12.971600" />
+                      </label>
+                      <label>Shop longitude
+                        <input type="number" min="-180" max="180" step="0.000001"
+                          value={shopLocationDrafts[shop.id]?.longitude ?? ''}
+                          onChange={(event) => updateShopLocationDraft(shop.id, 'longitude', event.target.value)}
+                          placeholder="77.594600" />
+                      </label>
+                    </div>
+                    <p className="operations-help">Save a pin only after verifying it belongs to this store. Use device location while physically at the shop, or enter mapped coordinates.</p>
+                    <div className="operations-shop-location__actions">
+                      <button className="operations-text-button" type="button"
+                        disabled={busyKey === 'shop-geolocate-' + shop.id}
+                        onClick={() => useCurrentLocationForShop(shop)}>
+                        {busyKey === 'shop-geolocate-' + shop.id ? 'Locating…' : 'Use this device location'}
+                      </button>
+                      <button className="operations-button operations-button--secondary" type="button"
+                        disabled={busyKey === 'shop-location-' + shop.id}
+                        onClick={() => void saveShopLocation(shop)}>
+                        {busyKey === 'shop-location-' + shop.id ? 'Saving…' : 'Save shop pin'}
+                      </button>
+                    </div>
                     <label>Assign shopkeeper<select value={shop.ownerId ?? ''} disabled={!shopkeepers.length || busyKey === 'shop-' + shop.id} onChange={(event) => void assignOwner(shop, event.target.value)}><option value="" disabled>{shopkeepers.length ? 'Select a shopkeeper' : 'No active shopkeepers'}</option>{shopkeepers.map((owner) => <option key={owner.id} value={owner.id}>{owner.name} · {owner.email}</option>)}</select></label>
                     <button className="operations-text-button" type="button" disabled={busyKey === 'shop-' + shop.id} onClick={() => void toggleShop(shop)}>{shop.active ? 'Deactivate shop' : 'Activate shop'}</button>
                   </article>
