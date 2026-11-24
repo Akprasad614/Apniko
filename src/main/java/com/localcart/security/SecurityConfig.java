@@ -1,7 +1,9 @@
 package com.localcart.security;
 
 import com.localcart.service.CustomUserDetailsService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -13,6 +15,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableMethodSecurity
@@ -20,6 +24,12 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
+
+    @Value("${app.auth.cookie.enabled:true}")
+    private boolean cookieAuthenticationEnabled;
+
+    @Value("${app.auth.cookie.secure:false}")
+    private boolean secureCookie;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -53,9 +63,21 @@ public class SecurityConfig {
             throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
-
-                .headers(headers -> headers.addHeaderWriter(new SwaggerUiSecurityHeadersWriter()))
+                .csrf(csrf -> {
+                    if (cookieAuthenticationEnabled) {
+                        CookieCsrfTokenRepository csrfRepository =
+                                CookieCsrfTokenRepository.withHttpOnlyFalse();
+                        csrfRepository.setCookieCustomizer(cookie -> cookie
+                                .path("/")
+                                .sameSite("Lax")
+                                .secure(secureCookie));
+                        csrf.csrfTokenRepository(csrfRepository)
+                                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                                .ignoringRequestMatchers("/api/payments/webhook/razorpay");
+                    } else {
+                        csrf.disable();
+                    }
+                })
 
                 .authenticationProvider(authenticationProvider)
 
@@ -66,8 +88,19 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/auth/csrf",
+                                "/api/auth/session")
+                        .permitAll()
+
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/logout")
+                        .permitAll()
+
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/actuator/health/**",
                                 "/api/test",
                                 "/api/catalogue/categories",
                                 "/api/payments/webhook/razorpay",

@@ -1,0 +1,176 @@
+name: Apniko Phase 8 — production readiness
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - "chore/**"
+  pull_request:
+    branches:
+      - main
+      - "feature/**"
+      - "chore/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase8-production-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-checks:
+    name: Production readiness, tests and browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: phase8_disposable_ci_password
+          MYSQL_DATABASE: localcart_phase7
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent -h 127.0.0.1 -uroot -pphase8_disposable_ci_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+
+    env:
+      DB_PASSWORD: phase8_disposable_ci_password
+      SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart_phase7?allowPublicKeyRetrieval=true&useSSL=false
+      APP_AUTH_COOKIE_ENABLED: "false"
+      AUTH_LOGIN_MAX_ATTEMPTS: "100"
+      AUTH_REGISTRATION_MAX_ATTEMPTS: "100"
+      ADMIN_BOOTSTRAP_EMAIL: phase7-admin@local.test
+      PHASE7_API_URL: http://127.0.0.1:8080
+
+    steps:
+      - name: Check out Apniko
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Create one-run CI authentication secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+          PHASE7_TEST_PASSWORD="A8!phase8-$(openssl rand -hex 18)z"
+          echo "::add-mask::$JWT_SECRET"
+          echo "::add-mask::$PHASE7_TEST_PASSWORD"
+          {
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "ADMIN_BOOTSTRAP_PASSWORD=$PHASE7_TEST_PASSWORD"
+            echo "PHASE7_TEST_PASSWORD=$PHASE7_TEST_PASSWORD"
+          } >> "$GITHUB_ENV"
+          unset JWT_SECRET PHASE7_TEST_PASSWORD
+
+      - name: Verify Phase 8 production contracts
+        run: bash scripts/verify-phase8.sh
+
+      - name: Verify existing application and data-ingestion contracts
+        run: |
+          bash scripts/verify-phase5.sh
+          bash scripts/verify-phase6.sh
+          bash scripts/verify-phase7.sh
+          bash scripts/verify-phase2.sh
+          bash scripts/verify-phase3.sh
+          bash scripts/verify-phase4-text-only.sh
+          bash scripts/verify-phase4.sh
+
+      - name: Validate production Compose configuration without secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_dir="$(mktemp -d)"
+          trap 'rm -rf "$secret_dir"' EXIT
+          printf 'ci-only-db-secret\n' > "$secret_dir/db_password.txt"
+          openssl rand -base64 48 > "$secret_dir/jwt_secret.txt"
+          chmod 600 "$secret_dir/"*.txt
+          export DB_URL='jdbc:mysql://mysql:3306/apniko?sslMode=VERIFY_IDENTITY'
+          export DB_USERNAME='apniko_runtime_ci'
+          export DB_PASSWORD_FILE="$secret_dir/db_password.txt"
+          export JWT_SECRET_FILE="$secret_dir/jwt_secret.txt"
+          export APNIKO_DOMAIN='apniko.example.invalid'
+          export ACME_EMAIL='ops@example.invalid'
+          export APNIKO_IMAGE_TAG='phase8-ci'
+          docker compose config --quiet
+
+      - name: Build production backend and frontend container images
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_dir="$(mktemp -d)"
+          trap 'rm -rf "$secret_dir"' EXIT
+          printf 'ci-only-db-secret\\n' > "$secret_dir/db_password.txt"
+          openssl rand -base64 48 > "$secret_dir/jwt_secret.txt"
+          chmod 600 "$secret_dir/"*.txt
+          export DB_URL='jdbc:mysql://mysql:3306/apniko?sslMode=VERIFY_IDENTITY'
+          export DB_USERNAME='apniko_runtime_ci'
+          export DB_PASSWORD_FILE="$secret_dir/db_password.txt"
+          export JWT_SECRET_FILE="$secret_dir/jwt_secret.txt"
+          export APNIKO_DOMAIN='apniko.example.invalid'
+          export ACME_EMAIL='ops@example.invalid'
+          export APNIKO_IMAGE_TAG='phase8-ci'
+          docker compose build --pull
+
+      - name: Ensure Maven wrapper is executable
+        run: chmod +x ./mvnw
+
+      - name: Run backend verification and tests
+        run: ./mvnw -B -ntp verify
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Run frontend lint, typecheck, tests and production build
+        working-directory: frontend
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:ci
+          npm run build
+
+      - name: Install pinned Playwright and axe tooling
+        working-directory: frontend
+        run: bash ../scripts/install-phase7-tooling.sh
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run complete customer-to-delivery browser acceptance
+        working-directory: frontend
+        env:
+          # The CI-only browser fixtures receive short-lived bearer tokens from the API.
+          # Production builds and unit tests above retain HttpOnly-cookie mode.
+          VITE_AUTH_COOKIE_MODE: "false"
+        run: npm run test:e2e
+
+      - name: Upload browser report, traces and screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: apniko-phase8-e2e-${{ github.run_number }}
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: warn
+          retention-days: 14

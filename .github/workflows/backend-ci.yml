@@ -44,13 +44,16 @@ jobs:
     env:
       DB_PASSWORD: localcart_ci_root_password
       SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart?allowPublicKeyRetrieval=true&useSSL=false
+      APP_AUTH_COOKIE_ENABLED: "false"
+      AUTH_LOGIN_MAX_ATTEMPTS: "100"
+      AUTH_REGISTRATION_MAX_ATTEMPTS: "100"
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: temurin
           java-version: "21"
