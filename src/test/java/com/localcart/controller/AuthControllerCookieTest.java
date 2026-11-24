@@ -40,7 +40,7 @@ class AuthControllerCookieTest {
                         "customer@example.test", "CUSTOMER")
         );
 
-        var response = controller.login(request);
+        var response = controller.login(request, new org.springframework.mock.web.MockHttpServletRequest());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -81,7 +81,7 @@ class AuthControllerCookieTest {
                         "ci@example.test", "CUSTOMER")
         );
 
-        var response = controller.login(request);
+        var response = controller.login(request, new org.springframework.mock.web.MockHttpServletRequest());
 
         assertEquals("test-only.jwt", response.getBody().getToken());
         assertNull(response.getHeaders().getFirst(HttpHeaders.SET_COOKIE));
