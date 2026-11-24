@@ -31,7 +31,7 @@ if grep -RInE 'ProductPhoto|ProductImageReviewStatus|ProductPhotoCredit|Approved
 fi
 
 test -s scripts/catalogue/remove-legacy-product-photo-tables.sql
-grep -Fq 'verified retail GTIN' src/main/java/com/localcart/service/ProductCatalogueModerationService.java
+grep -Fq 'A verified GTIN and retail pack size are required before publishing' src/main/java/com/localcart/service/ProductCatalogueModerationService.java
 grep -Fq 'A verified GTIN and retail pack size are required' src/main/java/com/localcart/service/ProductCatalogueModerationService.java
 
 echo "Phase 4 text-only catalogue verification passed."
