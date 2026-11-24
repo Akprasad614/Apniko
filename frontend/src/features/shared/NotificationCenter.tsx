@@ -54,10 +54,10 @@ export function NotificationCenter() {
     } catch {
       // Keep the last known count visible if a short poll fails.
     }
-  }, [token])
+  }, [session, token])
 
   const loadNotifications = useCallback(async () => {
-    if (!token) return
+    if (!session) return
     setLoading(true)
     setError('')
     try {
@@ -71,7 +71,7 @@ export function NotificationCenter() {
     } finally {
       setLoading(false)
     }
-  }, [refreshUnreadCount, token])
+  }, [refreshUnreadCount, session, token])
 
   useEffect(() => {
     void refreshUnreadCount()
