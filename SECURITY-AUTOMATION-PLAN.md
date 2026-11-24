@@ -85,42 +85,43 @@ Implemented on the dedicated branch `feature/phase-6-role-based-app-delivery`; s
 
 Every feature uses existing API response data and backend authorization. No demo products, synthetic inventory, fabricated prices/sales/ETAs or generated packshots are used. Browser-based end-to-end and staging verification remain in Phase 7.
 
-## Phase 7 — Full end-to-end staging verification (implementation complete; integration revalidation pending)
+## Phase 7 — Full end-to-end staging verification (completed)
 
 Implemented and accepted on `feature/phase-7-e2e-accessibility-staging`; see `PHASE7-STAGING-VERIFICATION.md`.
 
-The latest pre-integration acceptance ran on head `8b71a4c3c7f03e4d267874616d3ab935c9605eee` on 24 November 2026. Its seven workflow groups passed, but it preceded the latest Phase 3–4 text-only base update; the Phase 7 PR is being revalidated against that base:
+Final integrated acceptance ran on 24 November 2026 against the current Phase 3–4 text-only development base, on head `ec37d51628233b0c81ed367e3e552fed1ec0295d`:
 
-- [x] Playwright starts the real Spring Boot API and Vite application against a disposable MySQL 8.4 database named `localcart_phase7`.
-- [x] API-created CI-only fixtures exercise customer checkout, shopkeeper acceptance/preparation/readiness, delivery-partner acceptance/pickup/delivery, and customer order-history confirmation.
+- [x] Real Spring Boot API and Vite application run against a disposable MySQL 8.4 service database named `localcart_phase7`.
+- [x] API-created ephemeral fixtures exercise customer checkout, shopkeeper acceptance/preparation/readiness, delivery-partner acceptance/pickup/delivery, and customer order-history confirmation.
 - [x] A shopkeeper request for administrator-only user data is rejected with HTTP 403.
-- [x] axe-core WCAG 2.0/2.1 A/AA checks pass on customer, shopkeeper, delivery and administrator workspaces with no critical or serious violations.
-- [x] 390 × 844 mobile overflow checks pass for all four roles; desktop and mobile screenshots are retained for each role, plus delivered customer order history.
-- [x] Browser exceptions, Playwright traces and the HTML report are retained with the screenshot artifact.
-- [x] Frontend lint, TypeScript, unit tests and production build pass on the final Phase 7 head.
-- [x] Backend Maven verification and tests pass against the disposable Phase 7 MySQL service.
-- [x] The Phase 7 static verifier runs in frontend CI, and the dedicated browser/accessibility workflow passes on the final branch head.
-- [x] The final artifact was downloaded and its nine desktop/mobile/order screenshots were visually reviewed during closeout.
+- [x] axe-core WCAG 2.0/2.1 A/AA checks pass on customer, shopkeeper, delivery and administrator workspaces; critical and serious violations fail the job.
+- [x] 390 × 844 mobile overflow checks pass for all four roles; nine desktop/mobile/order screenshots are retained.
+- [x] Customer catalogue product cards are text-only; Playwright asserts no image, picture or category-art placeholder is rendered.
+- [x] Phase 4 text-only source verifier runs inside the dedicated Phase 7 pull-request workflow against the integrated development base.
+- [x] Frontend lint, TypeScript, unit tests and production build pass.
+- [x] Backend Maven verification and tests pass against disposable Phase 7 MySQL.
+- [x] CodeQL, Semgrep/Gitleaks, OSV dependency scan and CycloneDX SBOM pass.
+- [x] Playwright report, test attachments and nine screenshots are retained as a 14-day artifact and were visually reviewed.
 
 **Final verification evidence**
 
-- Dedicated browser/accessibility/staging workflow: [run 45403357732](https://github.com/Akprasad614/Apniko/actions/runs/45403357732) — passed.
-- Frontend CI: [run 45403357561](https://github.com/Akprasad614/Apniko/actions/runs/45403357561) — passed.
-- Backend CI: [run 45403357874](https://github.com/Akprasad614/Apniko/actions/runs/45403357874) — passed.
-- CodeQL: [run 45403357593](https://github.com/Akprasad614/Apniko/actions/runs/45403357593) — passed.
-- Static security: [run 45403357547](https://github.com/Akprasad614/Apniko/actions/runs/45403357547) — passed.
-- CycloneDX SBOM: [run 45403357921](https://github.com/Akprasad614/Apniko/actions/runs/45403357921) — passed.
-- OSV dependency scan: [run 45403358455](https://github.com/Akprasad614/Apniko/actions/runs/45403358455) — passed.
-- Retained artifact: [apniko-phase7-e2e-29](https://github.com/Akprasad614/Apniko/actions/runs/45403357732/artifacts/14923598874) — nine screenshots and Playwright report; retention ends 8 December 2026.
+- Dedicated browser/accessibility/staging workflow: [run 45426389667](https://github.com/Akprasad614/Apniko/actions/runs/45426389667) — passed.
+- Frontend CI: [run 45426389402](https://github.com/Akprasad614/Apniko/actions/runs/45426389402) — passed.
+- Backend CI: [run 45426389498](https://github.com/Akprasad614/Apniko/actions/runs/45426389498) — passed.
+- CodeQL: [run 45426389474](https://github.com/Akprasad614/Apniko/actions/runs/45426389474) — passed.
+- Static security: [run 45426389462](https://github.com/Akprasad614/Apniko/actions/runs/45426389462) — passed.
+- CycloneDX SBOM: [run 45426389569](https://github.com/Akprasad614/Apniko/actions/runs/45426389569) — passed.
+- OSV dependency scan: [run 45426390593](https://github.com/Akprasad614/Apniko/actions/runs/45426390593) — passed.
+- Retained artifact: [apniko-phase7-e2e-35](https://github.com/Akprasad614/Apniko/actions/runs/45426389667/artifacts/14936369137) — nine screenshots, HTML report and test attachments; retention ends 8 December 2026.
 
 **Deliberate scope boundaries — not Phase 7 blockers**
 
-- The staging environment is ephemeral and isolated inside GitHub Actions. No persistent public preview was configured because this repository has no linked Vercel team/project; a public deployment is not required for this acceptance milestone.
-- Authenticated active DAST, Nuclei templates and destructive tests remain disabled until a separately reviewed target/identity plan and explicit authorization exist. The completed Phase 7 workflow does not run those tests.
-- The workflow uses only localhost and the disposable `localcart_phase7` database. It does not contact production, real users, Razorpay or a supplier catalogue.
-- The existing JavaScript-readable `sessionStorage` bearer-token approach remains a known production-authentication limitation and is not represented as solved by this test harness.
+- Staging is ephemeral and isolated inside GitHub Actions. No persistent public preview was configured because no Vercel team/project is linked; no public deployment was performed.
+- Razorpay is not contacted; the test order uses COD. No production database, live customer account or supplier catalogue is used.
+- Authenticated active DAST, Nuclei templates and destructive tests remain disabled until a separately reviewed target/identity plan and explicit authorization exist.
+- The existing JavaScript-readable `sessionStorage` bearer-token approach remains a production-authentication limitation; Phase 7 does not claim to have solved it.
 
-The Phase 7 implementation is complete on its feature branch. Final closeout remains gated on the post-Phase-4 integrated rerun and its text-only screenshots; no public deployment has been performed.
+**Phase 7 completion gate: satisfied.** The integrated browser journey, text-only product contract, accessibility checks, responsive tests and paired CI/security workflows all passed. Phase 7 is complete; Phase 8 work has not started.
 
 ## Phase 8 — Production readiness and release controls
 
