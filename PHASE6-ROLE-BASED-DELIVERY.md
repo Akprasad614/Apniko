@@ -2,7 +2,7 @@
 
 **Status: implementation complete; all Phase 6 PR checks passed.**  
 **Working branch:** `feature/phase-6-role-based-app-delivery`  
-**Target branch:** `docs/phase-5-foundation-closeout` (stacked on Phase 5 closeout PR #65)
+**Target branch:** `main`. Phase 6 remains isolated on its feature branch until its pull request is reviewed and merged.
 
 Phase 6 completes the customer, shopkeeper, delivery-partner and administrator application workspaces using the existing Spring Boot contracts. It does not seed sample catalogue data, invent stock or sales, create artificial delivery estimates, or add generated product photographs.
 
@@ -129,16 +129,16 @@ No animation library or external font dependency was added.
 
 ## 8. Verification
 
-The Phase 6 PR head `028417a8a13087bd9b2053575d4652fd06e5fec9` passed all six required CI/security workflows:
+The current Phase 6 PR head `0f29d53cfb943cb760413b49b8abe9391ceab08d` passed all six required CI/security workflows on 23 November 2026:
 
 | Workflow | Run | Result |
 |---|---:|---|
-| Frontend CI — Phase 5/6 verifiers, npm install, ESLint, TypeScript, Vitest and production build | [45214475178](https://github.com/Akprasad614/Apniko/actions/runs/45214475178) | Passed |
-| Backend CI — Phase 10, Phase 2/3 tooling checks and Maven verification/tests | [45214475264](https://github.com/Akprasad614/Apniko/actions/runs/45214475264) | Passed |
-| CodeQL | [45214475115](https://github.com/Akprasad614/Apniko/actions/runs/45214475115) | Passed |
-| Static security scans — Semgrep and Gitleaks | [45214475913](https://github.com/Akprasad614/Apniko/actions/runs/45214475913) | Passed |
-| OSV dependency scan | [45214475778](https://github.com/Akprasad614/Apniko/actions/runs/45214475778) | Passed |
-| CycloneDX SBOM | [45214475241](https://github.com/Akprasad614/Apniko/actions/runs/45214475241) | Passed |
+| Frontend CI — Phase 5/6 verifiers, npm install, ESLint, TypeScript, Vitest and production build | [45216530188](https://github.com/Akprasad614/Apniko/actions/runs/45216530188) | Passed |
+| Backend CI — Phase 10, Phase 2/3 tooling checks and Maven verification/tests | [45216530161](https://github.com/Akprasad614/Apniko/actions/runs/45216530161) | Passed |
+| CodeQL | [45216530256](https://github.com/Akprasad614/Apniko/actions/runs/45216530256) | Passed |
+| Static security scans — Semgrep and Gitleaks | [45216530197](https://github.com/Akprasad614/Apniko/actions/runs/45216530197) | Passed |
+| OSV dependency scan | [45216531448](https://github.com/Akprasad614/Apniko/actions/runs/45216531448) | Passed |
+| CycloneDX SBOM | [45216530874](https://github.com/Akprasad614/Apniko/actions/runs/45216530874) | Passed |
 
 The frontend build artifact was uploaded by Frontend CI. Backend CI used its disposable MySQL service and completed Maven verification; no production database or deployment was involved.
 
