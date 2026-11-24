@@ -14,6 +14,7 @@ required=(
   "src/main/java/com/localcart/repository/PaymentRepository.java"
   "src/test/java/com/localcart/security/AuthenticationRateLimiterTest.java"
   "src/test/java/com/localcart/security/StrongPasswordValidatorTest.java"
+  "src/test/java/com/localcart/security/SecurityConfigCsrfMatcherTest.java"
   "src/test/java/com/localcart/controller/AuthControllerCookieTest.java"
   "frontend/src/auth/AuthProvider.tsx"
   "frontend/src/lib/api.ts"
@@ -72,6 +73,15 @@ grep -Fq 'security.auth.rate-limit.login.max-attempts' src/main/resources/applic
 grep -Fq 'checkLoginAllowed' "$CONTROLLER"
 grep -Fq 'checkRegistrationAllowed' "$CONTROLLER"
 grep -Fq 'findByIdForUpdate' src/main/java/com/localcart/repository/OrderRepository.java
+
+# CSRF stays enabled for cookie-authenticated production and all compatibility requests
+# are narrowly scoped to explicit Bearer auth or the unauthenticated auth handshake.
+if grep -Eq 'csrf\.disable\(' "$SECURITY"; then
+  echo "Phase 8 auth check failed: CSRF must not be disabled." >&2
+  exit 1
+fi
+grep -Fq 'csrfExemptForCompatibilityMode(cookieAuthenticationEnabled)' "$SECURITY"
+grep -Fq 'regionMatches(true, 0, "Bearer "' "$SECURITY"
 
 # The production profile must fail closed for schema drift and secret exposure.
 grep -Fq 'spring.jpa.hibernate.ddl-auto=validate' "$PROD"
