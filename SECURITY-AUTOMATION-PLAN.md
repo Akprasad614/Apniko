@@ -85,22 +85,37 @@ Implemented on the dedicated branch `feature/phase-6-role-based-app-delivery`; s
 
 Every feature uses existing API response data and backend authorization. No demo products, synthetic inventory, fabricated prices/sales/ETAs or generated packshots are used. Browser-based end-to-end and staging verification remain in Phase 7.
 
-## Phase 7 — Full end-to-end staging verification
+## Phase 7 — Full end-to-end staging verification (completed)
 
-Implementation is on `feature/phase-7-e2e-accessibility-staging`; see `PHASE7-STAGING-VERIFICATION.md`.
+Implemented and accepted on `feature/phase-7-e2e-accessibility-staging`; see `PHASE7-STAGING-VERIFICATION.md`.
 
-- [x] Playwright runs the real Spring Boot API and Vite browser application against a disposable MySQL 8.4 CI database.
-- [x] The customer → shopkeeper → delivery-partner order lifecycle uses API-created CI-only fixtures and the browser UI.
-- [x] A cross-role API request must return HTTP 403.
-- [x] axe-core WCAG 2.0/2.1 A/AA checks cover customer, shopkeeper, delivery and administrator workspaces; critical/serious findings fail CI.
-- [x] Responsive 390 × 844 overflow checks and desktop/mobile screenshots cover all four roles.
-- [x] One-run test passwords and JWT secrets are generated at CI runtime; repository permissions remain read-only.
-- [x] Phase 7 static verification is part of frontend CI, and a dedicated workflow runs Maven verification plus the browser journey.
-- [ ] A persistent public preview/staging deployment remains unconfigured because Vercel has no linked team/project. Each workflow instead starts an isolated full-stack staging environment.
-- [ ] Authenticated active DAST and Nuclei remain gated on a separately reviewed target/identity plan and explicit approval.
-- [x] Test jobs use only `localcart_phase7`, never the developer or production database.
+Final acceptance was run on branch head `768fad50bbd7ce56204e56c8ced1d6161d4cf407` on 23 November 2026:
 
-Do not close Phase 7 until the workflow passes on the final branch head and the uploaded screenshots/axe evidence are reviewed.
+- [x] Playwright starts the real Spring Boot API and Vite application against a disposable MySQL 8.4 database named `localcart_phase7`.
+- [x] API-created CI-only fixtures exercise customer checkout, shopkeeper acceptance/preparation/readiness, delivery-partner acceptance/pickup/delivery, and customer order-history confirmation.
+- [x] A shopkeeper request for administrator-only user data is rejected with HTTP 403.
+- [x] axe-core WCAG 2.0/2.1 A/AA checks pass on customer, shopkeeper, delivery and administrator workspaces with no critical or serious violations.
+- [x] 390 × 844 mobile overflow checks pass for all four roles; desktop and mobile screenshots are retained for each role, plus delivered customer order history.
+- [x] Browser exceptions, Playwright traces and the HTML report are retained with the screenshot artifact.
+- [x] Frontend lint, TypeScript, unit tests and production build pass on the final Phase 7 head.
+- [x] Backend Maven verification and tests pass against the disposable Phase 7 MySQL service.
+- [x] The Phase 7 static verifier runs in frontend CI, and the dedicated browser/accessibility workflow passes on the final branch head.
+- [x] The final artifact was downloaded and its nine desktop/mobile/order screenshots were visually reviewed during closeout.
+
+**Final verification evidence**
+
+- Dedicated browser/accessibility/staging workflow: [run 45235967198](https://github.com/Akprasad614/Apniko/actions/runs/45235967198) — passed.
+- Frontend CI: [run 45235967217](https://github.com/Akprasad614/Apniko/actions/runs/45235967217) — passed.
+- Retained artifact: [apniko-phase7-e2e-22](https://github.com/Akprasad614/Apniko/actions/runs/45235967198/artifacts/14849856177) — nine screenshots, Playwright HTML report and test evidence; retention ends 7 December 2026.
+
+**Deliberate scope boundaries — not Phase 7 blockers**
+
+- The staging environment is ephemeral and isolated inside GitHub Actions. No persistent public preview was configured because this repository has no linked Vercel team/project; a public deployment is not required for this acceptance milestone.
+- Authenticated active DAST, Nuclei templates and destructive tests remain disabled until a separately reviewed target/identity plan and explicit authorization exist. The completed Phase 7 workflow does not run those tests.
+- The workflow uses only localhost and the disposable `localcart_phase7` database. It does not contact production, real users, Razorpay or a supplier catalogue.
+- The existing JavaScript-readable `sessionStorage` bearer-token approach remains a known production-authentication limitation and is not represented as solved by this test harness.
+
+The Phase 7 completion gate is satisfied: the dedicated workflow passed on the final branch head and the uploaded axe/screenshots evidence was reviewed. The phase is complete on its feature branch; no pull request has been merged and no deployment has been performed.
 
 ## Phase 8 — Production readiness and release controls
 
