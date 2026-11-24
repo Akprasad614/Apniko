@@ -91,13 +91,13 @@ public class ShopResponse {
     }
 
     public DeliveryMode getDeliveryMode() {
+        return deliveryMode;
+    }
+
     public Double getLatitude() { return latitude; }
     public void setLatitude(Double latitude) { this.latitude = latitude; }
     public Double getLongitude() { return longitude; }
     public void setLongitude(Double longitude) { this.longitude = longitude; }
-
-        return deliveryMode;
-    }
 
     public void setDeliveryMode(DeliveryMode deliveryMode) {
         this.deliveryMode = deliveryMode == null ? DeliveryMode.SHOP_DELIVERY : deliveryMode;
