@@ -161,6 +161,6 @@ Backend Maven tests and repository security scans also run through the existing 
 
 ## 9. Honest completion boundary
 
-Phase 6 software delivery is complete when the Phase 6 PR's Frontend CI, Backend CI and security checks pass. This is not a claim that the live marketplace contains products or that suppliers have supplied authorised photos. Phase 2's Mendeley seed has not been applied, and product-image publication still requires real approved imagery and verified product identity. Live operations will show the backend's real data and meaningful empty states until real shops and orders exist.
+Phase 6 software delivery is complete when the Phase 6 PR's Frontend CI, Backend CI and security checks pass. This is not a claim that the live marketplace contains products or that an approved retail catalogue source has been admitted. The Mendeley reference seed has not been applied; its rows must remain review-only until verified retail identity is independently supplied by an approved source. Product-image publication is not part of Apniko's Phase 4 architecture. Live operations will show the backend's real data and meaningful empty states until real shops and orders exist.
 
 Phase 7 remains the separate end-to-end staging/accessibility milestone; it is not silently bundled into Phase 6.
