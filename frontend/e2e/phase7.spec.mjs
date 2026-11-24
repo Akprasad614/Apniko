@@ -190,7 +190,7 @@ test('customer to shopkeeper to delivery order lifecycle; role accessibility and
   await screenshot(page, testInfo, 'customer-desktop')
 
   const productCard = page.locator('.catalogue-product-card').filter({ hasText: PRODUCT_NAME })
-  await productCard.getByRole('button', { name: /^Add \\+$/i }).click()
+  await productCard.getByRole('button', { name: /^Add \+$/i }).click()
   await page.locator('.customer-primary-nav')
     .getByRole('link', { name: 'Cart', exact: true }).click()
   await expect(page.getByText(PRODUCT_NAME, { exact: true })).toBeVisible()
