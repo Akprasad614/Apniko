@@ -12,3 +12,4 @@ secrets/
 .env.*
 !frontend/.env.example
 *.log
+backups/
