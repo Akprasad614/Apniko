@@ -24,7 +24,7 @@ for path in "${forbidden_paths[@]}"; do
   fi
 done
 
-if grep -RInE 'ProductPhoto|ProductImage|ProductImageReviewStatus|ProductPhotoCredit|ApprovedProductImage|imageUrl|imageSourceName|approvedImageUrl|candidateImageUrl|photoUrl|\.photo\b|getPhoto\\(|setPhoto\\(|<img[[:space:]>]' \
+if grep -RInE 'ProductPhoto|ProductImage|ProductImageReviewStatus|ProductPhotoCredit|ApprovedProductImage|imageUrl|imageSourceName|approvedImageUrl|candidateImageUrl|photoUrl|\.photo\b|getPhoto\(|setPhoto\(|<img[[:space:]>]' \
   src/main/java src/test/java frontend/src scripts/catalogue; then
   echo "Product-image references remain in application code." >&2
   exit 1
