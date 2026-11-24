@@ -11,6 +11,7 @@
 - Added a CSRF bootstrap endpoint backed by Spring Security's `CookieCsrfTokenRepository`. Mutating browser API requests obtain the token and send `X-XSRF-TOKEN`; the Razorpay webhook remains exempt because it uses its own provider signature validation.
 - Added authenticated session restoration and a CSRF-protected logout endpoint.
 - Production profile accepts the session cookie, not a JavaScript-readable bearer token. Bearer mode remains explicit for isolated CI fixtures/API regression tests only.
+- Aligns SpringDoc's Swagger UI resolver with the explicitly pinned `swagger-ui` WebJar version 5.34.1; the DAST run requires the UI page to return HTTP 200 before scanning.
 - Added configurable JWT lifetime and a minimum 32-byte secret guard.
 - Added bounded fixed-window login and registration rate limits keyed by client address and normalized email, with HTTP 429 and `Retry-After` responses.
 - Applied one UTF-8 byte-aware password policy to customer registration and administrator-provisioned accounts; it enforces 12–72 bytes and the required character classes before BCrypt.

@@ -109,4 +109,6 @@ grep -Fq 'CONFIRM_DATABASE_NAME' scripts/restore-production-db.sh
 grep -Fq 'VERIFY_IDENTITY' scripts/backup-production-db.sh
 grep -Fq 'gzip -t' scripts/restore-production-db.sh
 
+grep -Fq 'springdoc.swagger-ui.version=5.34.1' src/main/resources/application.properties
+
 echo "Phase 8 verifier passed: cookie/CSRF auth, production profile, private runtime topology, TLS headers and guarded recovery scripts."

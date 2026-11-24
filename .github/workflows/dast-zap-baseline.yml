@@ -140,6 +140,13 @@ jobs:
           echo "Captured Swagger/OpenAPI response status:"
           cat zap-reports/endpoint-status.txt
 
+          if ! grep -Fxq 'swagger-ui 200' zap-reports/endpoint-status.txt; then
+            echo "Swagger UI must return HTTP 200 before passive DAST can run." >&2
+            cat zap-reports/swagger-ui.body >&2 || true
+            cat /tmp/localcart-dast-app.log >&2 || true
+            exit 1
+          fi
+
       - name: Run OWASP ZAP passive baseline scan
         shell: bash
         run: |
