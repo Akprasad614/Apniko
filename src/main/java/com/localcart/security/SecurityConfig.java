@@ -3,6 +3,7 @@ package com.localcart.security;
 import com.localcart.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -87,8 +88,18 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/auth/csrf",
+                                "/api/auth/session")
+                        .permitAll()
+
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/logout")
+                        .permitAll()
+
                         .requestMatchers(
-                                "/api/auth/**",
                                 "/actuator/health/**",
                                 "/api/test",
                                 "/api/catalogue/categories",
