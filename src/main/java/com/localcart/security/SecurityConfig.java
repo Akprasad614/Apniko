@@ -1,6 +1,7 @@
 package com.localcart.security;
 
 import com.localcart.service.CustomUserDetailsService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,6 +14,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableMethodSecurity
@@ -20,6 +23,9 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
+
+    @Value("${app.auth.cookie.enabled:true}")
+    private boolean cookieAuthenticationEnabled;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -53,7 +59,18 @@ public class SecurityConfig {
             throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> {
+                    if (cookieAuthenticationEnabled) {
+                        CookieCsrfTokenRepository csrfRepository =
+                                CookieCsrfTokenRepository.withHttpOnlyFalse();
+                        csrfRepository.setCookiePath("/");
+                        csrf.csrfTokenRepository(csrfRepository)
+                                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                                .ignoringRequestMatchers("/api/payments/webhook/razorpay");
+                    } else {
+                        csrf.disable();
+                    }
+                })
 
                 .authenticationProvider(authenticationProvider)
 
