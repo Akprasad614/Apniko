@@ -175,7 +175,6 @@ class CustomerMarketplaceServiceTest {
                 101L, ProductCatalogueReviewStatus.ACTIVE);
     }
 
-    private Shop shop(Long id, String name, boolean active) {
     @Test
     void nearbyShopsAreSortedByDistanceAndExcludeInactiveUnpinnedAndDistantShops() {
         Shop near = shop(1L, "Near Store", true);
@@ -194,7 +193,12 @@ class CustomerMarketplaceServiceTest {
         when(inactive.getLatitude()).thenReturn(12.9716);
         when(inactive.getLongitude()).thenReturn(77.5946);
 
-        when(shopRepository.findAll()).thenReturn(List.of(farther, noPin, inactive, near));
+        Shop outsideRadius = shop(5L, "Outside Radius", true);
+        when(outsideRadius.getLatitude()).thenReturn(13.10);
+        when(outsideRadius.getLongitude()).thenReturn(77.5946);
+
+        when(shopRepository.findAll()).thenReturn(
+                List.of(outsideRadius, farther, noPin, inactive, near));
 
         var result = service.getNearbyShops(12.9716, 77.5946, 5.0);
 
@@ -214,6 +218,7 @@ class CustomerMarketplaceServiceTest {
         verifyNoInteractions(shopRepository);
     }
 
+    private Shop shop(Long id, String name, boolean active) {
         Shop shop = mock(Shop.class);
         when(shop.getId()).thenReturn(id);
         when(shop.getName()).thenReturn(name);
