@@ -87,7 +87,15 @@ bash scripts/restore-production-db.sh
 
 Before restoring, take a fresh backup of the target, verify the selected database name and rehearse the restore in staging. Schedule a monthly restore drill and record measured RPO/RTO.
 
-## 6. Monitoring and incident response
+## 6. Authentication abuse controls
+
+The backend applies a fixed-window limiter to login (default 5 attempts per normalized email and client address per 60 seconds) and public registration (default 3 attempts per client address per 60 seconds). Tune with `AUTH_LOGIN_MAX_ATTEMPTS`, `AUTH_REGISTRATION_MAX_ATTEMPTS` and `AUTH_RATE_LIMIT_WINDOW_SECONDS`. Responses are HTTP 429 with a `Retry-After` header.
+
+The current limiter is bounded in-memory state on one backend instance. Keep production to one backend replica until a shared atomic limiter (such as Redis) or a trusted API gateway has been configured. Do not trust arbitrary client-provided forwarded headers; only the private Caddy → Nginx → backend proxy chain should be able to reach the API container.
+
+Passwords for new customer registrations and administrator-provisioned accounts must meet the same UTF-8-byte-aware 12–72-byte policy. Existing passwords are not silently rewritten; users should change them through a reviewed password-change/reset process before introducing a stricter account migration policy.
+
+## 7. Monitoring and incident response
 
 - Monitor public HTTPS availability and response time from an external uptime service.
 - Alert on backend/frontend/Caddy unhealthy status, repeated container restarts, elevated HTTP 5xx, database connection exhaustion and certificate renewal failures.
@@ -98,10 +106,10 @@ Before restoring, take a fresh backup of the target, verify the selected databas
 
 The browser JWT is short-lived and stateless. Logout clears the browser cookie; disabling a user is enforced by checking the account on each authenticated request. A stolen token remains usable until expiry or JWT secret rotation, so keep the lifetime bounded and rotate secrets on compromise.
 
-## 7. Rollback
+## 8. Rollback
 
 Keep the current and previous known-good immutable image tags. For a rollback, update `APNIKO_IMAGE_TAG` to the previous tag, rebuild/pull that exact artifact, and run `docker compose up -d`. Do not roll back the database schema unless a separately reviewed backward-compatible migration plan exists. Prefer forward-fix for additive schema changes.
 
-## 8. Release completion record
+## 9. Release completion record
 
 For every release, record the Git commit, image tags, migration version, approver, CI run links, backup ID, smoke-test result, rollback image tag and deployment timestamp. A green CI run does not authorize production deployment by itself.
