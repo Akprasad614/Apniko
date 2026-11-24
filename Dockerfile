@@ -5,13 +5,16 @@ COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 RUN chmod +x mvnw
 COPY src/ src/
-RUN ./mvnw -B -ntp -DskipTests package
+RUN ./mvnw -B -ntp -DskipTests package \
+    && jar_file="$(find target -maxdepth 1 -type f -name '*.jar' ! -name 'original-*' -print -quit)" \
+    && test -n "$jar_file" \
+    && cp "$jar_file" /workspace/apniko.jar
 
 # Minimal runtime image. Secrets are read from mounted Docker secret files.
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S apniko && adduser -S -G apniko -h /app apniko
-COPY --from=build --chown=apniko:apniko /workspace/target/*.jar /app/apniko.jar
+COPY --from=build --chown=apniko:apniko /workspace/apniko.jar /app/apniko.jar
 COPY --chown=apniko:apniko scripts/docker-entrypoint.sh /usr/local/bin/apniko-entrypoint
 RUN chmod 0555 /usr/local/bin/apniko-entrypoint
 USER apniko
