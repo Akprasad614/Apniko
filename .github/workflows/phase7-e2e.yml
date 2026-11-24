@@ -12,6 +12,8 @@ on:
       - "mvnw"
       - ".mvn/**"
       - "scripts/verify-phase7.sh"
+      - "scripts/verify-phase4-text-only.sh"
+      - "PHASE-4-TEXT-ONLY-CATALOGUE.md"
       - "scripts/install-phase7-tooling.sh"
       - "PHASE7-STAGING-VERIFICATION.md"
       - ".github/workflows/phase7-e2e.yml"
@@ -84,10 +86,11 @@ jobs:
       - name: Verify Phase 7 test harness and target safety
         run: bash scripts/verify-phase7.sh
 
-      - name: Verify existing catalogue intake and photo tooling contracts
+      - name: Verify catalogue intake and text-only product policy
         run: |
           bash scripts/verify-phase2.sh
           bash scripts/verify-phase3.sh
+          bash scripts/verify-phase4-text-only.sh
 
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
