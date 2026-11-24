@@ -4,6 +4,8 @@ import {
   canCancelShopkeeperOrder,
   canRejectShopkeeperOrder,
   canSaveShopkeeperOrderFulfilment,
+  analyticsBarPercent,
+  buildShopkeeperAnalyticsDateRange,
   formatInventoryMovement,
   formatShopkeeperStatus,
   nextShopkeeperOrderStatus,
@@ -57,5 +59,33 @@ describe('shopkeeper order workflow', () => {
   it('formats backend enum values for the dashboard', () => {
     expect(formatShopkeeperStatus('OUT_FOR_DELIVERY')).toBe('Out For Delivery')
     expect(formatInventoryMovement('CANCELLATION_RESTOCK')).toBe('Cancellation Restock')
+  })
+})
+
+
+describe('shopkeeper performance helpers', () => {
+  it('builds inclusive local date ranges for the selected reporting period', () => {
+    const now = new Date(2026, 10, 23, 12, 0, 0)
+
+    expect(buildShopkeeperAnalyticsDateRange(7, now)).toEqual({
+      from: '2026-11-17',
+      to: '2026-11-23',
+    })
+    expect(buildShopkeeperAnalyticsDateRange(30, now)).toEqual({
+      from: '2026-10-25',
+      to: '2026-11-23',
+    })
+    expect(buildShopkeeperAnalyticsDateRange(90, now)).toEqual({
+      from: '2026-08-26',
+      to: '2026-11-23',
+    })
+  })
+
+  it('clamps daily chart bar widths to a safe percentage', () => {
+    expect(analyticsBarPercent(25, 100)).toBe(25)
+    expect(analyticsBarPercent(140, 100)).toBe(100)
+    expect(analyticsBarPercent(-2, 100)).toBe(0)
+    expect(analyticsBarPercent(10, 0)).toBe(0)
+    expect(analyticsBarPercent(Number.NaN, 100)).toBe(0)
   })
 })

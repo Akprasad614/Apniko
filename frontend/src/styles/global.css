@@ -187,3 +187,67 @@ input:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Apniko interaction motion: small, useful feedback rather than decorative motion. */
+@keyframes apniko-soft-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 9px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes apniko-bar-rise {
+  from {
+    opacity: .45;
+    transform: scaleY(.35);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.customer-order,
+.customer-cart-item,
+.catalogue-product-card,
+.operations-panel,
+.operations-stat,
+.shopkeeper-overview__panel,
+.shopkeeper-order,
+.shopkeeper-inventory-card {
+  animation: apniko-soft-rise 400ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+.catalogue-product-card,
+.shopkeeper-inventory-card,
+.customer-order,
+.operations-panel {
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.catalogue-product-card:hover,
+.shopkeeper-inventory-card:hover,
+.customer-order:hover,
+.operations-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 24px rgb(32 42 37 / 7%);
+}
+
+
+/* Gentle first paint for the two primary storefront experiences. */
+.customer-intro,
+.shopkeeper-intro {
+  animation: apniko-soft-rise 520ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+.button:active,
+.operations-button:active,
+.shopkeeper-primary-button:active,
+.customer-shop-results button:active {
+  transform: translateY(1px) scale(.99);
+}

@@ -709,3 +709,63 @@
   font-size: 0.73rem;
   line-height: 1.5;
 }
+
+/* Phase 6 role workspace polish */
+.operations-bottom-nav {
+  display: none;
+}
+@media (max-width: 760px) {
+  .operations-main {
+    padding-block: 2rem calc(6.7rem + env(safe-area-inset-bottom));
+  }
+  .operations-bottom-nav {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .15rem;
+    border-top: 1px solid var(--lc-line);
+    padding: .45rem .6rem calc(.45rem + env(safe-area-inset-bottom));
+    background: rgb(255 253 247 / 96%);
+    box-shadow: 0 -8px 28px rgb(32 42 37 / 7%);
+    backdrop-filter: blur(16px);
+  }
+  .operations-bottom-nav button {
+    display: grid;
+    min-width: 0;
+    min-height: 49px;
+    align-content: center;
+    justify-items: center;
+    gap: .15rem;
+    border: 0;
+    border-radius: 9px;
+    padding: .2rem .1rem;
+    color: var(--lc-muted);
+    background: transparent;
+    font-size: .58rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  .operations-bottom-nav button.is-active {
+    color: var(--lc-forest);
+    background: #eef1e4;
+  }
+  .operations-bottom-nav__symbol {
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+  .operations-intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+
+.operations-bottom-nav--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}

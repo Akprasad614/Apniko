@@ -1372,9 +1372,7 @@
   border-radius: 9px;
   background: #fff;
 }
-.shopkeeper-catalogue-choice__image-content {
-  width: 100%;
-  height: 100%;
+.shopkeeper-catalogue-choice__image img {
   padding: .5rem;
   object-fit: contain;
 }
@@ -1434,14 +1432,7 @@
   border-bottom: 1px solid #eef0e9;
   background: #fff;
 }
-.shopkeeper-inventory-card__image-wrap {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  min-height: 185px;
-  place-items: center;
-}
-.shopkeeper-inventory-card__image {
+.shopkeeper-inventory-card__media > img {
   width: 100%;
   height: 100%;
   padding: .75rem;
@@ -1612,8 +1603,7 @@
     gap: .6rem;
   }
   .shopkeeper-inventory-card__media,
-  .shopkeeper-inventory-card__photo-placeholder,
-  .shopkeeper-inventory-card__image-wrap {
+  .shopkeeper-inventory-card__photo-placeholder {
     min-height: 132px;
   }
   .shopkeeper-inventory-card__body {
@@ -1689,4 +1679,528 @@
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Phase 6 role workspace polish */
+.shopkeeper-tabs {
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(.45rem, 2vw, 1.8rem);
+  width: 100%;
+  margin-bottom: 1.55rem;
+  border-bottom: 1px solid var(--lc-line);
+  padding: .15rem max(32px, calc((100% - var(--lc-page-width)) / 2)) 0;
+  background: rgb(245 242 232 / 94%);
+  backdrop-filter: blur(12px);
+}
+.shopkeeper-tabs button {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  gap: .5rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  padding: .65rem .35rem .5rem;
+  color: var(--lc-muted);
+  font-size: .76rem;
+  font-weight: 800;
+  transition: color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.shopkeeper-tabs button:hover:not(:disabled),
+.shopkeeper-tabs button.is-active {
+  color: var(--lc-forest);
+  background: transparent;
+}
+.shopkeeper-tabs button.is-active {
+  border-bottom-color: var(--lc-forest);
+}
+.shopkeeper-tabs__symbol {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.shopkeeper-bottom-nav {
+  display: none;
+}
+.shopkeeper-analytics {
+  display: grid;
+  gap: 1.1rem;
+}
+.shopkeeper-analytics__heading {
+  align-items: flex-end;
+}
+.shopkeeper-analytics__heading > div:first-child > p:last-child {
+  max-width: 650px;
+  margin: .55rem 0 0;
+  color: var(--lc-muted);
+  font-size: .76rem;
+  line-height: 1.6;
+}
+.shopkeeper-analytics__period {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: .2rem;
+  border: 1px solid var(--lc-line);
+  border-radius: 999px;
+  padding: .2rem;
+  background: var(--lc-white);
+}
+.shopkeeper-analytics__period button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  padding: .45rem .75rem;
+  color: var(--lc-muted);
+  background: transparent;
+  font-size: .65rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+.shopkeeper-analytics__period button:hover {
+  color: var(--lc-forest);
+}
+.shopkeeper-analytics__period button.is-active {
+  color: var(--lc-white);
+  background: var(--lc-forest);
+}
+.shopkeeper-analytics__stats article {
+  animation: apniko-soft-rise 420ms both;
+}
+.shopkeeper-analytics__stats article:nth-child(2) { animation-delay: 45ms; }
+.shopkeeper-analytics__stats article:nth-child(3) { animation-delay: 90ms; }
+.shopkeeper-analytics__stats article:nth-child(4) { animation-delay: 135ms; }
+.shopkeeper-analytics__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .85fr);
+  align-items: stretch;
+  gap: 1rem;
+}
+.shopkeeper-analytics__panel {
+  min-width: 0;
+  border: 1px solid var(--lc-line);
+  border-radius: var(--lc-radius-md);
+  padding: 1.15rem;
+  background: var(--lc-white);
+  animation: apniko-soft-rise 460ms 100ms both;
+}
+.shopkeeper-analytics__panel .shopkeeper-panel-heading {
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.shopkeeper-analytics__panel .shopkeeper-panel-heading h3 {
+  margin: .12rem 0 0;
+  color: var(--lc-forest);
+  font-family: var(--lc-font-display);
+  font-size: 1.55rem;
+  font-weight: 500;
+}
+.shopkeeper-analytics__panel .shopkeeper-panel-heading > span {
+  color: var(--lc-muted);
+  font-size: .62rem;
+  font-variant-numeric: tabular-nums;
+}
+.shopkeeper-analytics__bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: end;
+  gap: .45rem;
+  min-height: 190px;
+  padding-top: .65rem;
+}
+.shopkeeper-analytics__day {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: 132px auto auto;
+  align-items: end;
+  gap: .38rem;
+  text-align: center;
+}
+.shopkeeper-analytics__bar-track {
+  display: flex;
+  width: 100%;
+  height: 132px;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: 7px 7px 3px 3px;
+  background: #f0f1e9;
+}
+.shopkeeper-analytics__bar-fill {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  border-radius: 6px 6px 2px 2px;
+  background: var(--lc-forest);
+  transform-origin: bottom;
+  animation: apniko-bar-rise 520ms cubic-bezier(.2,.8,.2,1) both;
+}
+.shopkeeper-analytics__day strong {
+  overflow: hidden;
+  color: var(--lc-forest);
+  font-size: .61rem;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shopkeeper-analytics__day small {
+  color: var(--lc-muted);
+  font-size: .58rem;
+}
+.shopkeeper-analytics__top-products ol {
+  display: grid;
+  gap: .1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shopkeeper-analytics__top-products li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .55rem;
+  border-bottom: 1px solid #ecece3;
+  padding: .72rem .1rem;
+}
+.shopkeeper-analytics__top-products li:last-child {
+  border-bottom: 0;
+}
+.shopkeeper-analytics__rank {
+  color: var(--lc-terracotta);
+  font-size: .65rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.shopkeeper-analytics__top-products li > div {
+  display: grid;
+  min-width: 0;
+  gap: .15rem;
+}
+.shopkeeper-analytics__top-products li strong {
+  overflow: hidden;
+  color: var(--lc-forest);
+  font-size: .7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shopkeeper-analytics__top-products li small {
+  color: var(--lc-muted);
+  font-size: .6rem;
+}
+.shopkeeper-analytics__top-products li b {
+  color: var(--lc-ink);
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.shopkeeper-analytics__empty {
+  display: grid;
+  min-height: 150px;
+  align-content: center;
+  justify-items: start;
+  gap: .35rem;
+  color: var(--lc-muted);
+}
+.shopkeeper-analytics__empty strong {
+  color: var(--lc-forest);
+  font-family: var(--lc-font-display);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.shopkeeper-analytics__empty p {
+  margin: 0;
+  font-size: .72rem;
+  line-height: 1.55;
+}
+.shopkeeper-order,
+.shopkeeper-inventory-card {
+  animation: apniko-soft-rise 400ms both;
+}
+.shopkeeper-order:nth-child(2),
+.shopkeeper-inventory-card:nth-child(2) { animation-delay: 45ms; }
+.shopkeeper-order:nth-child(3),
+.shopkeeper-inventory-card:nth-child(3) { animation-delay: 90ms; }
+.shopkeeper-order:nth-child(4),
+.shopkeeper-inventory-card:nth-child(4) { animation-delay: 135ms; }
+
+
+
+/* Shopkeeper controls use the same restrained tactile feedback as the customer app. */
+.shopkeeper-action-button,
+.shopkeeper-primary-button,
+.shopkeeper-order__save-fulfilment,
+.shopkeeper-danger-button,
+.shopkeeper-inventory-card__actions button,
+.shopkeeper-bottom-nav button {
+  transition: transform 150ms cubic-bezier(.2,.7,.2,1), background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.shopkeeper-action-button:hover:not(:disabled),
+.shopkeeper-primary-button:hover:not(:disabled),
+.shopkeeper-order__save-fulfilment:hover:not(:disabled),
+.shopkeeper-danger-button:hover:not(:disabled),
+.shopkeeper-inventory-card__actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.shopkeeper-action-button:active:not(:disabled),
+.shopkeeper-primary-button:active:not(:disabled),
+.shopkeeper-order__save-fulfilment:active:not(:disabled),
+.shopkeeper-danger-button:active:not(:disabled),
+.shopkeeper-inventory-card__actions button:active:not(:disabled),
+.shopkeeper-bottom-nav button:active:not(:disabled) {
+  transform: translateY(1px) scale(.99);
+}
+
+.shopkeeper-tabs button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.shopkeeper-tabs button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.shopkeeper-overview .shopkeeper-stats article {
+  animation: apniko-soft-rise 420ms cubic-bezier(.2,.7,.2,1) both;
+}
+.shopkeeper-overview .shopkeeper-stats article:nth-child(2) { animation-delay: 45ms; }
+.shopkeeper-overview .shopkeeper-stats article:nth-child(3) { animation-delay: 90ms; }
+.shopkeeper-overview .shopkeeper-stats article:nth-child(4) { animation-delay: 135ms; }
+
+@media (max-width: 760px) {
+  .shopkeeper-shell {
+    width: min(var(--lc-page-width), calc(100% - 36px));
+  }
+  .shopkeeper-main {
+    padding-bottom: calc(6.6rem + env(safe-area-inset-bottom));
+  }
+  .shopkeeper-intro {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 1.2rem;
+    padding-block: 2.2rem 1.45rem;
+  }
+  .shopkeeper-intro h1 {
+    font-size: clamp(2.75rem, 11vw, 4rem);
+  }
+  .shopkeeper-shop-picker {
+    max-width: none;
+    border-left: 0;
+    border-top: 1px solid var(--lc-line);
+    padding: .8rem 0 0;
+  }
+  .shopkeeper-tabs {
+    display: none;
+  }
+  .shopkeeper-bottom-nav {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .15rem;
+    border-top: 1px solid var(--lc-line);
+    padding: .45rem .6rem calc(.45rem + env(safe-area-inset-bottom));
+    background: rgb(255 253 247 / 96%);
+    box-shadow: 0 -8px 28px rgb(32 42 37 / 7%);
+    backdrop-filter: blur(16px);
+  }
+  .shopkeeper-bottom-nav button {
+    display: grid;
+    min-width: 0;
+    min-height: 49px;
+    align-content: center;
+    justify-items: center;
+    gap: .15rem;
+    border: 0;
+    border-radius: 9px;
+    padding: .2rem .1rem;
+    color: var(--lc-muted);
+    background: transparent;
+    font-size: .58rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  .shopkeeper-bottom-nav button.is-active {
+    color: var(--lc-forest);
+    background: #eef1e4;
+  }
+  .shopkeeper-bottom-nav__symbol {
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+  .shopkeeper-footer {
+    padding-bottom: 1rem;
+  }
+  .shopkeeper-footer > div {
+    padding-block: .8rem 1rem;
+  }
+  .shopkeeper-analytics__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .shopkeeper-analytics__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shopkeeper-analytics__bars {
+    gap: .28rem;
+  }
+  .shopkeeper-analytics__day {
+    grid-template-rows: 112px auto auto;
+  }
+  .shopkeeper-analytics__bar-track {
+    height: 112px;
+  }
+  .shopkeeper-analytics__day strong {
+    font-size: .52rem;
+  }
+  .shopkeeper-analytics__day small {
+    font-size: .54rem;
+  }
+}
+@media (max-width: 390px) {
+  .shopkeeper-analytics__panel {
+    padding: .8rem;
+  }
+  .shopkeeper-analytics__bars {
+    gap: .18rem;
+  }
+  .shopkeeper-analytics__day strong {
+    font-size: .47rem;
+  }
+}
+
+
+.shopkeeper-analytics__bars--wide {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 48px;
+  grid-template-columns: none;
+  justify-content: start;
+  overflow-x: auto;
+  padding-bottom: .4rem;
+  scrollbar-color: #a9b79e transparent;
+  scrollbar-width: thin;
+}
+.shopkeeper-analytics__bars--wide .shopkeeper-analytics__day {
+  width: 48px;
+}
+@media (max-width: 760px) {
+  .shopkeeper-analytics__bars--wide {
+    grid-auto-columns: 44px;
+  }
+  .shopkeeper-analytics__bars--wide .shopkeeper-analytics__day {
+    width: 44px;
+  }
+}
+
+
+.shopkeeper-analytics__replenishment .shopkeeper-panel-heading > div > p:last-child {
+  max-width: 760px;
+  margin: .4rem 0 0;
+  color: var(--lc-muted);
+  font-size: .68rem;
+  line-height: 1.55;
+}
+.shopkeeper-analytics__recommendations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+.shopkeeper-recommendation {
+  display: grid;
+  min-width: 0;
+  gap: .65rem;
+  border: 1px solid var(--lc-line);
+  border-radius: 9px;
+  padding: .8rem;
+  background: #fffefa;
+  animation: apniko-soft-rise 420ms both;
+}
+.shopkeeper-recommendation__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .6rem;
+}
+.shopkeeper-recommendation__top > div {
+  display: grid;
+  min-width: 0;
+  gap: .2rem;
+}
+.shopkeeper-recommendation__top strong {
+  color: var(--lc-forest);
+  font-size: .74rem;
+  line-height: 1.4;
+}
+.shopkeeper-recommendation__top small {
+  color: var(--lc-muted);
+  font-size: .6rem;
+}
+.shopkeeper-recommendation__status {
+  flex: 0 0 auto;
+  border: 1px solid var(--lc-line);
+  border-radius: 999px;
+  padding: .28rem .45rem;
+  color: var(--lc-muted);
+  font-size: .54rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+.shopkeeper-recommendation__status--reorder_now {
+  border-color: #e5b4a3;
+  color: #8c3829;
+  background: #fbefeb;
+}
+.shopkeeper-recommendation__status--reorder_soon {
+  border-color: #e7d6a3;
+  color: #80621d;
+  background: #faf6e7;
+}
+.shopkeeper-recommendation__status--healthy {
+  border-color: #c4d4bd;
+  color: #355d40;
+  background: #f0f5ec;
+}
+.shopkeeper-recommendation__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .4rem;
+  border-top: 1px solid #ededE5;
+  padding-top: .6rem;
+}
+.shopkeeper-recommendation__metrics span {
+  display: grid;
+  gap: .14rem;
+  min-width: 0;
+}
+.shopkeeper-recommendation__metrics small {
+  color: var(--lc-muted);
+  font-size: .55rem;
+  line-height: 1.35;
+}
+.shopkeeper-recommendation__metrics strong {
+  color: var(--lc-forest);
+  font-size: .73rem;
+  font-variant-numeric: tabular-nums;
+}
+.shopkeeper-recommendation > p {
+  margin: 0;
+  color: var(--lc-muted);
+  font-size: .62rem;
+  line-height: 1.5;
+}
+.shopkeeper-analytics__insight-error {
+  margin: 0 0 .75rem;
+  color: var(--lc-danger);
+  font-size: .68rem;
+}
+@media (max-width: 760px) {
+  .shopkeeper-analytics__recommendations {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

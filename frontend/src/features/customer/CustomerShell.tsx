@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/Button'
 import './customer-shell.css'
+import { NotificationCenter } from '../shared/NotificationCenter'
 
 const navigation = [
   { key: 'home', label: 'Home', to: '/customer/home', symbol: '⌂' },
@@ -30,6 +31,7 @@ export function CustomerShell() {
           {!isHome && <Link className="customer-shell-brand" to="/customer/home" aria-label="Apniko home">apniko<span>.</span></Link>}
           <div className="customer-shell-header__account">
             <span>Good to see you, <strong>{session?.name.split(/\s+/)[0] || 'there'}</strong></span>
+            <NotificationCenter />
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
         </div>

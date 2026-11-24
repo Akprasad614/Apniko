@@ -7,6 +7,7 @@ on:
       - "automation/**"
       - "chore/**"
       - "feature/**"
+      - "docs/**"
     paths:
       - "frontend/**"
       - "PRODUCT.md"
@@ -15,11 +16,16 @@ on:
       - "SECURITY-AUTOMATION-PLAN.md"
       - ".github/dependabot.yml"
       - "scripts/verify-phase5.sh"
+      - "scripts/verify-phase6.sh"
+      - "PHASE6-ROLE-BASED-DELIVERY.md"
+      - "PHASE6-CUSTOMER-STOREFRONT.md"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches:
       - main
       - "chore/**"
+      - "feature/**"
+      - "docs/**"
     paths:
       - "frontend/**"
       - "PRODUCT.md"
@@ -56,6 +62,9 @@ jobs:
 
       - name: Verify frontend foundation configuration
         run: bash scripts/verify-phase5.sh
+
+      - name: Verify Phase 6 role-based workflows
+        run: bash scripts/verify-phase6.sh
 
       - name: Install locked frontend dependencies
         working-directory: frontend

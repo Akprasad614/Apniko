@@ -66,16 +66,24 @@ Authentication and security boundaries:
 - The existing backend returns a bearer token in the JSON authentication response. The first frontend foundation keeps it in `sessionStorage` rather than `localStorage` to limit persistence. This is not an XSS defence because JavaScript can still read it. A production auth design should prefer secure HttpOnly SameSite cookies or another reviewed approach.
 - Frontend route guards are navigation aids only. All roles, ownership, inventory, pricing, order and payment decisions must continue to be enforced by the backend.
 
-## Phase 6 — Role-based application delivery
+## Phase 6 — Role-based application delivery (completed)
 
-Build and test incrementally:
+Implemented on the dedicated branch `feature/phase-6-role-based-app-delivery`; see `PHASE6-ROLE-BASED-DELIVERY.md`.
 
-- Customer storefront, search, basket, checkout, payment and order tracking.
-- Shopkeeper product/inventory/order management and analytics.
-- Delivery-partner task list and delivery lifecycle.
-- Admin operations where required.
+- [x] Customer storefront, shop search, product search/category/price filters, shop-specific basket and stock-aware quantity updates.
+- [x] Customer checkout, COD/Razorpay method availability, payment initiation/verification, order history, status history and permitted cancellation.
+- [x] Shopkeeper mobile workspace with the same Apniko design tokens and navigation language as the customer application.
+- [x] Shopkeeper order acceptance, fulfilment selection, preparation/ready/delivery transitions, rejection/cancellation rules and order history.
+- [x] Shopkeeper catalogue selection, shop-specific inventory, pricing/availability, restock, low-stock thresholds and movement audit history.
+- [x] Shopkeeper performance view backed by the actual 7/30/90-day analytics endpoints; account-wide totals are labelled separately from selected-shop product rankings.
+- [x] Explainable shopkeeper stock guidance backed by order history and current inventory using the documented weighted-moving-average baseline.
+- [x] Delivery-partner available/assigned/completed workflows, including accept, pickup and delivery actions.
+- [x] Administrator overview, staff provisioning/activation, shop ownership/activation, catalogue administration, product-photo and catalogue moderation.
+- [x] Shared authenticated notifications across customer, shopkeeper, delivery and administrator workspaces, including unread count, mark read, mark all read and dismiss.
+- [x] Responsive mobile bottom navigation, shared interaction styling and restrained CSS motion with `prefers-reduced-motion` support.
+- [x] Phase 6 static verifier and unit tests for shop search, analytics date/scale helpers and notification routing/date formatting.
 
-Every feature must be based on the current backend DTOs and endpoint behaviour. Do not create fake stock counts, prices, delivery ETAs or analytics.
+Every feature uses existing API response data and backend authorization. No demo products, synthetic inventory, fabricated prices/sales/ETAs or generated packshots are used. Browser-based end-to-end and staging verification remain in Phase 7.
 
 ## Phase 7 — Full end-to-end staging verification
 
