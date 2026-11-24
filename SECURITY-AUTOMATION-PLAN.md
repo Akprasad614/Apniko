@@ -78,18 +78,18 @@ Implemented on the dedicated branch `feature/phase-6-role-based-app-delivery`; s
 - [x] Shopkeeper performance view backed by the actual 7/30/90-day analytics endpoints; account-wide totals are labelled separately from selected-shop product rankings.
 - [x] Explainable shopkeeper stock guidance backed by order history and current inventory using the documented weighted-moving-average baseline.
 - [x] Delivery-partner available/assigned/completed workflows, including accept, pickup and delivery actions.
-- [x] Administrator overview, staff provisioning/activation, shop ownership/activation, catalogue administration, product-photo and catalogue moderation.
+- [x] Administrator overview, staff provisioning/activation, shop ownership/activation and text-only catalogue administration. Product-photo moderation is excluded by Phase 4.
 - [x] Shared authenticated notifications across customer, shopkeeper, delivery and administrator workspaces, including unread count, mark read, mark all read and dismiss.
 - [x] Responsive mobile bottom navigation, shared interaction styling and restrained CSS motion with `prefers-reduced-motion` support.
 - [x] Phase 6 static verifier and unit tests for shop search, analytics date/scale helpers and notification routing/date formatting.
 
 Every feature uses existing API response data and backend authorization. No demo products, synthetic inventory, fabricated prices/sales/ETAs or generated packshots are used. Browser-based end-to-end and staging verification remain in Phase 7.
 
-## Phase 7 — Full end-to-end staging verification (completed)
+## Phase 7 — Full end-to-end staging verification (implementation complete; integration revalidation pending)
 
 Implemented and accepted on `feature/phase-7-e2e-accessibility-staging`; see `PHASE7-STAGING-VERIFICATION.md`.
 
-Final acceptance was run on branch head `768fad50bbd7ce56204e56c8ced1d6161d4cf407` on 23 November 2026:
+The latest pre-integration acceptance ran on head `8b71a4c3c7f03e4d267874616d3ab935c9605eee` on 24 November 2026. Its seven workflow groups passed, but it preceded the latest Phase 3–4 text-only base update; the Phase 7 PR is being revalidated against that base:
 
 - [x] Playwright starts the real Spring Boot API and Vite application against a disposable MySQL 8.4 database named `localcart_phase7`.
 - [x] API-created CI-only fixtures exercise customer checkout, shopkeeper acceptance/preparation/readiness, delivery-partner acceptance/pickup/delivery, and customer order-history confirmation.
@@ -104,9 +104,14 @@ Final acceptance was run on branch head `768fad50bbd7ce56204e56c8ced1d6161d4cf40
 
 **Final verification evidence**
 
-- Dedicated browser/accessibility/staging workflow: [run 45235967198](https://github.com/Akprasad614/Apniko/actions/runs/45235967198) — passed.
-- Frontend CI: [run 45235967217](https://github.com/Akprasad614/Apniko/actions/runs/45235967217) — passed.
-- Retained artifact: [apniko-phase7-e2e-22](https://github.com/Akprasad614/Apniko/actions/runs/45235967198/artifacts/14849856177) — nine screenshots, Playwright HTML report and test evidence; retention ends 7 December 2026.
+- Dedicated browser/accessibility/staging workflow: [run 45403357732](https://github.com/Akprasad614/Apniko/actions/runs/45403357732) — passed.
+- Frontend CI: [run 45403357561](https://github.com/Akprasad614/Apniko/actions/runs/45403357561) — passed.
+- Backend CI: [run 45403357874](https://github.com/Akprasad614/Apniko/actions/runs/45403357874) — passed.
+- CodeQL: [run 45403357593](https://github.com/Akprasad614/Apniko/actions/runs/45403357593) — passed.
+- Static security: [run 45403357547](https://github.com/Akprasad614/Apniko/actions/runs/45403357547) — passed.
+- CycloneDX SBOM: [run 45403357921](https://github.com/Akprasad614/Apniko/actions/runs/45403357921) — passed.
+- OSV dependency scan: [run 45403358455](https://github.com/Akprasad614/Apniko/actions/runs/45403358455) — passed.
+- Retained artifact: [apniko-phase7-e2e-29](https://github.com/Akprasad614/Apniko/actions/runs/45403357732/artifacts/14923598874) — nine screenshots and Playwright report; retention ends 8 December 2026.
 
 **Deliberate scope boundaries — not Phase 7 blockers**
 
@@ -115,7 +120,7 @@ Final acceptance was run on branch head `768fad50bbd7ce56204e56c8ced1d6161d4cf40
 - The workflow uses only localhost and the disposable `localcart_phase7` database. It does not contact production, real users, Razorpay or a supplier catalogue.
 - The existing JavaScript-readable `sessionStorage` bearer-token approach remains a known production-authentication limitation and is not represented as solved by this test harness.
 
-The Phase 7 completion gate is satisfied: the dedicated workflow passed on the final branch head and the uploaded axe/screenshots evidence was reviewed. The phase is complete on its feature branch; no pull request has been merged and no deployment has been performed.
+The Phase 7 implementation is complete on its feature branch. Final closeout remains gated on the post-Phase-4 integrated rerun and its text-only screenshots; no public deployment has been performed.
 
 ## Phase 8 — Production readiness and release controls
 
