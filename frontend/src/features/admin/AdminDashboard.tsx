@@ -6,7 +6,6 @@ import { Button } from '../../components/Button'
 import { Wordmark } from '../../components/Wordmark'
 import { ApiError, apiRequest } from '../../lib/api'
 import { CatalogueReviewQueue } from './CatalogueReviewQueue'
-import { ProductPhotoReviewQueue } from './ProductPhotoReviewQueue'
 import '../shared/operations.css'
 import { NotificationCenter } from '../shared/NotificationCenter'
 
@@ -456,7 +455,6 @@ export function AdminDashboard() {
                   <button className="operations-button" type="submit" disabled={busyKey === 'create-product' || !productName.trim() || !productCategory}>{busyKey === 'create-product' ? 'Adding…' : 'Add to catalogue'}</button>
                 </form>
                 <CatalogueReviewQueue token={token} />
-                <ProductPhotoReviewQueue token={token} />
               </section>
             )}
           </>

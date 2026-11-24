@@ -39,11 +39,6 @@ export interface MarketplaceInventoryItem {
   price: number
   stockQuantity: number
   available: boolean
-  imageUrl?: string | null
-  imageSourceName?: string | null
-  imageSourceUrl?: string | null
-  imageLicense?: string | null
-  imageAttribution?: string | null
 }
 
 export interface MarketplacePage<T> {
@@ -64,11 +59,6 @@ export interface BasketItem {
   lineTotal: number
   availableStock: number
   available: boolean
-  imageUrl?: string | null
-  imageSourceName?: string | null
-  imageSourceUrl?: string | null
-  imageLicense?: string | null
-  imageAttribution?: string | null
 }
 
 export interface Basket {
