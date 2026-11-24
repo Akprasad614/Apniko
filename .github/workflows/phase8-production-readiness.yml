@@ -110,7 +110,22 @@ jobs:
           docker compose config --quiet
 
       - name: Build production backend and frontend container images
-        run: docker compose build --pull
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_dir="$(mktemp -d)"
+          trap 'rm -rf "$secret_dir"' EXIT
+          printf 'ci-only-db-secret\\n' > "$secret_dir/db_password.txt"
+          openssl rand -base64 48 > "$secret_dir/jwt_secret.txt"
+          chmod 600 "$secret_dir/"*.txt
+          export DB_URL='jdbc:mysql://mysql:3306/apniko?sslMode=VERIFY_IDENTITY'
+          export DB_USERNAME='apniko_runtime_ci'
+          export DB_PASSWORD_FILE="$secret_dir/db_password.txt"
+          export JWT_SECRET_FILE="$secret_dir/jwt_secret.txt"
+          export APNIKO_DOMAIN='apniko.example.invalid'
+          export ACME_EMAIL='ops@example.invalid'
+          export APNIKO_IMAGE_TAG='phase8-ci'
+          docker compose build --pull
 
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
