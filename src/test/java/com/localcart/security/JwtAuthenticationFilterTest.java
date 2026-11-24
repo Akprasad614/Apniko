@@ -29,6 +29,8 @@ class JwtAuthenticationFilterTest {
         jwtService = mock(JwtService.class);
         userDetailsService = mock(CustomUserDetailsService.class);
         filter = new JwtAuthenticationFilter(jwtService, userDetailsService);
+        ReflectionTestUtils.setField(filter, "cookieAuthenticationEnabled", false);
+        ReflectionTestUtils.setField(filter, "cookieName", "APNIKO_SESSION");
     }
 
     @AfterEach
