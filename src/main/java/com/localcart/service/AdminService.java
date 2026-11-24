@@ -141,7 +141,6 @@ public class AdminService {
         return toAdminShopResponse(shopRepository.save(shop));
     }
 
-    private UserResponse toUserResponse(User user) {
     public AdminShopResponse updateShopLocation(Long shopId, ShopLocationRequest request) {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -152,6 +151,7 @@ public class AdminService {
         return toAdminShopResponse(shopRepository.save(shop));
     }
 
+    private UserResponse toUserResponse(User user) {
         return new UserResponse(
                 user.getId(), user.getName(), user.getEmail(),
                 user.getRole(), user.isActive()

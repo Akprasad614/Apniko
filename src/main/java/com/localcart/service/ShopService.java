@@ -139,22 +139,6 @@ public class ShopService {
     }
 
     private User getShopkeeper(String email) {
-    private void applyCoordinates(Shop shop, Double latitude, Double longitude, boolean creating) {
-        if ((latitude == null) != (longitude == null)) {
-            throw new BadRequestException("Provide both shop latitude and longitude");
-        }
-        if (latitude == null) {
-            if (creating) {
-                shop.setLatitude(null);
-                shop.setLongitude(null);
-            }
-            return;
-        }
-        shop.setLatitude(latitude);
-        shop.setLongitude(longitude);
-    }
-
-
         if (email == null) {
             throw new BadRequestException(
                     "User is not authenticated"
@@ -180,6 +164,21 @@ public class ShopService {
         }
 
         return owner;
+    }
+
+    private void applyCoordinates(Shop shop, Double latitude, Double longitude, boolean creating) {
+        if ((latitude == null) != (longitude == null)) {
+            throw new BadRequestException("Provide both shop latitude and longitude");
+        }
+        if (latitude == null) {
+            if (creating) {
+                shop.setLatitude(null);
+                shop.setLongitude(null);
+            }
+            return;
+        }
+        shop.setLatitude(latitude);
+        shop.setLongitude(longitude);
     }
 
     private Shop getShop(Long id) {
