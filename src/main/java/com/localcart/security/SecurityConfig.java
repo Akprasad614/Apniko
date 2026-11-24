@@ -17,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 @Configuration
 @EnableMethodSecurity
@@ -64,19 +65,17 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> {
-                    if (cookieAuthenticationEnabled) {
-                        CookieCsrfTokenRepository csrfRepository =
-                                CookieCsrfTokenRepository.withHttpOnlyFalse();
-                        csrfRepository.setCookieCustomizer(cookie -> cookie
-                                .path("/")
-                                .sameSite("Lax")
-                                .secure(secureCookie));
-                        csrf.csrfTokenRepository(csrfRepository)
-                                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                                .ignoringRequestMatchers("/api/payments/webhook/razorpay");
-                    } else {
-                        csrf.disable();
-                    }
+                    CookieCsrfTokenRepository csrfRepository =
+                            CookieCsrfTokenRepository.withHttpOnlyFalse();
+                    csrfRepository.setCookieCustomizer(cookie -> cookie
+                            .path("/")
+                            .sameSite("Lax")
+                            .secure(secureCookie));
+                    csrf.csrfTokenRepository(csrfRepository)
+                            .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                            .ignoringRequestMatchers(
+                                    "/api/payments/webhook/razorpay",
+                                    csrfExemptForCompatibilityMode(cookieAuthenticationEnabled));
                 })
 
                 .headers(headers -> headers
@@ -135,6 +134,37 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    /**
+     * Bearer compatibility is used only by isolated CI/API fixtures. A Bearer
+     * header is explicitly supplied by the caller and is not an ambient browser
+     * credential, so CSRF protection is unnecessary for those authenticated
+     * requests. Cookie-authenticated production requests never use this
+     * exemption. In compatibility mode, only login/register/logout are exempt
+     * when no bearer token exists.
+     */
+    static RequestMatcher csrfExemptForCompatibilityMode(boolean cookieAuthenticationEnabled) {
+        return request -> {
+            if (cookieAuthenticationEnabled) {
+                return false;
+            }
+
+            String authorization = request.getHeader("Authorization");
+            if (authorization != null
+                    && authorization.regionMatches(true, 0, "Bearer ", 0, "Bearer ".length())) {
+                return true;
+            }
+
+            if (!"POST".equalsIgnoreCase(request.getMethod())) {
+                return false;
+            }
+
+            String path = request.getServletPath();
+            return "/api/auth/login".equals(path)
+                    || "/api/auth/register".equals(path)
+                    || "/api/auth/logout".equals(path);
+        };
     }
 
     @Bean
