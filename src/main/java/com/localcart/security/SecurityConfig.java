@@ -88,7 +88,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers(
-                                "/api/auth/**",\n                                "/actuator/health/**",
+                                "/api/auth/**",
+                                "/actuator/health/**",
                                 "/api/test",
                                 "/api/catalogue/categories",
                                 "/api/payments/webhook/razorpay",
