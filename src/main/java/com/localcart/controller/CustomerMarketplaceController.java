@@ -3,6 +3,7 @@ package com.localcart.controller;
 import com.localcart.dto.InventoryResponse;
 import com.localcart.dto.PriceComparisonResponse;
 import com.localcart.dto.CustomerMarketplaceShopResponse;
+import com.localcart.dto.NearbyShopSearchRequest;
 import com.localcart.service.CustomerMarketplaceService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,13 @@ public class CustomerMarketplaceController {
     @GetMapping("/shops")
     public ResponseEntity<List<CustomerMarketplaceShopResponse>> getActiveShops() {
         return ResponseEntity.ok(marketplaceService.getActiveShops());
+    }
+
+    @PostMapping("/shops/nearby")
+    public ResponseEntity<List<CustomerMarketplaceShopResponse>> getNearbyShops(
+            @Valid @RequestBody NearbyShopSearchRequest request) {
+        return ResponseEntity.ok(marketplaceService.getNearbyShops(
+                request.latitude(), request.longitude(), request.radiusKm()));
     }
 
     @GetMapping("/shops/{shopId}")

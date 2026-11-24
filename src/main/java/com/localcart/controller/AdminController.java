@@ -75,16 +75,16 @@ public class AdminController {
     }
 
     @PatchMapping("/shops/{shopId}/active")
+    public ResponseEntity<AdminShopResponse> updateShopActiveStatus(
+            @PathVariable Long shopId,
+            @Valid @RequestBody UpdateActiveStatusRequest request) {
+        return ResponseEntity.ok(adminService.updateShopActiveStatus(shopId, request));
+    }
+
     @PatchMapping("/shops/{shopId}/location")
     public ResponseEntity<AdminShopResponse> updateShopLocation(
             @PathVariable Long shopId,
             @Valid @RequestBody ShopLocationRequest request) {
         return ResponseEntity.ok(adminService.updateShopLocation(shopId, request));
-    }
-
-    public ResponseEntity<AdminShopResponse> updateShopActiveStatus(
-            @PathVariable Long shopId,
-            @Valid @RequestBody UpdateActiveStatusRequest request) {
-        return ResponseEntity.ok(adminService.updateShopActiveStatus(shopId, request));
     }
 }
