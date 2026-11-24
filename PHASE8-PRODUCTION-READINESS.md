@@ -10,6 +10,7 @@
 
 - Replaced persistent `sessionStorage` JWT storage with in-memory UI session state. Production browser authentication uses an HttpOnly, Secure, SameSite=Lax `APNIKO_SESSION` cookie.
 - Added a CSRF bootstrap endpoint backed by Spring Security's `CookieCsrfTokenRepository`. Mutating browser API requests obtain the token and send `X-XSRF-TOKEN`; the Razorpay webhook remains exempt because it uses its own provider signature validation.
+- CSRF remains enabled in every authentication mode. The isolated bearer-compatibility mode has only narrow exemptions for explicit `Authorization: Bearer` API requests and unauthenticated login/register/logout calls; production cookie mode has no compatibility exemptions.
 - Added authenticated session restoration and a CSRF-protected logout endpoint.
 - Production profile accepts the session cookie, not a JavaScript-readable bearer token. Bearer mode remains explicit for isolated CI fixtures/API regression tests only.
 - Aligns SpringDoc's Swagger UI resolver with the explicitly pinned `swagger-ui` WebJar version 5.34.1; the DAST run requires the UI page to return HTTP 200 before scanning.
@@ -46,7 +47,8 @@
 The Phase 8 verifier and dedicated CI workflow validate:
 
 - No JWT is written to browser storage.
-- Cookie-only auth and CSRF configuration are present.
+- Cookie-only auth and CSRF configuration are present, and no security chain disables CSRF.
+- Compatibility-mode CSRF exemptions are covered by focused unit tests.
 - Production DB/JWT values are external and the schema mode is `validate`.
 - Health probes, Docker/Compose, TLS proxy, security headers and secret mounts exist.
 - Backup/restore scripts pass Bash syntax and destructive-restore guards.
@@ -61,7 +63,7 @@ These are not silently marked complete:
 1. **Hosting/DNS:** no production host, DNS zone or deployment account is linked to the repository. The included Compose stack can be installed on a chosen host once the domain resolves and 80/443 are reachable.
 2. **Production secrets:** populate `secrets/db_password.txt`, `secrets/jwt_secret.txt` and `.env.production` on the host. Do not send these values in chat or commit them.
 3. **Schema migration baseline:** the project currently relies on Hibernate `update` in development and does not contain a complete reviewed versioned migration baseline. Build and review that baseline against a known-good copy before creating a production database. Production deliberately refuses automatic schema changes.
-4. **GitHub ruleset:** apply the settings in `MAIN-BRANCH-PROTECTION.md` from repository Settings and verify them with a test PR. The connected GitHub file/PR capability does not expose ruleset administration.
+4. **GitHub ruleset:** apply the settings in `MAIN-BRANCH-PROTECTION.md` from repository Settings and verify them with a test PR. The connected GitHub file/PR capability does not expose branch-ruleset administration.
 5. **External monitoring and offsite backups:** select the provider, configure alert contacts/retention, and prove a restore drill.
 
 **Phase 8 implementation and CI acceptance are complete.** A public production release remains gated on the above owner-controlled steps; no production environment, production database or real customer data has been touched.
@@ -69,8 +71,7 @@ These are not silently marked complete:
 
 ## Integrated development verification — 24 November 2026
 
-The Phase 8 code was synchronized with the latest Phase 7/text-only
-development base and merged through [PR #70](https://github.com/Akprasad614/Apniko/pull/70)
+The Phase 8 code was synchronized with the latest Phase 7/text-only development base and merged through [PR #70](https://github.com/Akprasad614/Apniko/pull/70)
 at commit 37b9c2a7251ef44ed9e0b3a7efea0d0b9acf2cd6. The PR did not target
 or modify main.
 
