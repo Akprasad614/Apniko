@@ -78,21 +78,50 @@ Implemented on the dedicated branch `feature/phase-6-role-based-app-delivery`; s
 - [x] Shopkeeper performance view backed by the actual 7/30/90-day analytics endpoints; account-wide totals are labelled separately from selected-shop product rankings.
 - [x] Explainable shopkeeper stock guidance backed by order history and current inventory using the documented weighted-moving-average baseline.
 - [x] Delivery-partner available/assigned/completed workflows, including accept, pickup and delivery actions.
-- [x] Administrator overview, staff provisioning/activation, shop ownership/activation, catalogue administration, product-photo and catalogue moderation.
+- [x] Administrator overview, staff provisioning/activation, shop ownership/activation and text-only catalogue administration. Product-photo moderation is excluded by Phase 4.
 - [x] Shared authenticated notifications across customer, shopkeeper, delivery and administrator workspaces, including unread count, mark read, mark all read and dismiss.
 - [x] Responsive mobile bottom navigation, shared interaction styling and restrained CSS motion with `prefers-reduced-motion` support.
 - [x] Phase 6 static verifier and unit tests for shop search, analytics date/scale helpers and notification routing/date formatting.
 
 Every feature uses existing API response data and backend authorization. No demo products, synthetic inventory, fabricated prices/sales/ETAs or generated packshots are used. Browser-based end-to-end and staging verification remain in Phase 7.
 
-## Phase 7 — Full end-to-end staging verification
+## Phase 7 — Full end-to-end staging verification (completed)
 
-- Add Playwright browser journeys for customer, shopkeeper and delivery workflows.
-- Add accessibility checks using axe-core and review responsive screenshots for key pages.
-- Deploy pull-request previews or a dedicated staging environment.
-- Run API and browser end-to-end flows with seeded test data.
-- Add carefully scoped authenticated DAST and approved Nuclei templates only after a separately reviewed plan with dedicated disposable identities and explicit approval.
-- Verify that test jobs never connect to the main development or production database.
+Implemented and accepted on `feature/phase-7-e2e-accessibility-staging`; see `PHASE7-STAGING-VERIFICATION.md`.
+
+Final integrated acceptance ran on 24 November 2026 against the current Phase 3–4 text-only development base, on head `ec37d51628233b0c81ed367e3e552fed1ec0295d`:
+
+- [x] Real Spring Boot API and Vite application run against a disposable MySQL 8.4 service database named `localcart_phase7`.
+- [x] API-created ephemeral fixtures exercise customer checkout, shopkeeper acceptance/preparation/readiness, delivery-partner acceptance/pickup/delivery, and customer order-history confirmation.
+- [x] A shopkeeper request for administrator-only user data is rejected with HTTP 403.
+- [x] axe-core WCAG 2.0/2.1 A/AA checks pass on customer, shopkeeper, delivery and administrator workspaces; critical and serious violations fail the job.
+- [x] 390 × 844 mobile overflow checks pass for all four roles; nine desktop/mobile/order screenshots are retained.
+- [x] Customer catalogue product cards are text-only; Playwright asserts no image, picture or category-art placeholder is rendered.
+- [x] Phase 4 text-only source verifier runs inside the dedicated Phase 7 pull-request workflow against the integrated development base.
+- [x] Frontend lint, TypeScript, unit tests and production build pass.
+- [x] Backend Maven verification and tests pass against disposable Phase 7 MySQL.
+- [x] CodeQL, Semgrep/Gitleaks, OSV dependency scan and CycloneDX SBOM pass.
+- [x] Playwright report, test attachments and nine screenshots are retained as a 14-day artifact and were visually reviewed.
+
+**Final verification evidence**
+
+- Dedicated browser/accessibility/staging workflow: [run 45426389667](https://github.com/Akprasad614/Apniko/actions/runs/45426389667) — passed.
+- Frontend CI: [run 45426389402](https://github.com/Akprasad614/Apniko/actions/runs/45426389402) — passed.
+- Backend CI: [run 45426389498](https://github.com/Akprasad614/Apniko/actions/runs/45426389498) — passed.
+- CodeQL: [run 45426389474](https://github.com/Akprasad614/Apniko/actions/runs/45426389474) — passed.
+- Static security: [run 45426389462](https://github.com/Akprasad614/Apniko/actions/runs/45426389462) — passed.
+- CycloneDX SBOM: [run 45426389569](https://github.com/Akprasad614/Apniko/actions/runs/45426389569) — passed.
+- OSV dependency scan: [run 45426390593](https://github.com/Akprasad614/Apniko/actions/runs/45426390593) — passed.
+- Retained artifact: [apniko-phase7-e2e-35](https://github.com/Akprasad614/Apniko/actions/runs/45426389667/artifacts/14936369137) — nine screenshots, HTML report and test attachments; retention ends 8 December 2026.
+
+**Deliberate scope boundaries — not Phase 7 blockers**
+
+- Staging is ephemeral and isolated inside GitHub Actions. No persistent public preview was configured because no Vercel team/project is linked; no public deployment was performed.
+- Razorpay is not contacted; the test order uses COD. No production database, live customer account or supplier catalogue is used.
+- Authenticated active DAST, Nuclei templates and destructive tests remain disabled until a separately reviewed target/identity plan and explicit authorization exist.
+- The existing JavaScript-readable `sessionStorage` bearer-token approach remains a production-authentication limitation; Phase 7 does not claim to have solved it.
+
+**Phase 7 completion gate: satisfied.** The integrated browser journey, text-only product contract, accessibility checks, responsive tests and paired CI/security workflows all passed. Phase 7 is complete; Phase 8 work has not started.
 
 ## Phase 8 — Production readiness and release controls
 

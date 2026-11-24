@@ -52,3 +52,7 @@ data/catalogue/reports/
 # Python generated files
 __pycache__/
 *.py[cod]
+
+### Phase 7 browser test output ###
+frontend/test-results/
+frontend/playwright-report/

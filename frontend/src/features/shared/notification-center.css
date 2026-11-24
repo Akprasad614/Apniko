@@ -243,7 +243,12 @@
     padding: .4rem .55rem;
   }
   .notification-trigger__label {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
   .notification-panel {
     position: fixed;
@@ -252,4 +257,15 @@
     width: min(390px, calc(100vw - 20px));
     max-height: min(70vh, 560px);
   }
+}
+
+
+/* Keep the unread descriptor in the accessible name without changing the compact badge. */
+.notification-trigger__count-suffix {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }

@@ -1040,7 +1040,7 @@
   .category-row {
     flex-wrap: nowrap;
     overflow-x: auto;
-    margin-inline: -18px;
+    margin-inline: -14px;
     padding: 0 18px 1rem;
     scrollbar-width: thin;
   }
@@ -2044,9 +2044,9 @@
 
 .catalogue-product-card {
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
-  align-items: center;
-  gap: .9rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
   border: 1px solid #eee6d7;
   border-radius: 16px;
   padding: .7rem;
@@ -2363,8 +2363,8 @@
   }
 
   .catalogue-product-card {
-    grid-template-columns: 54px minmax(0, 1fr);
-    gap: .6rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
     border-radius: 14px;
     padding: .55rem;
   }
@@ -2430,8 +2430,8 @@
   }
 
   .catalogue-product-card {
-    grid-template-columns: 46px minmax(0, 1fr);
-    gap: .45rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
   .catalogue-product-card__body {
@@ -2499,3 +2499,45 @@
     flex-direction: column;
   }
 }
+
+ 
+/* Phase 7 WCAG contrast refinements for catalogue and metadata text. */
+.marketplace-heading__owner span,
+.customer-catalogue-section-heading > a { color: #8c4328; }
+.catalogue-product-card__pack,
+.catalogue-product-card__brand { color: #5c665d; }
+.catalogue-product-card__purchase button {
+  border-color: #365f21;
+  color: #365f21;
+}
+.catalogue-product-card__purchase button:hover:not(:disabled) {
+  border-color: #365f21;
+  color: #fff;
+  background: #365f21;
+}
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"],
+.catalogue-product-card__purchase > button[type="button"] {
+  border-color: #173f12 !important;
+  color: #173f12 !important;
+  background-color: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-text-fill-color: #173f12 !important;
+}
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"]:hover:not(:disabled),
+.catalogue-product-card .catalogue-product-card__purchase > button[type="button"]:focus-visible {
+  border-color: #173f12 !important;
+  color: #fff !important;
+  background-color: #173f12 !important;
+  -webkit-text-fill-color: #fff !important;
+}
+.catalogue-product-card__price > strong { color: #202a20 !important; opacity: 1 !important; }
+
+
+/* WCAG AA: retain the treats card text at full foreground opacity. */
+.customer-featured-category__copy { opacity: 1; }
+
+
+/* WCAG AA: metadata and price qualifiers must remain legible on pale surfaces. */
+.product-area__heading > span,
+.catalogue-product-card__price > span { color: #59645d; }

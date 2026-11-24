@@ -2078,3 +2078,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* WCAG contrast refinements for shopkeeper status and order metadata. */
+.shopkeeper-app .shopkeeper-role,
+.shopkeeper-app .shopkeeper-eyebrow,
+.shopkeeper-app .shopkeeper-order__number {
+  color: #8c4328;
+}
+
+.shopkeeper-app .shopkeeper-order__top small {
+  color: #59645d;
+}

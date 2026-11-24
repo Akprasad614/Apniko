@@ -1,0 +1,126 @@
+name: Apniko Phase 7 — browser, accessibility and staging verification
+
+on:
+  pull_request:
+    branches:
+      - feature/phase-6-role-based-app-delivery
+      - chore/phase-0-foundation-cleanup
+    paths:
+      - "frontend/**"
+      - "src/**"
+      - "pom.xml"
+      - "mvnw"
+      - ".mvn/**"
+      - "scripts/verify-phase7.sh"
+      - "scripts/verify-phase4-text-only.sh"
+      - "PHASE-4-TEXT-ONLY-CATALOGUE.md"
+      - "scripts/install-phase7-tooling.sh"
+      - "PHASE7-STAGING-VERIFICATION.md"
+      - ".github/workflows/phase7-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase7-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-e2e:
+    name: Real API browser journey, axe accessibility and responsive evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: phase7_disposable_ci_password
+          MYSQL_DATABASE: localcart_phase7
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent -h 127.0.0.1 -uroot -pphase7_disposable_ci_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+
+    env:
+      DB_PASSWORD: phase7_disposable_ci_password
+      SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart_phase7?allowPublicKeyRetrieval=true&useSSL=false
+      ADMIN_BOOTSTRAP_EMAIL: phase7-admin@local.test
+      PHASE7_API_URL: http://127.0.0.1:8080
+
+    steps:
+      - name: Check out Apniko
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Create one-run secrets for isolated test identities
+        shell: bash
+        run: |
+          JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+          PHASE7_TEST_PASSWORD="A7!phase7-$(openssl rand -hex 18)z"
+          echo "::add-mask::$JWT_SECRET"
+          echo "::add-mask::$PHASE7_TEST_PASSWORD"
+          {
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "ADMIN_BOOTSTRAP_PASSWORD=$PHASE7_TEST_PASSWORD"
+            echo "PHASE7_TEST_PASSWORD=$PHASE7_TEST_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify Phase 7 test harness and target safety
+        run: bash scripts/verify-phase7.sh
+
+      - name: Verify catalogue intake and text-only product policy
+        run: |
+          bash scripts/verify-phase2.sh
+          bash scripts/verify-phase3.sh
+          bash scripts/verify-phase4-text-only.sh
+
+      - name: Ensure Maven wrapper is executable
+        run: chmod +x ./mvnw
+
+      - name: Run backend verification against disposable MySQL
+        run: ./mvnw -B -ntp verify
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Install pinned browser and accessibility test tools
+        working-directory: frontend
+        run: bash ../scripts/install-phase7-tooling.sh
+
+      - name: Install Chromium browser
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run full-stack browser journeys, axe checks and responsive screenshots
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload Playwright report, traces and responsive screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: apniko-phase7-e2e-${{ github.run_number }}
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: warn
+          retention-days: 14

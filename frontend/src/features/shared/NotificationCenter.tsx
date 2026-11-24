@@ -163,12 +163,19 @@ export function NotificationCenter() {
         className="notification-trigger"
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={unreadCount ? 'Notifications, ' + unreadCount + ' unread' : 'Notifications'}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="notification-trigger__icon" aria-hidden="true">♢</span>
         <span className="notification-trigger__label">Updates</span>
-        {unreadCount > 0 && <span className="notification-trigger__count">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+        {unreadCount > 0 && (
+          <>
+            {' '}
+            <span className="notification-trigger__count">
+              {unreadCount > 99 ? '99+' : unreadCount}
+              <span className="notification-trigger__count-suffix"> unread</span>
+            </span>
+          </>
+        )}
       </button>
 
       {open && (
