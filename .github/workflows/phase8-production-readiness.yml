@@ -41,6 +41,8 @@ jobs:
       DB_PASSWORD: phase8_disposable_ci_password
       SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart_phase7?allowPublicKeyRetrieval=true&useSSL=false
       APP_AUTH_COOKIE_ENABLED: "false"
+      AUTH_LOGIN_MAX_ATTEMPTS: "100"
+      AUTH_REGISTRATION_MAX_ATTEMPTS: "100"
       VITE_AUTH_COOKIE_MODE: "false"
       ADMIN_BOOTSTRAP_EMAIL: phase7-admin@local.test
       PHASE7_API_URL: http://127.0.0.1:8080
