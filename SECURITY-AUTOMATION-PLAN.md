@@ -85,7 +85,7 @@ Implemented on the dedicated branch `feature/phase-6-role-based-app-delivery`; s
 
 Every feature uses existing API response data and backend authorization. No demo products, synthetic inventory, fabricated prices/sales/ETAs or generated packshots are used. Browser-based end-to-end and staging verification remain in Phase 7.
 
-## Phase 7 — Full end-to-end staging verification (completed)
+## Phase 7 — Full end-to-end staging verification (original branch passed; consolidated revalidation underway)
 
 Implemented and accepted on `feature/phase-7-e2e-accessibility-staging`; see `PHASE7-STAGING-VERIFICATION.md`.
 
@@ -119,12 +119,32 @@ The Phase 7 completion gate is satisfied: the dedicated workflow passed on the f
 
 ## Phase 8 — Production readiness and release controls
 
-- Configure protected `main` branch rules and required checks after the workflows have passed at least once.
-- Require review for security-sensitive changes.
-- Configure production secrets in the hosting provider, not in the repository.
-- Add HTTPS, content security policy, other security headers, restricted database access, monitoring, backups and rollback procedures.
-- Replace the temporary browser token storage design with the reviewed production authentication approach.
-- Keep a release checklist and a security findings register.
+Implementation is on `feature/phase-8-production-readiness`; see `PHASE8-PRODUCTION-READINESS.md`, `MAIN-BRANCH-PROTECTION.md` and `OPERATIONS-RUNBOOK.md`.
+
+**Repository implementation**
+- [x] Replace persistent browser JWT storage with HttpOnly, Secure, SameSite=Lax session cookies in the production profile.
+- [x] Add CSRF token bootstrap and `X-XSRF-TOKEN` handling for mutating browser requests; keep the signed Razorpay webhook on its provider-signature validation path.
+- [x] Add cookie-backed session restoration and logout; production no longer accepts the browser's JavaScript-readable bearer token.
+- [x] Keep bearer-token mode explicitly configurable for isolated CI fixtures and non-production API regression tests.
+- [x] Require a 32-byte JWT secret and configure the token lifetime.
+- [x] Add a production Spring profile with external DB/JWT secrets, TLS JDBC configuration, bounded connection pool, Hibernate `validate`, safe error settings, disabled SQL logs and disabled public Swagger/OpenAPI.
+- [x] Add sanitized Actuator liveness/readiness probes.
+- [x] Add multi-stage backend/frontend Dockerfiles, same-origin Nginx API proxy, Caddy automatic HTTPS and baseline CSP/HSTS/security headers.
+- [x] Keep backend and Actuator off public host ports; mount DB/JWT secrets as Docker secrets.
+- [x] Add TLS-verified database backup, checksum and explicit-confirmation restore scripts.
+- [x] Add immutable workflow pin verification.
+- [x] Pin third-party GitHub Actions and reusable workflows to full commit SHAs; add a verifier workflow to prevent mutable references.
+- [x] Add a Phase 8 CI gate for production-contract checks, Docker Compose validation, Maven, frontend checks, Playwright order lifecycle, axe and mobile evidence.
+- [x] Add branch-protection instructions, deployment environment example and operations runbook.
+
+**External release gates — not applied or fabricated by this code change**
+- [ ] Apply and verify the `main` branch ruleset from GitHub repository Settings. The available GitHub file/PR actions do not expose ruleset administration.
+- [ ] Select a hosting provider/domain, configure DNS and provision a managed TLS-enabled MySQL database.
+- [ ] Populate `.env.production`, `secrets/db_password.txt` and `secrets/jwt_secret.txt` on the deployment host. No real values belong in GitHub source or this chat.
+- [ ] Create and review a versioned schema migration baseline. Existing development relies on Hibernate `update`; production deliberately uses `validate` and must not bootstrap an empty database automatically.
+- [ ] Configure an external uptime/logging/alerting provider and encrypted offsite backup retention; complete and record a restore drill.
+
+The authentication limiter is in-memory and intended for one backend replica; multiple replicas require a shared atomic limiter or trusted gateway. Phase 8 repository code preparation is complete when the dedicated Phase 8 workflow passes. A public production release remains gated on the owner-controlled items above; no deployment or production data change is part of this milestone.
 
 ## Completion policy
 

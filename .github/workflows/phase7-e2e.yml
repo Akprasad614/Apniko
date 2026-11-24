@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - feature/phase-6-role-based-app-delivery
-      - chore/phase-0-foundation-cleanup
     paths:
       - "frontend/**"
       - "src/**"
@@ -49,20 +48,24 @@ jobs:
       SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart_phase7?allowPublicKeyRetrieval=true&useSSL=false
       ADMIN_BOOTSTRAP_EMAIL: phase7-admin@local.test
       PHASE7_API_URL: http://127.0.0.1:8080
+      APP_AUTH_COOKIE_ENABLED: "false"
+      AUTH_LOGIN_MAX_ATTEMPTS: "100"
+      AUTH_REGISTRATION_MAX_ATTEMPTS: "100"
+      VITE_AUTH_COOKIE_MODE: "false"
 
     steps:
       - name: Check out Apniko
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
           cache: npm
@@ -113,7 +116,7 @@ jobs:
 
       - name: Upload Playwright report, traces and responsive screenshots
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: apniko-phase7-e2e-${{ github.run_number }}
           path: |

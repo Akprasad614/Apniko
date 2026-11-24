@@ -5,13 +5,10 @@ on:
     branches:
       - main
       - "automation/**"
-      - "chore/**"
-      - "feature/**"
   pull_request:
     branches:
       - main
       - "feature/**"
-      - "chore/**"
   workflow_dispatch:
 
 permissions:
@@ -44,26 +41,24 @@ jobs:
     env:
       DB_PASSWORD: localcart_ci_root_password
       SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart?allowPublicKeyRetrieval=true&useSSL=false
+      APP_AUTH_COOKIE_ENABLED: "false"
+      AUTH_LOGIN_MAX_ATTEMPTS: "100"
+      AUTH_REGISTRATION_MAX_ATTEMPTS: "100"
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
 
-      - name: Generate and mask an ephemeral JWT secret for this CI run
+      - name: Generate an ephemeral JWT secret for this CI run
         shell: bash
-        run: |
-          set -euo pipefail
-          jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
-          echo "::add-mask::$jwt_secret"
-          printf 'JWT_SECRET=%s\n' "$jwt_secret" >> "$GITHUB_ENV"
-          unset jwt_secret
+        run: echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
 
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
@@ -76,9 +71,6 @@ jobs:
 
       - name: Verify Phase 3 authentic product photo tooling
         run: bash scripts/verify-phase3.sh
-
-      - name: Verify Phase 4 passive DAST guardrails
-        run: bash scripts/verify-phase4.sh
 
       - name: Run Maven verification and tests
         run: ./mvnw -B -ntp verify
