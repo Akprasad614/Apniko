@@ -1,26 +1,27 @@
 # Phase 7 — end-to-end staging verification
 
-**Status: Phase 7 implementation and its initial acceptance passed. Final acceptance is being rerun against the latest Phase 3–4 text-only development base before closeout.**
-**Integration branch:** feature/phase-7-e2e-accessibility-staging
+**Status: Phase 7 complete — integrated end-to-end, accessibility, responsive and security acceptance passed.**
+**Accepted feature branch head:** `ec37d51628233b0c81ed367e3e552fed1ec0295d`
+**Integration branch:** `feature/phase-7-e2e-accessibility-staging`
+**Target development branch:** `chore/phase-0-foundation-cleanup`
 **Parent milestone:** Phase 6 role-based application delivery
 
 ## Verification record
 
-The latest pre-integration acceptance ran on **24 November 2026**:
+Final integrated acceptance ran on **24 November 2026** against the Phase 3–4 development base:
 
-- Verified Phase 7 head: `8b71a4c3c7f03e4d267874616d3ab935c9605eee`
-- Dedicated browser/accessibility/staging workflow: [run #45403357732](https://github.com/Akprasad614/Apniko/actions/runs/45403357732) — **passed**.
-- Frontend CI: [run #45403357561](https://github.com/Akprasad614/Apniko/actions/runs/45403357561) — **passed**.
-- Backend CI: [run #45403357874](https://github.com/Akprasad614/Apniko/actions/runs/45403357874) — **passed**.
-- CodeQL: [run #45403357593](https://github.com/Akprasad614/Apniko/actions/runs/45403357593) — **passed**.
-- Static security (Semgrep/Gitleaks): [run #45403357547](https://github.com/Akprasad614/Apniko/actions/runs/45403357547) — **passed**.
-- CycloneDX SBOM: [run #45403357921](https://github.com/Akprasad614/Apniko/actions/runs/45403357921) — **passed**.
-- OSV dependency scan: [run #45403358455](https://github.com/Akprasad614/Apniko/actions/runs/45403358455) — **passed**.
-- Retained artifact: [apniko-phase7-e2e-29](https://github.com/Akprasad614/Apniko/actions/runs/45403357732/artifacts/14923598874), containing the Playwright report and nine desktop/mobile screenshots; retention ends **8 December 2026**.
+- Dedicated browser/accessibility/staging workflow: [run #45426389667](https://github.com/Akprasad614/Apniko/actions/runs/45426389667) — **passed**.
+- Frontend CI: [run #45426389402](https://github.com/Akprasad614/Apniko/actions/runs/45426389402) — **passed**.
+- Backend CI: [run #45426389498](https://github.com/Akprasad614/Apniko/actions/runs/45426389498) — **passed**.
+- CodeQL: [run #45426389474](https://github.com/Akprasad614/Apniko/actions/runs/45426389474) — **passed**.
+- Static security (Semgrep/Gitleaks): [run #45426389462](https://github.com/Akprasad614/Apniko/actions/runs/45426389462) — **passed**.
+- CycloneDX SBOM: [run #45426389569](https://github.com/Akprasad614/Apniko/actions/runs/45426389569) — **passed**.
+- OSV dependency scan: [run #45426390593](https://github.com/Akprasad614/Apniko/actions/runs/45426390593) — **passed**.
+- Retained artifact: [apniko-phase7-e2e-35](https://github.com/Akprasad614/Apniko/actions/runs/45426389667/artifacts/14936369137) — Playwright report, traces/test attachments and nine desktop/mobile/order screenshots; retention ends **8 December 2026**.
 
-The dedicated run completed every step, including the Phase 7 safety verifier, catalogue contract verifiers, Maven verification, Chromium installation, the full Playwright journey and artifact upload. Its browser run passed the customer checkout → shopkeeper fulfilment → delivery-partner pickup/delivery → customer order-history lifecycle, shopkeeper-to-admin HTTP 403 isolation, axe checks and mobile overflow checks.
+The dedicated integrated workflow passed the Phase 7 safety verifier, Phase 2/3 catalogue contracts, **Phase 4 text-only catalogue verifier**, Maven verification against disposable MySQL, locked frontend/browser tooling, Chromium installation and the complete Playwright journey. The API lifecycle, 403 role isolation, axe checks for all four roles and mobile overflow checks passed. The E2E browser test also asserts that product cards contain no `img`, `picture` or category-art placeholder.
 
-**Integration qualification:** the above run started before the development base received the final Phase 3–4 text-only catalogue changes. Its screenshots therefore are not the final visual acceptance for the text-only catalogue requirement. A new pull-request run against the latest development base is required; only that run can close Phase 7.
+I downloaded and visually reviewed the nine retained screenshots. Customer catalogue cards display only product text and shop data; no product photographs or placeholder artwork appear in the catalogue cards.
 
 ## What the Phase 7 workflow runs
 
