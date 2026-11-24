@@ -48,6 +48,7 @@ jobs:
       SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart_phase7?allowPublicKeyRetrieval=true&useSSL=false
       ADMIN_BOOTSTRAP_EMAIL: phase7-admin@local.test
       PHASE7_API_URL: http://127.0.0.1:8080
+      APP_AUTH_COOKIE_ENABLED: "false"
 
     steps:
       - name: Check out Apniko
