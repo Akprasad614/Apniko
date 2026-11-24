@@ -43,7 +43,6 @@ jobs:
       APP_AUTH_COOKIE_ENABLED: "false"
       AUTH_LOGIN_MAX_ATTEMPTS: "100"
       AUTH_REGISTRATION_MAX_ATTEMPTS: "100"
-      VITE_AUTH_COOKIE_MODE: "false"
       ADMIN_BOOTSTRAP_EMAIL: phase7-admin@local.test
       PHASE7_API_URL: http://127.0.0.1:8080
 
@@ -155,6 +154,10 @@ jobs:
 
       - name: Run complete customer-to-delivery browser acceptance
         working-directory: frontend
+        env:
+          # The CI-only browser fixtures receive short-lived bearer tokens from the API.
+          # Production builds and unit tests above retain HttpOnly-cookie mode.
+          VITE_AUTH_COOKIE_MODE: "false"
         run: npm run test:e2e
 
       - name: Upload browser report, traces and screenshots
