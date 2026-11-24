@@ -6,11 +6,13 @@ import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import jakarta.servlet.http.Cookie;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -69,6 +71,49 @@ class JwtAuthenticationFilterTest {
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
         assertTrue(SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
         assertEquals(email, SecurityContextHolder.getContext().getAuthentication().getName());
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void cookieModeAuthenticatesHttpOnlySessionAndDoesNotAcceptBearerHeader() throws Exception {
+        ReflectionTestUtils.setField(filter, "cookieAuthenticationEnabled", true);
+        String cookieToken = "cookie.jwt.token";
+        String email = "customer@test.com";
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie("APNIKO_SESSION", cookieToken));
+        request.addHeader("Authorization", "Bearer ignored.jwt.token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+        UserDetails details = User.withUsername(email)
+                .password("not-used")
+                .roles("CUSTOMER")
+                .build();
+
+        when(jwtService.extractEmail(cookieToken)).thenReturn(email);
+        when(jwtService.isTokenValid(cookieToken)).thenReturn(true);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(details);
+
+        filter.doFilter(request, response, chain);
+
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(email, SecurityContextHolder.getContext().getAuthentication().getName());
+        verify(jwtService).extractEmail(cookieToken);
+        verify(jwtService, never()).extractEmail("ignored.jwt.token");
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void cookieModeDoesNotFallBackToJavascriptReadableBearerHeader() throws Exception {
+        ReflectionTestUtils.setField(filter, "cookieAuthenticationEnabled", true);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer browser.token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilter(request, response, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verifyNoInteractions(jwtService, userDetailsService);
         verify(chain).doFilter(request, response);
     }
 
