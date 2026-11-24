@@ -14,11 +14,21 @@ import java.util.Date;
 public class JwtService {
 
     private final SecretKey secretKey;
+    private final long expirationMs;
 
-    public JwtService(@Value("${jwt.secret}") String secret) {
+    public JwtService(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalArgumentException("JWT_SECRET must contain at least 32 UTF-8 bytes.");
+        }
         this.secretKey = Keys.hmacShaKeyFor(
                 secret.getBytes(StandardCharsets.UTF_8)
         );
+        if (expirationMs < 60000) {
+            throw new IllegalArgumentException("JWT expiration must be at least 60 seconds.");
+        }
+        this.expirationMs = expirationMs;
     }
 
     public String generateToken(String email, String role) {
@@ -29,7 +39,7 @@ public class JwtService {
                 .issuedAt(new Date())
                 .expiration(
                         new Date(System.currentTimeMillis()
-                                + 1000L * 60 * 60 * 24)
+                                + expirationMs)
                 )
                 .signWith(secretKey)
                 .compact();
