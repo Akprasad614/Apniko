@@ -12,7 +12,7 @@ The customer workspace keeps its five mobile destinations — Home, Categories, 
 
 - Live active-shop selection, with quick search by public shop name or neighbourhood address. Customer discovery does not expose private owner or phone details.
 - Search, category and price filtering, sorting and paging against current shop inventory.
-- The current customer catalogue remains text-first for the clean-catalogue rollout. Product photographs are not exposed on customer screens until authorised, exact-match assets have been approved and image rollout is enabled.
+- All product catalogue interfaces are text-only across customer, shopkeeper, delivery and administrator roles. Product photographs, image URLs, uploads, product-image moderation and image rollout are excluded and must not be reintroduced.
 - Per-shop basket retrieval and add, update and remove actions with backend stock checks and totals.
 - Address selection and management through the customer's saved-address endpoints and map picker.
 - Checkout against the selected shop, with Cash on Delivery and Razorpay initiation when the backend reports online payments as configured.
@@ -81,10 +81,10 @@ The administrator workspace keeps the existing role-protected operational tools 
 - User provisioning for shopkeeper and delivery-partner accounts, user-role filtering, and account activation controls.
 - Shop creation/management, ownership assignment and active-state controls.
 - Catalogue product administration and category selection.
-- Catalogue review/moderation and product-photo review/approval workflows.
+- Text-only catalogue review/moderation, including verification of retail identity and source provenance.
 - MRP source options limited to the supported physical-pack, brand-supplied and government-source references. Excluded catalogue feeds are not offered as a source.
 
-The existing admin API, catalogue review queue and product-photo moderation endpoints remain the source of truth.
+The existing admin API and text-only catalogue review queue remain the source of truth.
 
 ## 5. Shared notifications
 
@@ -122,7 +122,7 @@ No animation library or external font dependency was added.
 - Every customer, shopkeeper, delivery and administrator screen continues to use the authenticated API and its role/ownership checks.
 - Frontend route guards are navigation assistance only; backend authorization remains authoritative.
 - Shop prices and stock are shop-specific; a shared catalogue product does not create shop inventory.
-- The customer storefront remains text-first. The administrator photo workflow can manage candidate assets, but the Mendeley nutrition records are never treated as product images, barcodes or retail pack sizes.
+- The customer storefront remains text-first. Product-photo workflows are not part of Apniko. Mendeley nutrition records remain private review candidates and are never treated as sellable retail variants, barcodes or retail pack sizes.
 - No Open Food Facts, retailer scraping, BigBasket catalogue data, mock products, sample stock, fabricated orders or invented analytics are introduced.
 - Public registration remains CUSTOMER-only. Privileged roles are provisioned by administration.
 - The existing bearer token storage in sessionStorage remains a known interim limitation: JavaScript can read it. Production authentication still requires separate review.
