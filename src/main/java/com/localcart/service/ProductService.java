@@ -116,7 +116,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponse> getCatalogueProducts() {
-        return productRepository.findAllVisibleWithPhoto(ProductCatalogueReviewStatus.ACTIVE).stream()
+        return productRepository.findAllVisible(ProductCatalogueReviewStatus.ACTIVE).stream()
                 .map(ProductResponse::from)
                 .toList();
     }

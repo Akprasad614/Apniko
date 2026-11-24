@@ -298,14 +298,6 @@ public class ShopInventoryService {
         response.setAvailable(inventory.isAvailable());
         response.setLowStockThreshold(threshold);
         response.setLowStock(inventory.getStockQuantity() <= threshold);
-        var photo = inventory.getProduct().getPhoto();
-        if (photo != null && photo.getApprovedImageUrl() != null) {
-            response.setImageUrl(photo.getApprovedImageUrl());
-            response.setImageSourceName(photo.getSourceName());
-            response.setImageSourceUrl(photo.getSourceUrl());
-            response.setImageLicense(photo.getLicense());
-            response.setImageAttribution(photo.getAttribution());
-        }
         return response;
     }
 
