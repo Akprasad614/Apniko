@@ -29,6 +29,7 @@ DOI = "10.17632/rhswn9z9xr.1"
 DATASET_TITLE = "Indian Packaged Foods Nutritional Composition Dataset (2026)"
 DATASET_VERSION = "1"
 EXPECTED_ROWS = 852
+APPROVED_SOURCE_SHA256 = "f64832743d4918c428aab31fb8a3681cd2dee89f3c5f305185ec0edfabe8f303"
 MAX_BATCH_SIZE = 250
 
 EXPECTED_HEADERS = (
@@ -196,7 +197,7 @@ def load_mendeley_csv(path: Path, limit: int = 0) -> tuple[list[dict], dict]:
     repeated_rows = sum(identity_counts[key] for key in repeated)
 
     records = []
-    review_rows = malformed_rows = less_than_rows = empty_nutrition_rows = 0
+    review_rows = quality_warning_rows = malformed_rows = less_than_rows = empty_nutrition_rows = 0
     for row in rows[:limit or None]:
         row_id = int(row["S.No"])
         identity = (clean(row["Item name"]).casefold(), clean(row["Brand_Name"]).casefold())
@@ -209,9 +210,19 @@ def load_mendeley_csv(path: Path, limit: int = 0) -> tuple[list[dict], dict]:
             less_than_rows += 1
         if any("Nutrition fields are empty" in warning for warning in warnings):
             empty_nutrition_rows += 1
-        review_reason = "; ".join(warnings) if warnings else None
-        if review_reason:
-            review_rows += 1
+        if warnings:
+            quality_warning_rows += 1
+
+        # This research dataset does not identify a sellable retail variant:
+        # it has no verified GTIN/barcode or retail pack-size field. Every row
+        # must remain a non-published candidate until those facts are sourced
+        # independently. Nutrition and source-price values stay provenance only.
+        review_notes = [
+            "Reference dataset row only: verified retail GTIN/barcode and retail pack size are not supplied; do not publish as a sellable variant until independently verified."
+        ]
+        review_notes.extend(warnings)
+        review_reason = "; ".join(review_notes)
+        review_rows += 1
 
         source_record_id = f"mendeley-ipf-2026-v1:{row_id:04d}"
         records.append({
@@ -241,6 +252,7 @@ def load_mendeley_csv(path: Path, limit: int = 0) -> tuple[list[dict], dict]:
         "duplicate_identity_groups": len(repeated),
         "duplicate_identity_rows": repeated_rows,
         "review_required_rows": review_rows,
+        "rows_with_data_quality_warnings": quality_warning_rows,
         "rows_with_malformed_numeric_values": malformed_rows,
         "rows_with_less_than_values": less_than_rows,
         "rows_with_empty_or_zero_nutrition": empty_nutrition_rows,
@@ -293,7 +305,8 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
     print("Eligible product records:", stats["eligible"])
     print("Repeated name+brand groups:", stats["duplicate_identity_groups"])
     print("Rows in repeated name+brand groups:", stats["duplicate_identity_rows"])
-    print("Rows requiring admin review:", stats["review_required_rows"])
+    print("Rows requiring retail identity verification:", stats["review_required_rows"])
+    print("Rows with additional source-quality warnings:", stats["rows_with_data_quality_warnings"])
     print("Rows with malformed numeric cells:", stats["rows_with_malformed_numeric_values"])
     print("Rows with <threshold nutrient values:", stats["rows_with_less_than_values"])
     print("Rows with empty/all-zero nutrition:", stats["rows_with_empty_or_zero_nutrition"])
@@ -316,6 +329,13 @@ def run(args: argparse.Namespace, session: requests.Session | None = None) -> in
 
     if not args.license_confirmed or not args.commercial_use_confirmed:
         print("Apply blocked: both --license-confirmed and --commercial-use-confirmed are required.", file=sys.stderr)
+        return 2
+    if stats["dataset_sha256"] != APPROVED_SOURCE_SHA256:
+        print(
+            "Apply blocked: CSV SHA-256 does not match the inspected Mendeley version-1 file. "
+            "Re-inspect the source before applying.",
+            file=sys.stderr,
+        )
         return 2
     if args.permission_reference.strip() != DOI:
         print(f"Apply blocked: permission reference must be dataset DOI {DOI}.", file=sys.stderr)
