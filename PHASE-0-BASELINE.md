@@ -66,8 +66,9 @@ database, or rebuild the frontend.
   `10.17632/rhswn9z9xr.1`, identified as CC BY 4.0.
 - The supplied CSV/README, field semantics, provenance and licence terms
   were inspected; a Mendeley-only importer and dry-run were completed.
-- The dataset contains no product photographs, GTINs or retail pack sizes.
-  Phase 3 photo sourcing is a separate rights and identity workflow.
+- The dataset contains no verified retail GTINs or retail pack sizes. Phase 3
+  preserves its source provenance and holds incomplete rows for review; Phase 4
+  removes product-photo and image-related features from every catalogue surface.
 - Do not invent GTINs, barcodes, pack sizes, prices, ratings, stock levels or
   product photographs.
 - A nutritional serving size is not automatically a retail pack size.
@@ -75,9 +76,9 @@ database, or rebuild the frontend.
 - Preserve the distinction between shared master product identity and
   shop-specific inventory, price and stock.
 - No retailer catalogue, retailer scraping or retailer-owned imagery is an
-  approved source path. The Phase 2 importer accepts only the exact Mendeley
-  dataset contract; Phase 3 accepts only authorised or appropriately
-  openly licensed image assets.
+  approved source path. The Phase 3 importer accepts only the exact inspected
+  Mendeley dataset contract and keeps every row in review; Phase 4 excludes all
+  product-image sources, storage, uploads, moderation and rendering.
 
 ## Safety boundaries
 
