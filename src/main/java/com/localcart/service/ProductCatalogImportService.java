@@ -436,6 +436,18 @@ public class ProductCatalogImportService {
                 changed = true;
             }
         }
+        // A source refresh that changes an already-reviewed product must send it
+        // back to moderation. Do not let an imported edit silently inherit an
+        // administrator's approval of the previous product data.
+        if (!mendeleyReferenceRow && changed && product.getCatalogueReviewedAt() != null) {
+            product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+            product.setCatalogueReviewReason(
+                    "Approved retail source data changed after the previous review; administrator re-review is required.");
+            product.setCatalogueReviewedAt(null);
+            product.setCatalogueReviewedBy(null);
+            changed = true;
+        }
+
         product.setCatalogueImportedAt(Instant.now());
         return changed;
     }
