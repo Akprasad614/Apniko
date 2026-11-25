@@ -7,7 +7,7 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 ## Delivered functionality
 
 ### Customer
-- View shop-wise offers, credit limit, available credit, outstanding amount and due date.
+- View shop-wise offers, credit limit, available credit, outstanding amount, carried credit balance and due date.
 - Accept the current version of shopkeeper-offered terms before using credit.
 - View an append-only ledger and repayment request history.
 - Submit a cash-at-shop or UPI repayment notice. A notice remains pending until the shopkeeper verifies receipt; a customer cannot mark their own repayment as paid.
@@ -27,7 +27,7 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 ## Accounting and security rules
 
 - A purchase is a PURCHASE_DEBIT; a verified repayment is a REPAYMENT_CREDIT.
-- An eligible order cancellation creates a separate ORDER_REVERSAL entry. It does not erase or mutate the original purchase entry.
+- An eligible order cancellation creates a separate ORDER_REVERSAL entry. It does not erase or mutate the original purchase entry. If part of the cancelled order was already repaid, the excess is carried as customer credit and offsets future Khatha purchases.
 - Ledger source keys and repayment idempotency keys are unique. Reusing an idempotency key with different amount/channel/reference details is rejected.
 - Account balance changes are transactional and account rows are pessimistically locked. The entity also carries an optimistic version.
 - Credit is available only when the shop is active, current terms have been accepted, the account is active, the account is not overdue and available credit remains.
@@ -73,7 +73,7 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 ## Database and deployment
 
 The new JPA entities are:
-- khatha_accounts
+- khatha_accounts (including outstanding and customer credit balances)
 - khatha_ledger_entries
 - khatha_repayments
 - khatha_audit_logs
