@@ -15,6 +15,7 @@ import os
 import re
 import sys
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -111,6 +112,17 @@ def load_csv(path: Path) -> tuple[list[dict], dict]:
                 raise ValueError(f"CSV row {line_number} brand exceeds 100 characters")
             if row["pack_size"] and len(row["pack_size"]) > 80:
                 raise ValueError(f"CSV row {line_number} pack_size exceeds 80 characters")
+            if row["variant_group_key"] and len(row["variant_group_key"]) > 120:
+                raise ValueError(f"CSV row {line_number} variant_group_key exceeds 120 characters")
+            if row["description"] and len(row["description"]) > 1000:
+                raise ValueError(f"CSV row {line_number} description exceeds 1000 characters")
+            if row["source_modified_at"]:
+                try:
+                    modified_at = datetime.fromisoformat(row["source_modified_at"].replace("Z", "+00:00"))
+                except ValueError:
+                    raise ValueError(f"CSV row {line_number} source_modified_at must be ISO-8601") from None
+                if modified_at.tzinfo is None or modified_at.utcoffset() is None:
+                    raise ValueError(f"CSV row {line_number} source_modified_at must include a timezone")
             if not valid_gtin(row["barcode"]):
                 raise ValueError(f"CSV row {line_number} has an invalid GTIN/check digit")
             quantity = positive_decimal(row["net_quantity"], "net_quantity", 3, "1000000")
