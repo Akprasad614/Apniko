@@ -31,12 +31,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-
-      - name: Set up Java 21
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
-        with:
-          distribution: temurin
-          java-version: "21"
           cache: maven
 
       - name: Run Phase 14 handoff and existing production-readiness verifiers
