@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, apiRequest } from '../../lib/api'
 import '../customer/khatha.css'
@@ -37,21 +37,22 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
  const [adjustmentType,setAdjustmentType]=useState<'CREDIT'|'DEBIT'>('CREDIT')
  const [adjustmentReason,setAdjustmentReason]=useState('Correction agreed with customer')
 
- async function load(){
+ const load=useCallback(async()=>{
   setLoading(true);setError('')
   const results=await Promise.allSettled([
    apiRequest<Account[]>(`/api/shopkeeper/khatha?shopId=${shopId}`,{},token),
    apiRequest<Customer[]>(`/api/shopkeeper/khatha/shops/${shopId}/customers`,{},token),
   ])
   if(results[0].status==='fulfilled'){
-   setAccounts(results[0].value)
-   setSelectedId(current=>current&&results[0].value.some(a=>a.id===current)?current:(results[0].value[0]?.id??null))
+   const loadedAccounts=results[0].value
+   setAccounts(loadedAccounts)
+   setSelectedId(current=>current&&loadedAccounts.some(a=>a.id===current)?current:(loadedAccounts[0]?.id??null))
   }else setError(message(results[0].reason))
   if(results[1].status==='fulfilled')setCustomers(results[1].value)
-  else setError(current=>current?current+' '+message(results[1].reason):message(results[1].reason))
+  else setError(message(results[1].reason))
   setLoading(false)
- }
- useEffect(()=>{void load()},[token,shopId])
+ },[token,shopId])
+ useEffect(()=>{void load()},[load])
  useEffect(()=>{
   if(selectedId===null){setLedger([]);setRepayments([]);return}
   let active=true
