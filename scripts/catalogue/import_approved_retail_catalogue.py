@@ -43,7 +43,7 @@ REQUIRED_FIELDS = (
 )
 VALID_UNITS = {"g", "kg", "ml", "l", "pcs", "unit"}
 VALID_MRP_SOURCES = {"pack", "brand", "gov"}
-SOURCE_ID = re.compile(r"^[^\\s]{1,160}$")
+SOURCE_ID = re.compile(r"^[^\s]{1,160}$")
 
 
 def clean(value: object) -> str:
