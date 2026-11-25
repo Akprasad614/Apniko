@@ -1,6 +1,6 @@
 # Phase 10 — customer GPS and nearby-shop discovery
 
-**Implementation status: complete in the Phase 10 integration branch, including customer address capture, nearby-shop discovery, admin shop-pin management, and validation tests.**
+**Implementation status: complete and merged into the integration branch via PR #77 (merge commit `3d863ff0b40f8f0118cbeb53cdfde884569c0e08`).**
 **Real-store pin coverage: requires the operator to verify and save a coordinate for each shop.**
 
 ## Shop coordinate ownership
