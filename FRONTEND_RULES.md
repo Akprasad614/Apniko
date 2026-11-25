@@ -1,30 +1,38 @@
 # Apniko frontend engineering rules
 
-## Structure
+## Project structure
 
-- Keep the frontend in `frontend/`; do not move or rewrite the Spring Boot backend.
-- Group by app, auth, components, lib, pages and styles. Promote repeated UI patterns into shared components only when they are actually reused.
-- Type backend request and response shapes. Do not use `any` to avoid understanding a DTO.
-- Keep API access out of presentational components.
+- Keep the React application in `frontend/`; the backend remains the Spring Boot application under `src/`.
+- Keep route composition in `src/app/`, authentication in `src/auth/`, shared API and role utilities in `src/lib/`, and domain features under `src/features/`.
+- Use shared components for genuinely repeated UI patterns. Keep page-specific behaviour in the relevant feature.
+- Type backend request and response contracts. Do not use `any` to bypass a missing or unclear type.
+- Keep network requests in the shared API layer or feature data helpers rather than presentational components.
 
 ## API and authentication
 
 - The local Vite server proxies `/api` to `http://127.0.0.1:8080`.
-- Use `apiRequest` for HTTP calls so errors and bearer headers are handled consistently.
-- Public registration is CUSTOMER-only. The UI must not offer public registration for privileged roles.
-- The backend is the authority for identity, role checks, shop ownership, order ownership, stock and price calculations. Client-side guards are navigation only.
-- The current backend returns a bearer token in the authentication response. This foundation keeps it in `sessionStorage`, not `localStorage`, to limit persistence. `sessionStorage` is still readable by JavaScript and is not an XSS defence. A production authentication design should prefer secure, HttpOnly, SameSite cookies or another reviewed token-handling design.
-- Never place API secrets, payment secrets or privileged credentials in `VITE_*` variables; Vite variables are public in the browser bundle.
+- Use `apiRequest` from `src/lib/api.ts` for application API calls.
+- Production browser authentication uses a secure HttpOnly SameSite cookie and CSRF protection. Do not read or persist authentication cookies or tokens through browser storage.
+- Bearer compatibility is limited to isolated automated test fixtures; it must not be enabled in a production build.
+- Public registration is CUSTOMER-only. Privileged roles are provisioned by an administrator.
+- Backend authorization is authoritative for identity, role checks, shop ownership, order ownership, stock and price calculations. Client route guards are navigation controls, not a security boundary.
+- Never place API keys, payment secrets, privileged credentials or other private values in `VITE_*` variables.
 - Do not render untrusted HTML. Avoid `dangerouslySetInnerHTML`.
 
-## Accessibility and interaction
+## User experience and accessibility
 
-- Use semantic HTML and real labels.
-- Ensure keyboard navigation and visible focus states.
+- Design mobile-first and preserve responsive behaviour at wider viewports.
+- Use semantic HTML, associated labels, keyboard-accessible controls and visible focus states.
 - Provide loading, empty, success and error states for asynchronous actions.
-- Avoid disabling browser zoom or overriding user accessibility settings.
-- Honour reduced-motion preferences.
-- Test responsive layouts with narrow mobile and wide desktop viewports.
+- Respect browser zoom, reduced-motion preferences and user accessibility settings.
+- Keep motion purposeful and avoid animations that obstruct task completion.
+
+## Product catalogue
+
+- Catalogue screens are text-only. Do not add product photos, image URLs, image placeholders, upload or photo-review functionality.
+- Display only verified product facts returned by the backend.
+- Do not invent products, prices, pack sizes, barcodes, MRP or stock values.
+- Shop selling prices, stock, availability and low-stock thresholds are shop-specific; never infer them from a master product record.
 
 ## Code quality
 
@@ -37,4 +45,4 @@ npm run test:ci
 npm run build
 ```
 
-Commit `package-lock.json`; CI uses `npm ci` and must not resolve a fresh dependency tree on every run.
+Commit `package-lock.json`; CI uses `npm ci` to install the locked dependency tree.

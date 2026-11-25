@@ -44,7 +44,7 @@ This roadmap is maintained with the repository. Automation is introduced in smal
 
 Safety gates:
 
-- This DAST stage is passive only. It does not run ZAP active scans, Nuclei templates, destructive payloads, stress tests, or AI pentest agents.
+- This DAST stage is passive only. It does not run ZAP active scans, Nuclei templates, destructive payloads, stress tests, or active penetration-testing services.
 - The target is hardcoded to the local app started in that workflow. No arbitrary external target input is accepted.
 - The DAST job uses only the disposable `localcart_dast` MySQL service; it never connects to local developer or production databases.
 - ZAP warning findings remain visible in reports and can be promoted to a blocking policy after review.

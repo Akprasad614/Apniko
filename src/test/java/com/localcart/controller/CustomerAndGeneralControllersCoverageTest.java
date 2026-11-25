@@ -20,7 +20,7 @@ import com.localcart.service.NotificationService;
 import com.localcart.service.OrderService;
 import com.localcart.service.PaymentService;
 import com.localcart.service.ShopService;
-import com.localcart.service.ShopkeeperAiInsightsService;
+import com.localcart.service.ShopkeeperDemandInsightsService;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +45,7 @@ class CustomerAndGeneralControllersCoverageTest {
     private CustomerMarketplaceService marketplaceService;
     private NotificationService notificationService;
     private PaymentService paymentService;
-    private ShopkeeperAiInsightsService insightsService;
+    private ShopkeeperDemandInsightsService insightsService;
 
     @BeforeEach
     void setUp() {
@@ -58,7 +58,7 @@ class CustomerAndGeneralControllersCoverageTest {
         marketplaceService = mock(CustomerMarketplaceService.class);
         notificationService = mock(NotificationService.class);
         paymentService = mock(PaymentService.class);
-        insightsService = mock(ShopkeeperAiInsightsService.class);
+        insightsService = mock(ShopkeeperDemandInsightsService.class);
     }
 
     @AfterEach
@@ -228,8 +228,8 @@ class CustomerAndGeneralControllersCoverageTest {
     }
 
     @Test
-    void shopkeeperAiInsightsControllerDelegatesForecastReplenishmentAndSummary() {
-        ShopkeeperAiInsightsController controller = new ShopkeeperAiInsightsController(insightsService);
+    void shopkeeperDemandInsightsControllerDelegatesForecastReplenishmentAndSummary() {
+        ShopkeeperDemandInsightsController controller = new ShopkeeperDemandInsightsController(insightsService);
 
         assertEquals(200, controller.getProductForecast(1L, 10L, 7, 28)
                 .getStatusCode().value());

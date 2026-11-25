@@ -53,7 +53,17 @@ data/catalogue/reports/
 frontend/test-results/
 frontend/playwright-report/
 
-# Production runtime secrets and environment files
-.env.production
-secrets/*.txt
-!secrets/.gitkeep
+# Local environment files and runtime data
+.env
+.env.*
+!.env.production.example
+/backups/
+
+# Python tooling and generated files
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Runtime secrets — keep only the directory placeholder
+/secrets/*
+!/secrets/.gitkeep

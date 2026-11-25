@@ -13,7 +13,7 @@ The scan runs on pull requests that change backend code/configuration, matching 
 - The workflow uses ZAP's `--autooff` compatibility mode rather than the Automation Framework because the Framework's generated summary file failed on this runner. The packaged baseline scan still performs spidering and passive analysis; no active attack scan is enabled.
 - Report filenames are relative to the mounted `/zap/wrk` directory, and the job explicitly verifies the HTML, JSON, and Markdown files before uploading the artifact.
 - After reviewing the first reports, selected ZAP rule IDs can be promoted to a blocking policy through a reviewed configuration file in a later change.
-- This workflow does not run ZAP Full Scan, ZAP API Scan, Nuclei, or an AI pentest agent.
+- This workflow does not run ZAP Full Scan, ZAP API Scan, Nuclei templates or active penetration-testing services.
 
 ## First recorded baseline and open finding
 

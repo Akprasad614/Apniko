@@ -1,6 +1,6 @@
 package com.localcart.service;
 
-import com.localcart.dto.AiInsightSummaryResponse;
+import com.localcart.dto.DemandInsightsSummaryResponse;
 import com.localcart.dto.DemandForecastResponse;
 import com.localcart.dto.ReplenishmentRecommendationResponse;
 import com.localcart.entity.Order;
@@ -36,13 +36,13 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-class ShopkeeperAiInsightsServiceTest {
+class ShopkeeperDemandInsightsServiceTest {
 
     private OrderStatusHistoryRepository historyRepository;
     private ShopInventoryRepository inventoryRepository;
     private ShopRepository shopRepository;
     private UserRepository userRepository;
-    private ShopkeeperAiInsightsService service;
+    private ShopkeeperDemandInsightsService service;
 
     private User shopkeeper;
     private User shopOwner;
@@ -54,7 +54,7 @@ class ShopkeeperAiInsightsServiceTest {
         inventoryRepository = mock(ShopInventoryRepository.class);
         shopRepository = mock(ShopRepository.class);
         userRepository = mock(UserRepository.class);
-        service = new ShopkeeperAiInsightsService(
+        service = new ShopkeeperDemandInsightsService(
                 historyRepository, inventoryRepository, shopRepository, userRepository
         );
 
@@ -293,7 +293,7 @@ class ShopkeeperAiInsightsServiceTest {
                 anyList(), eq(OrderStatus.PLACED), any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(events);
 
-        AiInsightSummaryResponse response = service.getSummary(1L, 28);
+        DemandInsightsSummaryResponse response = service.getSummary(1L, 28);
 
         assertEquals(1L, response.shopId());
         assertEquals(1, response.productsAnalysed());

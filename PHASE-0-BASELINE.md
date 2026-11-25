@@ -82,14 +82,12 @@ database, or rebuild the frontend.
 
 ## Safety boundaries
 
-The owner-reported backup path is:
-
-`~/Desktop/apniko-catalogue-reset-20261122-165627/localcart-before-reset.sql`
-
-On 2026-11-22 the owner verified from the Mac terminal that this file exists
-and is non-empty. The backup was made before the destructive local reset.
-The owner reported the final reset counters as zero. Do not rerun the reset
-merely to check this record.
+A full local SQL backup was created and verified before the development
+catalogue reset on 2026-11-22. The owner recorded zero products, product
+photos, photo history, source records, categories, shop inventory, cart items,
+order items and orders after the reset. This is a historical record of the
+local development database only; it is not evidence about a staging or
+production database. Do not repeat the reset to re-check this record.
 
 The owner also ran a working-tree inspection. `git status --short --ignored`
 showed only ignored generated/development directories:
@@ -125,10 +123,9 @@ merged on 2026-11-22 into
 The merged work includes the customer Home, Categories, Cart, Orders,
 Account, Addresses and Payment Methods routes; five-destination responsive
 navigation; shop/product discovery and shop-scoped browsing; basket,
-checkout, order history/status and cancellation flows; and the owner-approved
-Color Pop text-first presentation. Customer marketplace shop responses omit
-private shop-owner names and phone numbers. The user visually reviewed and
-approved the storefront appearance.
+checkout, order history/status and cancellation flows; and the Color Pop
+text-first presentation. Customer marketplace shop responses omit private
+shop-owner names and phone numbers.
 
 ## Automated validation
 

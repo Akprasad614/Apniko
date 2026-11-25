@@ -5,25 +5,39 @@
 | 0 | Repository audit, architecture and database cleanup | Complete |
 | 1 | Application foundation, authentication and navigation | Complete |
 | 2 | Customer, Shopkeeper, Delivery Partner and Admin applications | Complete |
-| 3 | Authentic Indian grocery product catalogue | Implemented with approved-source limitations; retail dataset still incomplete |
-| 4 | Text-only catalogue / remove image infrastructure | Complete |
-| 5 | Admin catalogue management and bulk import | Implemented; commercial retail source rights still pending |
+| 3 | Authentic Indian grocery product catalogue | Implemented; complete licensed retail dataset pending |
+| 4 | Text-only catalogue and removal of product-image infrastructure | Complete |
+| 5 | Admin catalogue management and bulk product import | Implemented; commercial source rights pending |
 | 6 | Shopkeeper catalogue, inventory and shop management | Complete |
 | 7 | Customer marketplace and shopping experience | Complete |
-| 8 | Checkout and payment system | Implemented; real Razorpay sandbox acceptance pending |
+| 8 | Checkout and payment system | Implemented; Razorpay sandbox acceptance pending |
 | 9 | Order management and delivery operations | Complete |
-| 10 | GPS, customer location and nearby shops | Implemented; real-device/site-pin verification pending |
-| 11 | Apniko Khatha — customer credit and ledger | Implemented; staging financial regression and reconciliation pending |
+| 10 | GPS, customer location and nearby shops | Implemented; real-device/shop-pin verification pending |
+| 11 | Apniko Khatha — customer credit and ledger | Implemented; staging regression and reconciliation pending |
 | 12 | Notifications, analytics and operational insights | Complete |
-| 13 | Integration, security and reliability | Repository verification passed; staging acceptance pending |
-| 14 | Staging deployment and testing | **Repository preparation complete; live staging acceptance pending** |
-| 15 | Production deployment and public launch | **Blocked — do not start** |
-| 16 | Future AI features and intelligent automation | Planned |
+| 13 | Integration, security and reliability | Repository verification passed; live staging acceptance pending |
+| 14 | Staging deployment and testing | Repository preparation integrated; live staging acceptance pending |
+| 15 | Production deployment and public launch | Blocked until Phase 14 sign-off |
 
-## Phase 14 current result
+## Phase 14 repository work
 
-Repository-side handoff now includes staging acceptance gates, database migration-baseline procedure, owner deployment guide, payment/Khatha test plan, retail licensing handoff, a staging environment template, HTTPS smoke-test script, a readiness verifier and a PR workflow. Existing Compose/Caddy/health/backup/restore automation is retained. The new workflow validates the handoff and production configuration but deliberately never targets a live staging/production service.
+The staging handoff is integrated through PR #80. It includes the staging acceptance matrix, database migration-baseline procedure, owner deployment guide, Razorpay/Khatha test plan, retail catalogue licensing handoff, staging environment template, HTTPS smoke-test helper, readiness verifier and a dedicated GitHub Actions workflow.
 
-Outstanding owner-run gates are listed in `PHASE14-STAGING-READINESS.md`: actual schema inventory and reviewed migration baseline, real staging HTTPS deploy, application and role acceptance, Razorpay sandbox/webhook/refund tests, Khatha financial regression/reconciliation, Android/iOS GPS verification, main-branch protections, external monitoring/alert delivery, encrypted off-site backup + successful restore drill, and retail catalogue commercial rights and verified products.
+The existing Compose, Caddy, production profile, health checks and guarded backup/restore scripts are retained.
 
-**Phase 14 is not complete until all those checks are performed against staging with evidence. Phase 15 starts only after Phase 14 has passed and has owner sign-off.**
+## Remaining release gates
+
+Phase 14 is not complete until each of these has evidence from the real staging environment:
+
+1. Inventory and review the actual MySQL schema; create and test a versioned migration baseline.
+2. Deploy the application to a staging host with HTTPS.
+3. Complete customer, shopkeeper, delivery-partner and admin acceptance tests.
+4. Verify Razorpay sandbox payments, signatures, webhooks, retries and refunds.
+5. Test Khatha credit limits, repayments, reversals, permissions and ledger reconciliation.
+6. Verify shop GPS pins and browser location behaviour on supported Android and iOS devices.
+7. Configure and test GitHub main-branch protection.
+8. Configure external monitoring, alert delivery and restricted log retention.
+9. Configure encrypted off-site backups and complete a restore drill into an isolated database.
+10. Obtain commercial catalogue rights and verify retail product data before importing it.
+
+**Phase 15 starts only after all Phase 14 gates pass and the release evidence is approved.**

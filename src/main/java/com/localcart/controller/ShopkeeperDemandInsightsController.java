@@ -1,9 +1,9 @@
 package com.localcart.controller;
 
-import com.localcart.dto.AiInsightSummaryResponse;
+import com.localcart.dto.DemandInsightsSummaryResponse;
 import com.localcart.dto.DemandForecastResponse;
 import com.localcart.dto.ReplenishmentRecommendationResponse;
-import com.localcart.service.ShopkeeperAiInsightsService;
+import com.localcart.service.ShopkeeperDemandInsightsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,13 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/shopkeeper/ai-insights")
+@RequestMapping("/api/shopkeeper/insights")
 @PreAuthorize("hasRole('SHOPKEEPER')")
-public class ShopkeeperAiInsightsController {
+public class ShopkeeperDemandInsightsController {
 
-    private final ShopkeeperAiInsightsService insightsService;
+    private final ShopkeeperDemandInsightsService insightsService;
 
-    public ShopkeeperAiInsightsController(ShopkeeperAiInsightsService insightsService) {
+    public ShopkeeperDemandInsightsController(ShopkeeperDemandInsightsService insightsService) {
         this.insightsService = insightsService;
     }
 
@@ -44,7 +44,7 @@ public class ShopkeeperAiInsightsController {
     }
 
     @GetMapping("/summary")
-    public ResponseEntity<AiInsightSummaryResponse> getSummary(
+    public ResponseEntity<DemandInsightsSummaryResponse> getSummary(
             @RequestParam Long shopId,
             @RequestParam(required = false, defaultValue = "28") Integer historyDays) {
         return ResponseEntity.ok(insightsService.getSummary(shopId, historyDays));

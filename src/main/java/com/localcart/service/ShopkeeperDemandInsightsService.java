@@ -1,6 +1,6 @@
 package com.localcart.service;
 
-import com.localcart.dto.AiInsightSummaryResponse;
+import com.localcart.dto.DemandInsightsSummaryResponse;
 import com.localcart.dto.DailyDemandForecastResponse;
 import com.localcart.dto.DemandForecastResponse;
 import com.localcart.dto.ReplenishmentRecommendationResponse;
@@ -34,13 +34,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Explainable baseline demand forecasting for a shopkeeper's own inventory.
- * It uses a weighted moving average with a capped trend adjustment; it is not
- * a trained machine-learning model and does not call an external AI provider.
+ * Demand estimates for a shopkeeper's inventory using recent order history.
+ * The baseline uses a weighted moving average with a capped trend adjustment.
  */
 @Service
 @Transactional(readOnly = true)
-public class ShopkeeperAiInsightsService {
+public class ShopkeeperDemandInsightsService {
 
     public static final String FORECASTING_METHOD = "WEIGHTED_MOVING_AVERAGE_WITH_CAPPED_TREND";
     private static final int DEFAULT_HISTORY_DAYS = 28;
@@ -53,7 +52,7 @@ public class ShopkeeperAiInsightsService {
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
 
-    public ShopkeeperAiInsightsService(
+    public ShopkeeperDemandInsightsService(
             OrderStatusHistoryRepository historyRepository,
             ShopInventoryRepository inventoryRepository,
             ShopRepository shopRepository,
@@ -134,7 +133,7 @@ public class ShopkeeperAiInsightsService {
         return List.copyOf(recommendations);
     }
 
-    public AiInsightSummaryResponse getSummary(Long shopId, Integer requestedHistoryDays) {
+    public DemandInsightsSummaryResponse getSummary(Long shopId, Integer requestedHistoryDays) {
         int historyDays = validateRange(requestedHistoryDays, DEFAULT_HISTORY_DAYS, 7, 90,
                 "historyDays must be between 7 and 90");
         Shop shop = getOwnedShop(shopId);
@@ -148,7 +147,7 @@ public class ShopkeeperAiInsightsService {
                 .filter(item -> !"HEALTHY".equals(item.status()))
                 .count();
 
-        return new AiInsightSummaryResponse(
+        return new DemandInsightsSummaryResponse(
                 shop.getId(), shop.getName(), LocalDateTime.now(), historyDays,
                 recommendations.size(), attention, round(nextSevenDays),
                 FORECASTING_METHOD, recommendations

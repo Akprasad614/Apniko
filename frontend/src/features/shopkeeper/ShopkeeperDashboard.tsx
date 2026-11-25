@@ -215,7 +215,7 @@ export function ShopkeeperDashboard() {
           '/api/shopkeeper/analytics/top-products?' + productParams.toString(), {}, token,
         ),
         apiRequest<ShopkeeperReplenishmentRecommendation[]>(
-          '/api/shopkeeper/ai-insights/replenishment?shopId=' + selectedShopId + '&historyDays=28&leadTimeDays=3',
+          '/api/shopkeeper/insights/replenishment?shopId=' + selectedShopId + '&historyDays=28&leadTimeDays=3',
           {},
           token,
         ),

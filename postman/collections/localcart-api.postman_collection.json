@@ -2072,7 +2072,7 @@
               ]
             },
             {
-              "name": "ai-insights",
+              "name": "demand-insights",
               "item": [
                 {
                   "name": "summary",
@@ -2088,14 +2088,14 @@
                           }
                         ],
                         "url": {
-                          "raw": "{{baseUrl}}/api/shopkeeper/ai-insights/summary?shopId=5923&historyDays=28",
+                          "raw": "{{baseUrl}}/api/shopkeeper/demand-insights/summary?shopId=5923&historyDays=28",
                           "host": [
                             "{{baseUrl}}"
                           ],
                           "path": [
                             "api",
                             "shopkeeper",
-                            "ai-insights",
+                            "demand-insights",
                             "summary"
                           ],
                           "query": [
@@ -2127,14 +2127,14 @@
                               }
                             ],
                             "url": {
-                              "raw": "{{baseUrl}}/api/shopkeeper/ai-insights/summary?shopId=5923&historyDays=28",
+                              "raw": "{{baseUrl}}/api/shopkeeper/demand-insights/summary?shopId=5923&historyDays=28",
                               "host": [
                                 "{{baseUrl}}"
                               ],
                               "path": [
                                 "api",
                                 "shopkeeper",
-                                "ai-insights",
+                                "demand-insights",
                                 "summary"
                               ],
                               "query": [
@@ -2179,14 +2179,14 @@
                           }
                         ],
                         "url": {
-                          "raw": "{{baseUrl}}/api/shopkeeper/ai-insights/replenishment?shopId=5923&historyDays=28&leadTimeDays=3",
+                          "raw": "{{baseUrl}}/api/shopkeeper/demand-insights/replenishment?shopId=5923&historyDays=28&leadTimeDays=3",
                           "host": [
                             "{{baseUrl}}"
                           ],
                           "path": [
                             "api",
                             "shopkeeper",
-                            "ai-insights",
+                            "demand-insights",
                             "replenishment"
                           ],
                           "query": [
@@ -2222,14 +2222,14 @@
                               }
                             ],
                             "url": {
-                              "raw": "{{baseUrl}}/api/shopkeeper/ai-insights/replenishment?shopId=5923&historyDays=28&leadTimeDays=3",
+                              "raw": "{{baseUrl}}/api/shopkeeper/demand-insights/replenishment?shopId=5923&historyDays=28&leadTimeDays=3",
                               "host": [
                                 "{{baseUrl}}"
                               ],
                               "path": [
                                 "api",
                                 "shopkeeper",
-                                "ai-insights",
+                                "demand-insights",
                                 "replenishment"
                               ],
                               "query": [
@@ -2278,14 +2278,14 @@
                           }
                         ],
                         "url": {
-                          "raw": "{{baseUrl}}/api/shopkeeper/ai-insights/forecast?shopId=5923&productId=5923&forecastDays=7&historyDays=28",
+                          "raw": "{{baseUrl}}/api/shopkeeper/demand-insights/forecast?shopId=5923&productId=5923&forecastDays=7&historyDays=28",
                           "host": [
                             "{{baseUrl}}"
                           ],
                           "path": [
                             "api",
                             "shopkeeper",
-                            "ai-insights",
+                            "demand-insights",
                             "forecast"
                           ],
                           "query": [
@@ -2325,14 +2325,14 @@
                               }
                             ],
                             "url": {
-                              "raw": "{{baseUrl}}/api/shopkeeper/ai-insights/forecast?shopId=5923&productId=5923&forecastDays=7&historyDays=28",
+                              "raw": "{{baseUrl}}/api/shopkeeper/demand-insights/forecast?shopId=5923&productId=5923&forecastDays=7&historyDays=28",
                               "host": [
                                 "{{baseUrl}}"
                               ],
                               "path": [
                                 "api",
                                 "shopkeeper",
-                                "ai-insights",
+                                "demand-insights",
                                 "forecast"
                               ],
                               "query": [

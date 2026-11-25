@@ -3,7 +3,7 @@ package com.localcart.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record AiInsightSummaryResponse(
+public record DemandInsightsSummaryResponse(
         Long shopId,
         String shopName,
         LocalDateTime generatedAt,

@@ -2039,10 +2039,10 @@
         ]
       }
     },
-    "/api/shopkeeper/ai-insights/summary": {
+    "/api/shopkeeper/insights/summary": {
       "get": {
         "tags": [
-          "shopkeeper-ai-insights-controller"
+          "shopkeeper-demand-insights-controller"
         ],
         "operationId": "getSummary",
         "parameters": [
@@ -2072,7 +2072,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AiInsightSummaryResponse"
+                  "$ref": "#/components/schemas/DemandInsightsSummaryResponse"
                 }
               }
             }
@@ -2085,10 +2085,10 @@
         ]
       }
     },
-    "/api/shopkeeper/ai-insights/replenishment": {
+    "/api/shopkeeper/insights/replenishment": {
       "get": {
         "tags": [
-          "shopkeeper-ai-insights-controller"
+          "shopkeeper-demand-insights-controller"
         ],
         "operationId": "getReplenishmentRecommendations",
         "parameters": [
@@ -2144,10 +2144,10 @@
         ]
       }
     },
-    "/api/shopkeeper/ai-insights/forecast": {
+    "/api/shopkeeper/insights/forecast": {
       "get": {
         "tags": [
-          "shopkeeper-ai-insights-controller"
+          "shopkeeper-demand-insights-controller"
         ],
         "operationId": "getProductForecast",
         "parameters": [
@@ -4252,7 +4252,7 @@
           }
         }
       },
-      "AiInsightSummaryResponse": {
+      "DemandInsightsSummaryResponse": {
         "type": "object",
         "properties": {
           "shopId": {
