@@ -15,6 +15,9 @@ public class KhathaLedgerEntry {
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=32) private KhathaLedgerEntryType entryType;
     @Column(nullable=false, precision=12, scale=2) private BigDecimal amount;
     @Column(nullable=false, precision=12, scale=2) private BigDecimal outstandingAfter;
+    @Column(precision=12, scale=2) private BigDecimal creditBalanceAfter=BigDecimal.ZERO;
+    @Column(precision=12, scale=2) private BigDecimal creditApplied=BigDecimal.ZERO;
+    @Column(precision=12, scale=2) private BigDecimal outstandingChange=BigDecimal.ZERO;
     @Column(name="source_type", nullable=false, length=32) private String sourceType;
     @Column(name="source_id", nullable=false, length=80) private String sourceId;
     @Column(nullable=false, length=500) private String description;
@@ -31,6 +34,9 @@ public class KhathaLedgerEntry {
     public KhathaLedgerEntryType getEntryType(){return entryType;} public void setEntryType(KhathaLedgerEntryType v){entryType=v;}
     public BigDecimal getAmount(){return amount;} public void setAmount(BigDecimal v){amount=v;}
     public BigDecimal getOutstandingAfter(){return outstandingAfter;} public void setOutstandingAfter(BigDecimal v){outstandingAfter=v;}
+    public BigDecimal getCreditBalanceAfter(){return creditBalanceAfter;} public void setCreditBalanceAfter(BigDecimal v){creditBalanceAfter=v;}
+    public BigDecimal getCreditApplied(){return creditApplied;} public void setCreditApplied(BigDecimal v){creditApplied=v;}
+    public BigDecimal getOutstandingChange(){return outstandingChange;} public void setOutstandingChange(BigDecimal v){outstandingChange=v;}
     public String getSourceType(){return sourceType;} public void setSourceType(String v){sourceType=v;}
     public String getSourceId(){return sourceId;} public void setSourceId(String v){sourceId=v;}
     public String getDescription(){return description;} public void setDescription(String v){description=v;}
