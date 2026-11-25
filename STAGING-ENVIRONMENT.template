@@ -1,0 +1,13 @@
+# Copy to a protected host-only file; never commit values.
+APNIKO_DOMAIN=staging.example.invalid
+ACME_EMAIL=ops@example.invalid
+DB_URL=jdbc:mysql://staging-db.example.invalid:3306/apniko_staging?sslMode=VERIFY_IDENTITY&serverTimezone=UTC
+DB_USERNAME=apniko_staging_runtime
+DB_PASSWORD_FILE=./secrets/db_password.txt
+JWT_SECRET_FILE=./secrets/jwt_secret.txt
+APNIKO_IMAGE_TAG=immutable-commit-sha
+DB_POOL_SIZE=5
+DB_MIN_IDLE=1
+JWT_EXPIRATION_MS=3600000
+APNIKO_CATALOGUE_SOURCE_RIGHTS_VERIFIED=false
+APNIKO_CATALOGUE_SOURCE_COMMERCIAL_USE_PERMITTED=false
