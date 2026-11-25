@@ -1,4 +1,7 @@
 package com.localcart.repository;
 import com.localcart.entity.KhathaAuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
-public interface KhathaAuditLogRepository extends JpaRepository<KhathaAuditLog,Long> {\n    java.util.List<KhathaAuditLog> findAllByOrderByCreatedAtDesc();\n}
+import java.util.List;
+public interface KhathaAuditLogRepository extends JpaRepository<KhathaAuditLog,Long> {
+    List<KhathaAuditLog> findAllByOrderByCreatedAtDesc();
+}
