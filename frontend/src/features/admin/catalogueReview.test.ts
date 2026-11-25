@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   catalogueReviewStatusLabel,
+  categoryNameExists,
   formatCatalogueReviewDate,
 } from './catalogueReview'
 
