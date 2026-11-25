@@ -465,7 +465,7 @@ export function AdminDashboard() {
           ))}
         </nav>
 
-        <nav className="operations-bottom-nav" aria-label="Administration navigation">
+        <nav className="operations-bottom-nav operations-bottom-nav--five" aria-label="Administration navigation">
           {([
             ['overview', 'Overview', '⌂'],
             ['people', 'People', '♙'],
