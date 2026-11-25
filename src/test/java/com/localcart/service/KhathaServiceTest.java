@@ -19,6 +19,7 @@ class KhathaServiceTest {
     private KhathaBalanceAllocationRepository allocations;
     private KhathaRepaymentRepository repayments;
     private KhathaAuditLogRepository audit;
+    private NotificationRepository notifications;
     private ShopRepository shops;
     private UserRepository users;
     private OrderRepository orders;
@@ -30,10 +31,11 @@ class KhathaServiceTest {
         allocations=mock(KhathaBalanceAllocationRepository.class);
         repayments=mock(KhathaRepaymentRepository.class);
         audit=mock(KhathaAuditLogRepository.class);
+        notifications=mock(NotificationRepository.class);
         shops=mock(ShopRepository.class);
         users=mock(UserRepository.class);
         orders=mock(OrderRepository.class);
-        service=new KhathaService(accounts,ledger,allocations,repayments,audit,shops,users,orders);
+        service=new KhathaService(accounts,ledger,allocations,repayments,audit,notifications,shops,users,orders);
     }
 
     @Test void orderDebitUsesAvailableCreditAndStartsRepaymentClock() {
