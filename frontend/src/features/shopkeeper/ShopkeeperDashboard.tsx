@@ -1238,6 +1238,7 @@ export function ShopkeeperDashboard() {
           ['orders', 'Orders', '▤'],
           ['inventory', 'Inventory', '▦'],
           ['analytics', 'Performance', '↗'],
+          ['khatha', 'Khatha', '₹'],
         ] as const).map(([key, label, symbol]) => (
           <button
             key={key}
