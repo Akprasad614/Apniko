@@ -200,7 +200,7 @@ public class KhathaService {
     public KhathaRepaymentResponse recordRepayment(Long id,KhathaRepaymentRequest request,String email) {
         User actor=requireUser(email,Role.SHOPKEEPER);
         KhathaAccount account=lockAccount(id); requireShop(account.getShop(),actor);
-        KhathaRepayment existing=findIdempotent(request.idempotencyKey(),id);
+        KhathaRepayment existing=findIdempotent(request,id);
         if(existing!=null) return KhathaRepaymentResponse.from(existing);
         validateRepayment(account,request);
         if(request.channel()==KhathaRepaymentChannel.UPI_TRANSFER && blank(request.reference()))
