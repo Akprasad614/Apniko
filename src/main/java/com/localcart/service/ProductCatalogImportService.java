@@ -44,22 +44,26 @@ public class ProductCatalogImportService {
     private final ProductCatalogueSourceRecordRepository sourceRecordRepository;
     private final ProductCatalogueQualityService catalogueQualityService;
     private final ObjectMapper objectMapper;
+    private final com.localcart.config.ApprovedCatalogueSourceProperties approvedSource;
 
     public ProductCatalogImportService(
             ProductRepository productRepository,
             ProductCategoryRepository categoryRepository,
             ProductCatalogueSourceRecordRepository sourceRecordRepository,
             ProductCatalogueQualityService catalogueQualityService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            com.localcart.config.ApprovedCatalogueSourceProperties approvedSource) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.sourceRecordRepository = sourceRecordRepository;
         this.catalogueQualityService = catalogueQualityService;
         this.objectMapper = objectMapper;
+        this.approvedSource = approvedSource;
     }
 
     public ProductImportBatchResponse importBatch(ProductImportBatchRequest request) {
         validateSource(request);
+        boolean mendeleySource = MENDELEY_SOURCE.equals(request.sourceName().trim());
 
         int inserted = 0;
         int updated = 0;
@@ -70,7 +74,7 @@ public class ProductCatalogImportService {
         for (int index = 0; index < request.products().size(); index++) {
             ProductImportItem item = request.products().get(index);
             try {
-                validateItem(item);
+                validateItem(item, mendeleySource);
                 String barcode = normalizeBarcode(item.barcode());
                 String identityKey = identityKey(item, barcode);
                 ProductCategory category = findCategory(item.category(), item.subcategory());
@@ -133,7 +137,7 @@ public class ProductCatalogImportService {
                     unchanged++;
                 }
             } catch (IllegalArgumentException | IllegalStateException exception) {
-                LOGGER.warn("Rejected Mendeley catalogue row {}: {}", index + 1, exception.getMessage());
+                LOGGER.warn("Rejected catalogue row {}: {}", index + 1, exception.getMessage());
                 errors.add("Row " + (index + 1) + ": " + exception.getMessage());
             }
         }
@@ -152,57 +156,97 @@ public class ProductCatalogImportService {
             throw new BadRequestException("Import batches cannot exceed 500 products");
         }
 
-        URI uri;
-        try {
-            uri = URI.create(request.sourceUrl().trim());
-        } catch (RuntimeException exception) {
-            throw new BadRequestException("Source URL must be the approved Mendeley dataset URL");
-        }
-        boolean approvedMendeleyUrl = "https".equalsIgnoreCase(uri.getScheme())
-                && "data.mendeley.com".equalsIgnoreCase(uri.getHost())
-                && "/datasets/rhswn9z9xr/1".equals(uri.getPath())
-                && uri.getUserInfo() == null
-                && (uri.getPort() == -1 || uri.getPort() == 443)
-                && uri.getQuery() == null
-                && uri.getFragment() == null;
-        if (!approvedMendeleyUrl || !MENDELEY_URL.equals(request.sourceUrl().trim())) {
-            throw new BadRequestException("Only the approved Mendeley dataset version 1 URL is accepted");
-        }
-        if (!MENDELEY_SOURCE.equals(request.sourceName().trim())
-                || !MENDELEY_LICENSE.equals(request.sourceLicense().trim())) {
-            throw new BadRequestException("Only the Mendeley Indian Packaged Foods dataset under CC-BY-4.0 is accepted");
-        }
-        if (!Boolean.TRUE.equals(request.reuseRightsVerified())
-                || !Boolean.TRUE.equals(request.commercialUsePermitted())) {
-            LOGGER.warn("Blocked Mendeley catalogue import because CC BY 4.0 reuse scope was not confirmed");
-            throw new AccessDeniedException(
-                    "Import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
-        }
-
+        String sourceName = requiredText(request.sourceName(), "sourceName", 80);
+        String sourceUrl = requiredText(request.sourceUrl(), "sourceUrl", 500);
+        String sourceLicense = requiredText(request.sourceLicense(), "sourceLicense", 80);
         String permissionReference = requiredText(request.permissionReference(), "permissionReference", 500);
         String attribution = requiredText(request.attribution(), "attribution", 500);
         String normalizedAttribution = attribution.toLowerCase(Locale.ROOT);
-        if (!MENDELEY_DOI.equalsIgnoreCase(permissionReference)
-                || !normalizedAttribution.contains(MENDELEY_DOI)
-                || !normalizedAttribution.contains("cc by 4.0")
-                || !normalizedAttribution.contains("apniko modifications")) {
-            throw new BadRequestException(
-                    "Attribution must retain the dataset DOI, CC BY 4.0 and disclose Apniko modifications");
+
+        if (MENDELEY_SOURCE.equals(sourceName)) {
+            URI uri;
+            try {
+                uri = URI.create(sourceUrl);
+            } catch (RuntimeException exception) {
+                throw new BadRequestException("Source URL must be the approved Mendeley dataset URL");
+            }
+            boolean approvedMendeleyUrl = "https".equalsIgnoreCase(uri.getScheme())
+                    && "data.mendeley.com".equalsIgnoreCase(uri.getHost())
+                    && "/datasets/rhswn9z9xr/1".equals(uri.getPath())
+                    && uri.getUserInfo() == null
+                    && (uri.getPort() == -1 || uri.getPort() == 443)
+                    && uri.getQuery() == null
+                    && uri.getFragment() == null;
+            if (!approvedMendeleyUrl || !MENDELEY_URL.equals(sourceUrl)) {
+                throw new BadRequestException("Only the approved Mendeley dataset version 1 URL is accepted");
+            }
+            if (!MENDELEY_LICENSE.equals(sourceLicense)) {
+                throw new BadRequestException("Only the Mendeley Indian Packaged Foods dataset under CC-BY-4.0 is accepted");
+            }
+            if (!MENDELEY_DOI.equalsIgnoreCase(permissionReference)
+                    || !normalizedAttribution.contains(MENDELEY_DOI)
+                    || !normalizedAttribution.contains("cc by 4.0")
+                    || !normalizedAttribution.contains("apniko modifications")) {
+                throw new BadRequestException(
+                        "Attribution must retain the dataset DOI, CC BY 4.0 and disclose Apniko modifications");
+            }
+        } else {
+            URI uri;
+            try {
+                uri = URI.create(sourceUrl);
+            } catch (RuntimeException exception) {
+                throw new BadRequestException("Approved retail source URL must be a valid HTTPS URL");
+            }
+            if (!"https".equalsIgnoreCase(uri.getScheme())
+                    || uri.getHost() == null || uri.getHost().isBlank()
+                    || uri.getUserInfo() != null
+                    || (uri.getPort() != -1 && uri.getPort() != 443)
+                    || uri.getQuery() != null || uri.getFragment() != null) {
+                throw new BadRequestException("Approved retail source URL must use HTTPS without credentials, query or fragment");
+            }
+            if (approvedSource == null
+                    || !approvedSource.matches(sourceName, sourceUrl, sourceLicense, permissionReference)) {
+                throw new BadRequestException(
+                        "Retail catalogue source is not configured as an owner-approved commercial source");
+            }
+            if (!normalizedAttribution.contains(sourceName.toLowerCase(Locale.ROOT))
+                    || !normalizedAttribution.contains(sourceLicense.toLowerCase(Locale.ROOT))
+                    || !normalizedAttribution.contains(permissionReference.toLowerCase(Locale.ROOT))
+                    || !normalizedAttribution.contains("apniko modifications")) {
+                throw new BadRequestException(
+                        "Attribution must identify the approved source, licence, permission reference and Apniko modifications");
+            }
+        }
+
+        if (!Boolean.TRUE.equals(request.reuseRightsVerified())
+                || !Boolean.TRUE.equals(request.commercialUsePermitted())) {
+            LOGGER.warn("Blocked catalogue import because reuse/commercial-use attestations were not confirmed");
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
         }
     }
 
-    private void validateItem(ProductImportItem item) {
+    private void validateItem(ProductImportItem item, boolean mendeleySource) {
         if (item == null) {
             throw new IllegalArgumentException("product row is empty");
         }
-        if ((item.barcode() != null && !item.barcode().isBlank())
+        if (mendeleySource && ((item.barcode() != null && !item.barcode().isBlank())
                 || (item.packSize() != null && !item.packSize().isBlank())
                 || item.netQuantity() != null
                 || (item.netQuantityUnit() != null && !item.netQuantityUnit().isBlank())
                 || item.mrp() != null
-                || (item.mrpSource() != null && !item.mrpSource().isBlank())) {
+                || (item.mrpSource() != null && !item.mrpSource().isBlank()))) {
             throw new IllegalArgumentException(
                     "Mendeley reference rows must not populate unverified barcode, retail pack-size, quantity or price fields");
+        }
+        if (!mendeleySource) {
+            if (normalizeBarcode(item.barcode()) == null) {
+                throw new IllegalArgumentException("Approved retail imports require a verified GTIN barcode");
+            }
+            requiredText(item.packSize(), "packSize", 80);
+            if (item.netQuantity() == null || item.netQuantityUnit() == null || item.netQuantityUnit().isBlank()) {
+                throw new IllegalArgumentException("Approved retail imports require netQuantity and netQuantityUnit");
+            }
         }
         requiredText(item.name(), "name", 120);
         requiredText(item.category(), "category", 80);
@@ -210,7 +254,7 @@ public class ProductCatalogImportService {
         String sourceRecordId = requiredText(item.sourceRecordId(), "sourceRecordId", 160);
         String identityDiscriminator = requiredText(item.identityDiscriminator(), "identityDiscriminator", 160);
         if (!sourceRecordId.equals(identityDiscriminator)) {
-            throw new IllegalArgumentException("identityDiscriminator must match the stable Mendeley source row ID");
+            throw new IllegalArgumentException("identityDiscriminator must match the stable source record ID");
         }
         requiredText(item.sourceMetadataJson(), "sourceMetadataJson", 8000);
         optionalText(item.brand(), "brand", 100);
@@ -368,12 +412,21 @@ public class ProductCatalogImportService {
             }
         } else if (product.getCatalogueReviewedAt() == null
                 && (authoritative || product.getCatalogueReviewStatus() == null)) {
-            ProductCatalogueQualityService.Assessment assessment =
-                    item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()
-                            ? new ProductCatalogueQualityService.Assessment(
-                                    ProductCatalogueReviewStatus.NEEDS_REVIEW,
-                                    item.sourceReviewReason().trim())
-                            : catalogueQualityService.assess(product);
+            ProductCatalogueQualityService.Assessment assessment;
+            if (!mendeleyReferenceRow) {
+                String reason = "Approved retail source import is pending administrator review before customer publication.";
+                if (item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()) {
+                    reason += " Source quality review: " + item.sourceReviewReason().trim();
+                }
+                assessment = new ProductCatalogueQualityService.Assessment(
+                        ProductCatalogueReviewStatus.NEEDS_REVIEW, reason);
+            } else {
+                assessment = item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()
+                        ? new ProductCatalogueQualityService.Assessment(
+                                ProductCatalogueReviewStatus.NEEDS_REVIEW,
+                                item.sourceReviewReason().trim())
+                        : catalogueQualityService.assess(product);
+            }
             if (product.getCatalogueReviewStatus() != assessment.status()) {
                 product.setCatalogueReviewStatus(assessment.status());
                 changed = true;
