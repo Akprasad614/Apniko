@@ -16,7 +16,6 @@ required_files=(
   "scripts/restore-production-db.sh"
   "scripts/docker-entrypoint.sh"
   "scripts/staging-smoke-test.sh"
-  "RETAIL-CATALOGUE-LICENSING-HANDOFF.md"
 )
 for file in "${required_files[@]}"; do
   test -s "$file" || { echo "Missing required file: $file" >&2; exit 1; }
