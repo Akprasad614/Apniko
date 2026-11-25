@@ -100,6 +100,8 @@ export function AdminDashboard() {
   const [shops, setShops] = useState<AdminShop[]>([])
   const [shopLocationDrafts, setShopLocationDrafts] = useState<Record<number, { latitude: string; longitude: string }>>({})
   const [categories, setCategories] = useState<AdminCategory[]>([])
+  const [categoryName, setCategoryName] = useState('')
+  const [parentCategoryId, setParentCategoryId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -324,6 +326,50 @@ export function AdminDashboard() {
       setNotice(updated.name + ' is now ' + (updated.active ? 'active' : 'inactive') + '.')
     } catch (updateError) {
       setError(messageFor(updateError))
+    } finally {
+      setBusyKey('')
+    }
+  }
+
+  async function createCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = categoryName.trim().replace(/\\s+/g, ' ')
+    if (!name) {
+      setError('Enter a category or subcategory name.')
+      return
+    }
+
+    const duplicate = categories.some((category) => (
+      parentCategoryId
+        ? category.subcategories.some((child) => child.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+        : category.name.toLocaleLowerCase() === name.toLocaleLowerCase()
+    ))
+    if (duplicate) {
+      setError('A category with that name already exists at this level.')
+      return
+    }
+
+    setBusyKey('create-category')
+    setError('')
+    setNotice('')
+    try {
+      await apiRequest<AdminCategory>(
+        '/api/catalogue/categories',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            parentCategoryId: parentCategoryId ? Number(parentCategoryId) : null,
+          }),
+        },
+        token,
+      )
+      setCategoryName('')
+      setParentCategoryId('')
+      await loadData(true)
+      setNotice(name + ' was added to the catalogue taxonomy.')
+    } catch (createError) {
+      setError(messageFor(createError))
     } finally {
       setBusyKey('')
     }
@@ -557,6 +603,45 @@ export function AdminDashboard() {
             {tab === 'catalogue' && (
               <section>
                 <div className="operations-section-heading"><div><p className="operations-eyebrow">SHARED PRODUCTS</p><h2>Product catalogue</h2><p>Shopkeepers add these products to their own inventory and set local prices.</p></div></div>
+                <form className="operations-panel operations-form" onSubmit={(event) => void createCategory(event)}>
+                  <div>
+                    <p className="operations-eyebrow">CATALOGUE TAXONOMY</p>
+                    <h3>Add a category or subcategory</h3>
+                    <p>Keep the shared catalogue organised. Subcategories can be created under an existing top-level category.</p>
+                  </div>
+                  <div className="operations-form-grid operations-form-grid--two">
+                    <label>Level
+                      <select value={parentCategoryId} onChange={(event) => setParentCategoryId(event.target.value)}>
+                        <option value="">Top-level category</option>
+                        {categories.map((category) => <option key={category.id} value={String(category.id)}>Under {category.name}</option>)}
+                      </select>
+                    </label>
+                    <label>{parentCategoryId ? 'Subcategory name' : 'Category name'}
+                      <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={100} required placeholder={parentCategoryId ? 'e.g. Breakfast cereals' : 'e.g. Staples'} />
+                    </label>
+                  </div>
+                  <button className="operations-button" type="submit" disabled={busyKey === 'create-category' || !categoryName.trim()}>
+                    {busyKey === 'create-category' ? 'Saving…' : 'Add ' + (parentCategoryId ? 'subcategory' : 'category')}
+                  </button>
+                  <p className="operations-help">{categories.length} top-level categories currently available. Category changes affect the shared catalogue, not shop-specific prices or stock.</p>
+                </form>
+
+                <article className="operations-panel operations-form">
+                  <div>
+                    <p className="operations-eyebrow">CONTROLLED BULK INTAKE</p>
+                    <h3>Import an approved catalogue file</h3>
+                    <p>Bulk intake is deliberately dry-run-first and uses the reviewed command-line importer. It does not scrape retailer websites or download datasets.</p>
+                  </div>
+                  <ol className="operations-help">
+                    <li>Obtain the exact source file and confirm its commercial-use licence and attribution obligations.</li>
+                    <li>Run the importer in dry-run mode first; review row counts, rejected rows and source provenance.</li>
+                    <li>Only apply an approved source over HTTPS using a short-lived administrator token stored in your secret manager.</li>
+                  </ol>
+                  <pre className="operations-code"><code>{'python3 -m venv .venv-catalogue\nsource .venv-catalogue/bin/activate\npython -m pip install -r scripts/catalogue/requirements.txt\npython scripts/catalogue/import_catalogue.py /path/to/approved-catalogue.csv'}</code></pre>
+                  <p className="operations-help">The currently integrated Mendeley file is a nutrition/reference dataset, not a retail SKU feed. Its 852 rows remain in Needs review until an independently approved source verifies each sellable retail variant. Never infer barcode, pack size, MRP or shop price from that dataset.</p>
+                  <p className="operations-help">For apply mode, use the documented <code>--apply</code>, <code>--license-confirmed</code> and <code>--commercial-use-confirmed</code> flags only after legal/source review. Keep the administrator token out of shell history and source control.</p>
+                </article>
+
                 <form className="operations-panel operations-form" onSubmit={(event) => void createProduct(event)}>
                   <div><p className="operations-eyebrow">NEW CATALOGUE ITEM</p><h3>Add a product</h3><p>Master product details are shared; each shop still controls its own selling price and stock.</p></div>
                   <div className="operations-form-grid operations-form-grid--two">
