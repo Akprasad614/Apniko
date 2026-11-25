@@ -309,13 +309,22 @@ public class KhathaService {
         if(ledger.existsByAccountIdAndSourceTypeAndSourceId(account.getId(),"ORDER",orderId)) return;
         if(!isUsable(account)) throw new BadRequestException("Your Khatha account is inactive, its terms need acceptance, or its balance is overdue");
         BigDecimal amount=money(BigDecimal.valueOf(order.getTotalAmount()));
-        BigDecimal next=account.getOutstandingBalance().add(amount);
+        BigDecimal currentCredit=account.getCreditBalance()==null?ZERO:account.getCreditBalance();
+        BigDecimal creditApplied=amount.min(currentCredit);
+        BigDecimal outstandingAdded=amount.subtract(creditApplied);
+        BigDecimal next=account.getOutstandingBalance().add(outstandingAdded);
         if(next.compareTo(account.getCreditLimit())>0)
             throw new BadRequestException("This order exceeds your available Khatha credit");
-        if(account.getOutstandingBalance().signum()==0) account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
+        if(account.getOutstandingBalance().signum()==0 && outstandingAdded.signum()>0)
+            account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
+        account.setCreditBalance(currentCredit.subtract(creditApplied));
         account.setOutstandingBalance(next); accounts.save(account);
-        ledger.save(newEntry(account,KhathaLedgerEntryType.PURCHASE_DEBIT,amount,next,"ORDER",orderId,
-                "Khatha purchase for Apniko order #"+order.getId(),customer));
+        KhathaLedgerEntry entry=newEntry(account,KhathaLedgerEntryType.PURCHASE_DEBIT,amount,next,"ORDER",orderId,
+                "Khatha purchase for Apniko order #"+order.getId(),customer);
+        entry.setCreditBalanceChange(creditApplied.negate());
+        entry.setOutstandingChange(outstandingAdded);
+        entry.setCreditBalanceAfter(account.getCreditBalance());
+        ledger.save(entry);
     }
 
     @Transactional
@@ -326,11 +335,23 @@ public class KhathaService {
         if(ledger.existsByAccountIdAndSourceTypeAndSourceId(account.getId(),"ORDER_REVERSAL",id)) return;
         KhathaLedgerEntry original=ledger.findByAccountIdAndSourceTypeAndSourceId(account.getId(),"ORDER",id)
                 .orElseThrow(()->new BadRequestException("Original Khatha order debit was not found"));
-        BigDecimal next=account.getOutstandingBalance().subtract(original.getAmount());
-        if(next.signum()<0) throw new BadRequestException("Khatha reversal would create an invalid negative balance");
-        account.setOutstandingBalance(next); if(next.signum()==0) account.setDueDate(null); accounts.save(account);
-        ledger.save(newEntry(account,KhathaLedgerEntryType.ORDER_REVERSAL,original.getAmount(),next,
-                "ORDER_REVERSAL",id,"Credit restored after cancellation of order #"+order.getId(),actor));
+        BigDecimal originalOutstandingChange=original.getOutstandingChange()==null
+                ? original.getAmount() : original.getOutstandingChange().max(ZERO);
+        BigDecimal originalCreditMovement=original.getCreditBalanceChange()==null
+                ? ZERO : original.getCreditBalanceChange().negate().max(ZERO);
+        BigDecimal appliedToDebt=account.getOutstandingBalance().min(originalOutstandingChange);
+        BigDecimal repaidBeforeCancellation=originalOutstandingChange.subtract(appliedToDebt);
+        BigDecimal restoredCredit=originalCreditMovement.add(repaidBeforeCancellation);
+        BigDecimal next=account.getOutstandingBalance().subtract(appliedToDebt);
+        BigDecimal nextCredit=(account.getCreditBalance()==null?ZERO:account.getCreditBalance()).add(restoredCredit);
+        account.setOutstandingBalance(next); account.setCreditBalance(nextCredit);
+        if(next.signum()==0) account.setDueDate(null); accounts.save(account);
+        KhathaLedgerEntry reversal=newEntry(account,KhathaLedgerEntryType.ORDER_REVERSAL,original.getAmount(),next,
+                "ORDER_REVERSAL",id,"Credit restored after cancellation of order #"+order.getId(),actor);
+        reversal.setOutstandingChange(appliedToDebt.negate());
+        reversal.setCreditBalanceChange(restoredCredit);
+        reversal.setCreditBalanceAfter(nextCredit);
+        ledger.save(reversal);
     }
 
     private KhathaRepayment findIdempotent(KhathaRepaymentRequest request,Long accountId) {
@@ -374,6 +395,10 @@ public class KhathaService {
         KhathaLedgerEntry e=new KhathaLedgerEntry(); e.setAccount(account); e.setEntryType(type);
         e.setAmount(money(amount)); e.setOutstandingAfter(money(balance)); e.setSourceType(sourceType);
         e.setSourceId(sourceId); e.setDescription(description); e.setDueDate(account.getDueDate());
+        e.setCreditBalanceAfter(account.getCreditBalance()==null?ZERO:account.getCreditBalance());
+        e.setCreditBalanceChange(ZERO);
+        e.setOutstandingChange((type==KhathaLedgerEntryType.PURCHASE_DEBIT || type==KhathaLedgerEntryType.ADJUSTMENT_DEBIT)
+                ? money(amount) : money(amount).negate());
         if(actor!=null){e.setActorName(actor.getName());e.setActorEmail(actor.getEmail());e.setActorRole(actor.getRole().name());}
         return e;
     }
