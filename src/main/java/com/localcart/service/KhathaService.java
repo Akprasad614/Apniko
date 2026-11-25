@@ -2,6 +2,7 @@ package com.localcart.service;
 
 import com.localcart.dto.*;
 import com.localcart.entity.*;
+import com.localcart.repository.NotificationRepository;
 import com.localcart.exception.BadRequestException;
 import com.localcart.exception.ResourceNotFoundException;
 import com.localcart.repository.*;
@@ -23,15 +24,16 @@ public class KhathaService {
     private final KhathaBalanceAllocationRepository allocations;
     private final KhathaRepaymentRepository repayments;
     private final KhathaAuditLogRepository audit;
+    private final NotificationRepository notificationRepository;
     private final ShopRepository shops;
     private final UserRepository users;
     private final OrderRepository orders;
 
     public KhathaService(KhathaAccountRepository accounts, KhathaLedgerEntryRepository ledger,
             KhathaBalanceAllocationRepository allocations, KhathaRepaymentRepository repayments, KhathaAuditLogRepository audit,
-            ShopRepository shops, UserRepository users, OrderRepository orders) {
+            NotificationRepository notificationRepository, ShopRepository shops, UserRepository users, OrderRepository orders) {
         this.accounts=accounts; this.ledger=ledger; this.allocations=allocations; this.repayments=repayments;
-        this.audit=audit; this.shops=shops; this.users=users; this.orders=orders;
+        this.audit=audit; this.notificationRepository=notificationRepository; this.shops=shops; this.users=users; this.orders=orders;
     }
 
     @Transactional(readOnly=true)
