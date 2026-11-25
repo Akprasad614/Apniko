@@ -78,6 +78,7 @@ class KhathaServiceTest {
         KhathaAccount account=account(shop,customer,"1000.00","350.00");
         KhathaLedgerEntry debit=new KhathaLedgerEntry();
         debit.setAmount(new BigDecimal("250.00"));
+        debit.setOutstandingChange(new BigDecimal("250.00"));
         when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
         when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","77")).thenReturn(false,true);
         when(ledger.findByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","77")).thenReturn(Optional.of(debit));
@@ -90,6 +91,44 @@ class KhathaServiceTest {
 
         assertEquals(new BigDecimal("100.00"),account.getOutstandingBalance());
         verify(ledger,times(1)).save(argThat(e->e.getEntryType()==KhathaLedgerEntryType.ORDER_REVERSAL));
+    }
+
+    @Test void priorCustomerCreditOffsetsFuturePurchaseBeforeNewDebtIsAdded() {
+        User customer=user(10L,Role.CUSTOMER); Shop shop=shop(3L);
+        KhathaAccount account=account(shop,customer,"1000.00","50.00");
+        account.setCreditBalance(new BigDecimal("100.00"));
+        when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
+        when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","88")).thenReturn(false);
+        when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
+        when(ledger.save(any())).thenAnswer(call->call.getArgument(0));
+
+        service.chargeOrder(order(88L,shop,customer,150.0),customer);
+
+        assertEquals(new BigDecimal("100.00"),account.getOutstandingBalance());
+        assertEquals(new BigDecimal("0.00"),account.getCreditBalance());
+        verify(ledger).save(argThat(e->e.getCreditBalanceChange().compareTo(new BigDecimal("-100.00"))==0
+                && e.getOutstandingChange().compareTo(new BigDecimal("50.00"))==0));
+    }
+
+    @Test void cancellationAfterRepaymentCarriesOverpaidPartAsCustomerCredit() {
+        User customer=user(10L,Role.CUSTOMER); User actor=user(11L,Role.SHOPKEEPER); Shop shop=shop(3L);
+        KhathaAccount account=account(shop,customer,"1000.00","100.00");
+        KhathaLedgerEntry debit=new KhathaLedgerEntry();
+        debit.setAmount(new BigDecimal("300.00"));
+        debit.setOutstandingChange(new BigDecimal("300.00"));
+        debit.setCreditBalanceChange(BigDecimal.ZERO);
+        when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
+        when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","89")).thenReturn(false);
+        when(ledger.findByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","89")).thenReturn(Optional.of(debit));
+        when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
+        when(ledger.save(any())).thenAnswer(call->call.getArgument(0));
+
+        service.reverseOrderDebit(order(89L,shop,customer,300.0),actor);
+
+        assertEquals(new BigDecimal("0.00"),account.getOutstandingBalance());
+        assertEquals(new BigDecimal("200.00"),account.getCreditBalance());
+        verify(ledger).save(argThat(e->e.getEntryType()==KhathaLedgerEntryType.ORDER_REVERSAL
+                && e.getCreditBalanceAfter().compareTo(new BigDecimal("200.00"))==0));
     }
 
     private User user(Long id,Role role) {
