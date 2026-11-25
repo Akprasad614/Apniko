@@ -5,8 +5,8 @@ import '../shopkeeper/khatha-workspace.css'
 import './khatha-admin.css'
 
 interface Overview{totalAccounts:number;activeAccounts:number;pausedAccounts:number;pendingRepayments:number;overdueAccounts:number;totalOutstanding:number}
-interface Account{id:number;shopName:string;customerName:string;creditLimit:number;outstandingBalance:number;availableCredit:number;status:string;dueDate:string|null;overdue:boolean;repaymentDays:number}
-interface Ledger{id:number;entryType:string;amount:number;outstandingAfter:number;description:string;actorName:string|null;actorRole:string|null;createdAt:string}
+interface Account{id:number;shopName:string;customerName:string;creditLimit:number;outstandingBalance:number;availableCredit:number;creditBalance:number;status:string;dueDate:string|null;overdue:boolean;repaymentDays:number}
+interface Ledger{id:number;entryType:string;amount:number;outstandingAfter:number;description:string;actorName:string|null;actorRole:string|null;createdAt:string;creditBalanceAfter:number|null;creditBalanceChange:number|null;outstandingChange:number|null}
 interface Repayment{id:number;accountId:number;amount:number;channel:string;status:string;reference:string|null;decisionReason:string|null;createdAt:string}
 interface AuditEvent{id:number;accountId:number;action:string;reason:string;actorUserId:number;actorName:string;actorEmail:string;actorRole:string;createdAt:string}
 const money=(v:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(v??0)
@@ -66,10 +66,10 @@ export function AdminKhathaPanel({token}:{token:string}){
     {selected&&<div className="khatha-detail">
      <div className="khatha-balance-card"><div className="khatha-balance-top"><span>{selected.customerName} · {selected.shopName}</span><span className={'khatha-status khatha-status--'+selected.status.toLowerCase()}>{selected.status}</span></div>
       <p>Outstanding balance</p><strong className="khatha-balance-value">{money(selected.outstandingBalance)}</strong>
-      <div className="khatha-balance-metrics"><span><small>Credit limit</small><b>{money(selected.creditLimit)}</b></span><span><small>Available</small><b>{money(selected.availableCredit)}</b></span><span><small>Due date</small><b>{selected.dueDate??'—'}</b></span></div>
+      <div className="khatha-balance-metrics"><span><small>Credit limit</small><b>{money(selected.creditLimit)}</b></span><span><small>Available</small><b>{money(selected.availableCredit)}</b></span><span><small>Customer credit</small><b>{money(selected.creditBalance)}</b></span><span><small>Due date</small><b>{selected.dueDate??'—'}</b></span></div>
      </div>
      <section className="khatha-panel"><div className="khatha-panel-heading"><div><p className="khatha-eyebrow">APPEND-ONLY RECORD</p><h2>Ledger entries</h2></div><span>{ledger.length} records</span></div>
-      {ledger.length?<div className="khatha-ledger">{ledger.map(e=><article key={e.id}><div><strong>{e.description}</strong><small>{date(e.createdAt)} · {e.entryType.replaceAll('_',' ')} · {e.actorName??'System'}</small></div><div><b>{money(e.amount)}</b><small>Balance {money(e.outstandingAfter)}</small></div></article>)}</div>:<p className="khatha-help">No ledger activity for this account.</p>}
+      {ledger.length?<div className="khatha-ledger">{ledger.map(e=><article key={e.id}><div><strong>{e.description}</strong><small>{date(e.createdAt)} · {e.entryType.replaceAll('_',' ')} · {e.actorName??'System'}</small></div><div><b>{money(e.amount)}</b><small>Balance {money(e.outstandingAfter)} · Credit {money(e.creditBalanceAfter??0)}</small></div></article>)}</div>:<p className="khatha-help">No ledger activity for this account.</p>}
      </section>
      <section className="khatha-panel"><div className="khatha-panel-heading"><div><p className="khatha-eyebrow">REPAYMENT EVIDENCE</p><h2>Repayment history</h2></div></div>
       {accountRepayments.length?<div className="khatha-ledger">{accountRepayments.map(r=><article key={r.id}><div><strong>{money(r.amount)} · {r.channel.replaceAll('_',' ')}</strong><small>{date(r.createdAt)}{r.reference?' · '+r.reference:''}</small>{r.decisionReason&&<small>{r.decisionReason}</small>}</div><span className={'khatha-status khatha-status--'+r.status.toLowerCase()}>{r.status}</span></article>)}</div>:<p className="khatha-help">No repayment requests for this account.</p>}
