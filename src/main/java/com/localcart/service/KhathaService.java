@@ -20,6 +20,7 @@ public class KhathaService {
     private static final BigDecimal ZERO = new BigDecimal("0.00");
     private final KhathaAccountRepository accounts;
     private final KhathaLedgerEntryRepository ledger;
+    private final KhathaBalanceAllocationRepository allocations;
     private final KhathaRepaymentRepository repayments;
     private final KhathaAuditLogRepository audit;
     private final ShopRepository shops;
@@ -27,9 +28,9 @@ public class KhathaService {
     private final OrderRepository orders;
 
     public KhathaService(KhathaAccountRepository accounts, KhathaLedgerEntryRepository ledger,
-            KhathaRepaymentRepository repayments, KhathaAuditLogRepository audit,
+            KhathaBalanceAllocationRepository allocations, KhathaRepaymentRepository repayments, KhathaAuditLogRepository audit,
             ShopRepository shops, UserRepository users, OrderRepository orders) {
-        this.accounts=accounts; this.ledger=ledger; this.repayments=repayments;
+        this.accounts=accounts; this.ledger=ledger; this.allocations=allocations; this.repayments=repayments;
         this.audit=audit; this.shops=shops; this.users=users; this.orders=orders;
     }
 
@@ -236,7 +237,9 @@ public class KhathaService {
         if(next.signum()==0) account.setDueDate(null);
         accounts.save(account);
         KhathaLedgerEntry entry=newEntry(account,type,amount,next,"ADJUSTMENT",UUID.randomUUID().toString(),request.reason().trim(),actor);
-        ledger.save(entry); writeAudit(account,actor,"BALANCE_ADJUSTMENT",request.reason().trim());
+        entry=ledger.save(entry);
+        if(request.type()==KhathaAdjustmentType.CREDIT) allocateCredit(account,entry,amount);
+        writeAudit(account,actor,"BALANCE_ADJUSTMENT",request.reason().trim());
         return KhathaLedgerEntryResponse.from(entry);
     }
 
@@ -339,19 +342,76 @@ public class KhathaService {
                 ? original.getAmount() : original.getOutstandingChange().max(ZERO);
         BigDecimal originalCreditMovement=original.getCreditBalanceChange()==null
                 ? ZERO : original.getCreditBalanceChange().negate().max(ZERO);
-        BigDecimal appliedToDebt=account.getOutstandingBalance().min(originalOutstandingChange);
-        BigDecimal repaidBeforeCancellation=originalOutstandingChange.subtract(appliedToDebt);
-        BigDecimal restoredCredit=originalCreditMovement.add(repaidBeforeCancellation);
-        BigDecimal next=account.getOutstandingBalance().subtract(appliedToDebt);
+        List<KhathaBalanceAllocation> debitAllocations=allocations
+                .findByDebitEntryIdOrderByCreatedAtAscIdAsc(original.getId());
+        Map<Long,BigDecimal> netByCreditEntry=new LinkedHashMap<>();
+        BigDecimal settledAgainstThisDebit=ZERO;
+        for(KhathaBalanceAllocation allocation:debitAllocations) {
+            BigDecimal signed=allocation.getAllocationType()==KhathaAllocationType.ALLOCATED
+                    ? allocation.getAmount() : allocation.getAmount().negate();
+            settledAgainstThisDebit=settledAgainstThisDebit.add(signed);
+            Long creditEntryId=allocation.getCreditEntry().getId();
+            netByCreditEntry.merge(creditEntryId,signed,BigDecimal::add);
+        }
+        settledAgainstThisDebit=settledAgainstThisDebit.max(ZERO);
+        if(settledAgainstThisDebit.compareTo(originalOutstandingChange)>0)
+            throw new BadRequestException("Khatha allocation history exceeds the original order debit");
+        BigDecimal remainingForThisOrder=originalOutstandingChange.subtract(settledAgainstThisDebit);
+        BigDecimal next=account.getOutstandingBalance().subtract(remainingForThisOrder);
+        if(next.signum()<0)
+            throw new BadRequestException("Khatha ledger allocation does not reconcile with the account balance");
+        BigDecimal restoredCredit=originalCreditMovement.add(settledAgainstThisDebit);
         BigDecimal nextCredit=(account.getCreditBalance()==null?ZERO:account.getCreditBalance()).add(restoredCredit);
         account.setOutstandingBalance(next); account.setCreditBalance(nextCredit);
         if(next.signum()==0) account.setDueDate(null); accounts.save(account);
+
+        for(KhathaBalanceAllocation allocation:debitAllocations) {
+            if(allocation.getAllocationType()!=KhathaAllocationType.ALLOCATED) continue;
+            BigDecimal net=netByCreditEntry.getOrDefault(allocation.getCreditEntry().getId(),ZERO);
+            if(net.signum()<=0) continue;
+            boolean alreadyReleased=debitAllocations.stream().anyMatch(existing ->
+                    existing.getAllocationType()==KhathaAllocationType.RELEASED
+                    && existing.getCreditEntry().getId().equals(allocation.getCreditEntry().getId()));
+            if(alreadyReleased) continue;
+            KhathaBalanceAllocation release=new KhathaBalanceAllocation();
+            release.setAccount(account); release.setDebitEntry(original);
+            release.setCreditEntry(allocation.getCreditEntry()); release.setAmount(net);
+            release.setAllocationType(KhathaAllocationType.RELEASED);
+            allocations.save(release);
+        }
+
         KhathaLedgerEntry reversal=newEntry(account,KhathaLedgerEntryType.ORDER_REVERSAL,original.getAmount(),next,
                 "ORDER_REVERSAL",id,"Credit restored after cancellation of order #"+order.getId(),actor);
-        reversal.setOutstandingChange(appliedToDebt.negate());
+        reversal.setOutstandingChange(remainingForThisOrder.negate());
         reversal.setCreditBalanceChange(restoredCredit);
         reversal.setCreditBalanceAfter(nextCredit);
         ledger.save(reversal);
+    }
+
+    private void allocateCredit(KhathaAccount account,KhathaLedgerEntry creditEntry,BigDecimal amount) {
+        BigDecimal remaining=money(amount);
+        List<KhathaLedgerEntry> debits=ledger.findByAccountIdAndEntryTypeInOrderByCreatedAtAscIdAsc(
+                account.getId(),List.of(KhathaLedgerEntryType.PURCHASE_DEBIT,KhathaLedgerEntryType.ADJUSTMENT_DEBIT));
+        for(KhathaLedgerEntry debit:debits) {
+            if(debit.getEntryType()==KhathaLedgerEntryType.PURCHASE_DEBIT
+                    && ledger.existsByAccountIdAndSourceTypeAndSourceId(account.getId(),"ORDER_REVERSAL",debit.getSourceId())) continue;
+            BigDecimal debt=debit.getOutstandingChange()==null?debit.getAmount():debit.getOutstandingChange().max(ZERO);
+            List<KhathaBalanceAllocation> history=allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(debit.getId());
+            BigDecimal alreadyAllocated=history.stream().map(item ->
+                    item.getAllocationType()==KhathaAllocationType.ALLOCATED?item.getAmount():item.getAmount().negate())
+                    .reduce(ZERO,BigDecimal::add).max(ZERO);
+            BigDecimal remainingDebt=debt.subtract(alreadyAllocated).max(ZERO);
+            BigDecimal applied=remaining.min(remainingDebt);
+            if(applied.signum()>0) {
+                KhathaBalanceAllocation allocation=new KhathaBalanceAllocation();
+                allocation.setAccount(account); allocation.setDebitEntry(debit);
+                allocation.setCreditEntry(creditEntry); allocation.setAmount(applied);
+                allocation.setAllocationType(KhathaAllocationType.ALLOCATED);
+                allocations.save(allocation);
+                remaining=remaining.subtract(applied);
+            }
+            if(remaining.signum()==0) return;
+        }
     }
 
     private KhathaRepayment findIdempotent(KhathaRepaymentRequest request,Long accountId) {
@@ -387,8 +447,9 @@ public class KhathaService {
         BigDecimal next=account.getOutstandingBalance().subtract(amount);
         account.setOutstandingBalance(next); if(next.signum()==0) account.setDueDate(null);
         accounts.save(account);
-        ledger.save(newEntry(account,KhathaLedgerEntryType.REPAYMENT_CREDIT,amount,next,source,sourceId,
+        KhathaLedgerEntry creditEntry=ledger.save(newEntry(account,KhathaLedgerEntryType.REPAYMENT_CREDIT,amount,next,source,sourceId,
                 "Verified repayment #"+repayment.getId(),actor));
+        allocateCredit(account,creditEntry,amount);
     }
     private KhathaLedgerEntry newEntry(KhathaAccount account,KhathaLedgerEntryType type,BigDecimal amount,
             BigDecimal balance,String sourceType,String sourceId,String description,User actor) {
