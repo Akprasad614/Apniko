@@ -172,7 +172,7 @@ export function CustomerCart() {
         if (selected) window.localStorage.setItem(SELECTED_ADDRESS_KEY, String(selected.id))
         const allowed = methods.filter((method): method is PaymentMethod => method === 'COD' || method === 'RAZORPAY' || method === 'KHATHA')
         setPaymentMethods(allowed.includes('COD') ? allowed : ['COD', ...allowed])
-        if (!allowed.includes('RAZORPAY')) setPaymentMethod('COD')
+        setPaymentMethod(current => allowed.includes(current) ? current : 'COD')
       })
       .catch((loadError: unknown) => {
         if (active) {
