@@ -31,5 +31,11 @@ grep -Fq "method: 'POST'" frontend/src/features/customer/NearbyShops.tsx
 grep -Fq 'Your location is used for this search only' frontend/src/features/customer/NearbyShops.tsx
 grep -Fq 'Save shop pin' frontend/src/features/admin/AdminDashboard.tsx
 grep -Fq 'nearbyShopsAreSortedByDistance' src/test/java/com/localcart/service/CustomerMarketplaceServiceTest.java
+grep -Fq 'Provide both address latitude and longitude' src/main/java/com/localcart/service/CustomerAddressService.java
+grep -Fq 'Enter valid shop coordinates' src/main/java/com/localcart/service/ShopService.java
+grep -Fq 'valid latitude and longitude for the shop pin' src/main/java/com/localcart/service/AdminService.java
+grep -Fq 'rejectsAddressWithOnlyOneCoordinatePair' src/test/java/com/localcart/service/CustomerAddressServiceTest.java || grep -Fq 'rejectsAddressWithOnlyOneCoordinate' src/test/java/com/localcart/service/CustomerAddressServiceTest.java
+grep -Fq 'rejectsShopCreationWithHalfCoordinatePair' src/test/java/com/localcart/service/ShopServiceCoverageTest.java
+grep -Fq 'rejectsNonFiniteAdminShopCoordinates' src/test/java/com/localcart/service/AdminServiceCoverageTest.java
 
 echo "Phase 10 geolocation verification passed: operator-verified shop pins, radius validation, distance ordering, private request-body location search and customer UI are present."

@@ -155,6 +155,15 @@ public class CustomerAddressService {
     }
 
     private void copyRequest(CustomerAddressRequest request, CustomerAddress address) {
+        Double latitude = request.getLatitude();
+        Double longitude = request.getLongitude();
+        if ((latitude == null) != (longitude == null)) {
+            throw new BadRequestException("Provide both address latitude and longitude");
+        }
+        if (latitude != null && (!Double.isFinite(latitude) || latitude < -90 || latitude > 90
+                || !Double.isFinite(longitude) || longitude < -180 || longitude > 180)) {
+            throw new BadRequestException("Enter valid address coordinates");
+        }
         address.setLabel(request.getLabel().trim());
         address.setRecipientName(request.getRecipientName().trim());
         address.setPhone(request.getPhone().trim());

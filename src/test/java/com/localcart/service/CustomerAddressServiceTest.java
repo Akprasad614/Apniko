@@ -74,6 +74,31 @@ class CustomerAddressServiceTest {
     }
 
     @Test
+    void rejectsAddressWithOnlyOneCoordinateBeforeSaving() {
+        User customer = customer();
+        when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(customer));
+        CustomerAddressRequest invalid = request();
+        invalid.setLatitude(12.9716);
+
+        assertThrows(com.localcart.exception.BadRequestException.class,
+                () -> service.addAddress("customer@example.com", invalid));
+        verify(addressRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsNonFiniteAddressCoordinatesBeforeSaving() {
+        User customer = customer();
+        when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(customer));
+        CustomerAddressRequest invalid = request();
+        invalid.setLatitude(Double.NaN);
+        invalid.setLongitude(77.5946);
+
+        assertThrows(com.localcart.exception.BadRequestException.class,
+                () -> service.addAddress("customer@example.com", invalid));
+        verify(addressRepository, never()).save(any());
+    }
+
+    @Test
     void snapshotRequiresAddressId() {
         when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(customer()));
         assertThrows(com.localcart.exception.BadRequestException.class,
