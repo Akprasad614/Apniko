@@ -938,7 +938,7 @@ public class OrderService {
                         throw new BadRequestException("Khatha reversal service is unavailable");
                     }
                     khathaService.reverseOrderDebit(order, actor);
-                    payment.setStatus(PaymentStatus.REFUNDED);
+                    payment.setStatus(PaymentStatus.REVERSED);
                 } else {
                     payment.setStatus(PaymentStatus.REFUND_PENDING);
                 }
