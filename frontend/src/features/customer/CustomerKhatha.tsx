@@ -6,13 +6,13 @@ import './khatha.css'
 
 interface Account {
   id:number; shopId:number; shopName:string; customerName:string
-  creditLimit:number; outstandingBalance:number; availableCredit:number
+  creditLimit:number; outstandingBalance:number; availableCredit:number; creditBalance:number
   status:string; repaymentDays:number; dueDate:string|null; overdue:boolean
   termsVersion:number; acceptedTermsVersion:number
 }
 interface LedgerEntry {
   id:number; entryType:string; amount:number; outstandingAfter:number
-  description:string; actorName:string|null; actorRole:string|null; dueDate:string|null; createdAt:string
+  description:string; actorName:string|null; actorRole:string|null; dueDate:string|null; createdAt:string; creditBalanceAfter:number|null; creditBalanceChange:number|null; outstandingChange:number|null
 }
 interface Repayment {
   id:number; accountId:number; amount:number; channel:string; status:string
@@ -117,7 +117,7 @@ export function CustomerKhatha(){
               <p>Outstanding balance</p><strong className="khatha-balance-value">{money(selected.outstandingBalance)}</strong>
               <div className="khatha-balance-metrics">
                 <span><small>Credit limit</small><b>{money(selected.creditLimit)}</b></span>
-                <span><small>Available credit</small><b>{money(selected.availableCredit)}</b></span>
+                <span><small>Available credit</small><b>{money(selected.availableCredit)}</b></span><span><small>Shop credit balance</small><b>{money(selected.creditBalance)}</b></span>
                 <span><small>Due date</small><b>{date(selected.dueDate)}</b></span>
               </div>
             </div>
@@ -143,7 +143,7 @@ export function CustomerKhatha(){
               {ledger.length===0?<p className="khatha-help">Your ledger will appear here when you use Khatha.</p>:
                 <div className="khatha-ledger">{ledger.map(entry=><article key={entry.id}>
                   <div><strong>{entry.description}</strong><small>{date(entry.createdAt)} · {entry.entryType.replaceAll('_',' ')}</small></div>
-                  <div><b>{entry.entryType==='PURCHASE_DEBIT'||entry.entryType==='ADJUSTMENT_DEBIT'?'+':'−'}{money(entry.amount)}</b><small>Balance {money(entry.outstandingAfter)}</small></div>
+                  <div><b>{entry.entryType==='PURCHASE_DEBIT'||entry.entryType==='ADJUSTMENT_DEBIT'?'+':'−'}{money(entry.amount)}</b><small>Balance {money(entry.outstandingAfter)} · Credit {money(entry.creditBalanceAfter??0)}</small></div>
                 </article>)}</div>}
             </section>
             <section className="khatha-panel">
