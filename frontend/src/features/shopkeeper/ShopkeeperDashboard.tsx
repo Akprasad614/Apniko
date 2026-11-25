@@ -32,8 +32,9 @@ import type {
 } from './shopkeeper'
 import './shopkeeper-dashboard.css'
 import { NotificationCenter } from '../shared/NotificationCenter'
+import { ShopkeeperKhathaWorkspace } from './ShopkeeperKhathaWorkspace'
 
-type DashboardTab = 'overview' | 'orders' | 'inventory' | 'analytics'
+type DashboardTab = 'overview' | 'orders' | 'inventory' | 'analytics' | 'khatha'
 interface CatalogueProductPage {
   content: ShopkeeperProduct[]
   number: number
@@ -636,6 +637,7 @@ export function ShopkeeperDashboard() {
             ['orders', 'Orders', '▤'],
             ['inventory', 'Inventory', '▦'],
             ['analytics', 'Performance', '↗'],
+            ['khatha', 'Khatha', '₹'],
           ] as const).map(([key, label, symbol]) => (
             <button
               type="button"
@@ -1225,6 +1227,7 @@ export function ShopkeeperDashboard() {
                 )}
               </section>
             )}
+            {tab === 'khatha' && <ShopkeeperKhathaWorkspace token={token} shopId={selectedShop.id} />}
           </>
         )}
         </div>
