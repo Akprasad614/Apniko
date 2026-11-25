@@ -12,6 +12,7 @@ import com.localcart.entity.OrderStatus;
 import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.OrderStatusHistory;
 import com.localcart.entity.PaymentStatus;
+import com.localcart.entity.PaymentMethod;
 import com.localcart.entity.InventoryMovement;
 import com.localcart.entity.InventoryMovementType;
 import com.localcart.entity.Role;
@@ -30,6 +31,7 @@ import com.localcart.repository.ShopInventoryRepository;
 import com.localcart.repository.ShopRepository;
 import com.localcart.repository.UserRepository;
 import com.localcart.security.SecurityUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +51,12 @@ public class OrderService {
     private final ShopInventoryRepository shopInventoryRepository;
     private final UserRepository userRepository;
     private final CartRepository cartRepository;
+    private KhathaService khathaService;
+
+    @Autowired
+    public void setKhathaService(KhathaService khathaService) {
+        this.khathaService = khathaService;
+    }
 
     public OrderService(
             OrderRepository orderRepository,
@@ -925,7 +933,15 @@ public class OrderService {
                 payment.setStatus(PaymentStatus.CANCELLED);
                 paymentRepository.save(payment);
             } else if (payment.getStatus() == PaymentStatus.PAID) {
-                payment.setStatus(PaymentStatus.REFUND_PENDING);
+                if (payment.getMethod() == PaymentMethod.KHATHA) {
+                    if (khathaService == null) {
+                        throw new BadRequestException("Khatha reversal service is unavailable");
+                    }
+                    khathaService.reverseOrderDebit(order, actor);
+                    payment.setStatus(PaymentStatus.REFUNDED);
+                } else {
+                    payment.setStatus(PaymentStatus.REFUND_PENDING);
+                }
                 paymentRepository.save(payment);
             }
         });
