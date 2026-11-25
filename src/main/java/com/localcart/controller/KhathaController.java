@@ -35,6 +35,10 @@ public class KhathaController {
     public ResponseEntity<KhathaAccountResponse> acceptTerms(@PathVariable Long accountId){
         return ResponseEntity.ok(service.acceptTerms(accountId,email()));
     }
+    @GetMapping("/customer/khatha/{accountId}/repayments")
+    public ResponseEntity<List<KhathaRepaymentResponse>> customerRepayments(@PathVariable Long accountId){
+        return ResponseEntity.ok(service.customerRepayments(accountId,email()));
+    }
     @PostMapping("/customer/khatha/{accountId}/repayments")
     public ResponseEntity<KhathaRepaymentResponse> requestRepayment(@PathVariable Long accountId,@Valid @RequestBody KhathaRepaymentRequest request){
         return ResponseEntity.ok(service.requestRepayment(accountId,request,email()));
