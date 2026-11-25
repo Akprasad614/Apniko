@@ -245,7 +245,7 @@ class ProductCatalogImportServiceTest {
                 new BigDecimal("100"), "g", "parle-g", "Glucose biscuits",
                 "SNACKS", "CHIPS", new BigDecimal("20.00"), "pack",
                 "partner:sku-1001", null,
-                "{\\"sourceRecordId\\":\\"partner:sku-1001\\",\\"verifiedVariant\\":true}",
+                "{\"sourceRecordId\":\"partner:sku-1001\",\"verifiedVariant\":true}",
                 "partner:sku-1001", null);
         ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(retailItem));
 
@@ -303,7 +303,7 @@ class ProductCatalogImportServiceTest {
                 new BigDecimal("100"), "g", "parle-g", "Updated verified product description",
                 "SNACKS", "CHIPS", new BigDecimal("20.00"), "pack",
                 "partner:sku-1001", null,
-                "{\\"sourceRecordId\\":\\"partner:sku-1001\\",\\"verifiedVariant\\":true}",
+                "{\"sourceRecordId\":\"partner:sku-1001\",\"verifiedVariant\":true}",
                 "partner:sku-1001", null);
 
         ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(updated));
@@ -322,7 +322,7 @@ class ProductCatalogImportServiceTest {
         ProductImportBatchRequest request = approvedRetailBatch(
                 new ProductImportItem("Parle-G", "Parle", "8901058001235", "100 g",
                         new BigDecimal("100"), "g", null, null, "SNACKS", "CHIPS",
-                        null, null, "partner:sku-1", null, "{\\"source\\":\\"partner\\"}",
+                        null, null, "partner:sku-1", null, "{\"source\":\"partner\"}",
                         "partner:sku-1", null));
 
         assertThrows(BadRequestException.class, () -> service.importBatch(request));
@@ -341,7 +341,7 @@ class ProductCatalogImportServiceTest {
         ProductImportItem incomplete = new ProductImportItem(
                 "Parle-G Gold", "Parle", null, "100 g", null, null, null, null,
                 "SNACKS", "CHIPS", null, null, "partner:sku-2", null,
-                "{\\"source\\":\\"partner\\"}", "partner:sku-2", null);
+                "{\"source\":\"partner\"}", "partner:sku-2", null);
         ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(incomplete));
 
         assertEquals(1, response.rejected());
