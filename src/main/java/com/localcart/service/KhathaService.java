@@ -119,6 +119,7 @@ public class KhathaService {
     public KhathaAccountResponse updateTerms(Long id,KhathaTermsUpdateRequest request,String email) {
         User actor=requireUser(email,Role.SHOPKEEPER);
         KhathaAccount account=lockAccount(id); requireShop(account.getShop(),actor);
+        if(account.getStatus()==KhathaAccountStatus.CLOSED) throw new BadRequestException("A closed Khatha account cannot be reopened; create a new account after review");
         BigDecimal limit=money(request.creditLimit());
         if(limit.signum()<=0 || request.repaymentDays()<1 || request.repaymentDays()>90)
             throw new BadRequestException("Enter a valid credit limit and repayment period");
@@ -139,6 +140,8 @@ public class KhathaService {
         if(status==KhathaAccountStatus.ACTIVE) {
             if(account.getAcceptedAt()==null || account.getAcceptedTermsVersion()!=account.getTermsVersion())
                 throw new BadRequestException("The customer must accept the current terms before the account can be reactivated");
+            if(isOverdue(account))
+                throw new BadRequestException("An overdue balance must be cleared before new credit can be reactivated");
         } else if(status==KhathaAccountStatus.CLOSED) {
             if(account.getOutstandingBalance().signum()>0)
                 throw new BadRequestException("An account cannot be closed while money is outstanding");
