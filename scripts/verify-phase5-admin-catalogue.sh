@@ -20,6 +20,9 @@ required=(
   "src/test/java/com/localcart/service/ProductCatalogueModerationServiceTest.java"
   "src/test/java/com/localcart/service/ProductCategoryServiceTest.java"
   "scripts/catalogue/import_catalogue.py"
+  "scripts/catalogue/import_approved_retail_catalogue.py"
+  "scripts/catalogue/test_import_approved_retail_catalogue.py"
+  "src/main/java/com/localcart/config/ApprovedCatalogueSourceProperties.java"
   "PHASE5-ADMIN-CATALOGUE-COMPLETION.md"
 )
 for file in "${required[@]}"; do
@@ -33,6 +36,11 @@ grep -Fq 'MAX_BATCH_SIZE = 250' scripts/catalogue/import_catalogue.py
 grep -Fq 'if not args.apply:' scripts/catalogue/import_catalogue.py
 grep -Fq 'args.license_confirmed' scripts/catalogue/import_catalogue.py
 grep -Fq 'args.commercial_use_confirmed' scripts/catalogue/import_catalogue.py
+grep -Fq 'approvedSource.matches' src/main/java/com/localcart/service/ProductCatalogImportService.java
+grep -Fq 'Approved retail source import is pending administrator review' src/main/java/com/localcart/service/ProductCatalogImportService.java
+grep -Fq 'apniko.catalogue.import.approved-source.name' src/main/resources/application.properties
+grep -Fq 'valid_gtin' scripts/catalogue/import_approved_retail_catalogue.py
+grep -Fq 'Dry run only. No API calls or database changes were made.' scripts/catalogue/import_approved_retail_catalogue.py
 grep -Fq 'NEEDS_REVIEW' src/main/java/com/localcart/service/ProductCatalogImportService.java
 grep -Fq 'getReviewQueue' src/main/java/com/localcart/controller/ProductCatalogueModerationController.java
 grep -Fq "@PreAuthorize(\"hasRole('ADMIN')\")" src/main/java/com/localcart/controller/ProductCategoryController.java
