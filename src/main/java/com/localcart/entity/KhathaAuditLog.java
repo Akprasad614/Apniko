@@ -17,6 +17,15 @@ public class KhathaAuditLog {
     @Column(name="created_at", nullable=false, updatable=false) private LocalDateTime createdAt;
     public KhathaAuditLog() {}
     @PrePersist protected void onCreate(){if(createdAt==null) createdAt=LocalDateTime.now();}
+    public Long getId(){return id;}
+    public Long getAccountId(){return accountId;}
+    public String getAction(){return action;}
+    public String getReason(){return reason;}
+    public Long getActorUserId(){return actorUserId;}
+    public String getActorName(){return actorName;}
+    public String getActorEmail(){return actorEmail;}
+    public String getActorRole(){return actorRole;}
+    public LocalDateTime getCreatedAt(){return createdAt;}
     public void setAccountId(Long v){accountId=v;}
     public void setAction(String v){action=v;}
     public void setReason(String v){reason=v;}
