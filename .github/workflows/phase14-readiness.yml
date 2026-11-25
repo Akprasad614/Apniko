@@ -1,14 +1,13 @@
-# Phase 14 — Staging deployment readiness, payment/Khatha tests, and operations
-
-**Status: repository preparation only; staging environment not deployed or accepted.**
-
-This workflow validates the phase 14 handoff artifacts and exercises existing CI checks. It does not connect to staging or production, consume secrets, run migrations, or represent external acceptance.
-
 on:
   pull_request:
-    branches: [ "chore/**", "feature/**" ]
+    branches:
+      - "chore/**"
+      - "feature/**"
+      - main
   push:
-    branches: [ "chore/**", "feature/**" ]
+    branches:
+      - "chore/**"
+      - "feature/**"
   workflow_dispatch:
 
 permissions:
