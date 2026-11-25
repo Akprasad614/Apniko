@@ -796,3 +796,30 @@
 .delivery-order__destination p {
   color: #59645d;
 }
+
+
+/* Phase 5 admin catalogue intake and taxonomy */
+.operations-bottom-nav--five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.operations-code {
+  overflow-x: auto;
+  border: 1px solid var(--lc-line);
+  border-radius: 12px;
+  padding: 1rem;
+  color: #eaf1e8;
+  background: #193b32;
+  font-size: .78rem;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.operations-form ol.operations-help {
+  margin: 0;
+  padding-left: 1.35rem;
+}
+
+.operations-form ol.operations-help li + li {
+  margin-top: .35rem;
+}
