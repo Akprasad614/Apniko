@@ -49,7 +49,7 @@ Performance endpoints:
 - `GET /api/shopkeeper/analytics/overview?from=...&to=...`
 - `GET /api/shopkeeper/analytics/daily?from=...&to=...`
 - `GET /api/shopkeeper/analytics/top-products?shopId=...&from=...&to=...&limit=...`
-- `GET /api/shopkeeper/ai-insights/replenishment?shopId=...&historyDays=28&leadTimeDays=3`
+- `GET /api/shopkeeper/insights/replenishment?shopId=...&historyDays=28&leadTimeDays=3`
 
 All metrics and stock recommendation inputs are backend response values. Daily charts are rendered from the response dates and values. The frontend does not estimate revenue, margins or stock turnover.
 
