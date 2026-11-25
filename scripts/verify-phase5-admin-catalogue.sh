@@ -42,10 +42,5 @@ grep -Fq 'CATALOGUE TAXONOMY' frontend/src/features/admin/AdminDashboard.tsx
 grep -Fq 'CONTROLLED BULK INTAKE' frontend/src/features/admin/AdminDashboard.tsx
 grep -Fq 'operations-bottom-nav--five' frontend/src/features/admin/AdminDashboard.tsx
 grep -Fq '/api/admin/catalogue/review-queue' PHASE5-ADMIN-CATALOGUE-COMPLETION.md
-grep -Fq 'async function createCategory' frontend/src/features/admin/AdminDashboard.tsx
-grep -Fq "'/api/catalogue/categories'" frontend/src/features/admin/AdminDashboard.tsx
-grep -Fq 'CATALOGUE TAXONOMY' frontend/src/features/admin/AdminDashboard.tsx
-grep -Fq 'CONTROLLED BULK INTAKE' frontend/src/features/admin/AdminDashboard.tsx
-grep -Fq 'operations-bottom-nav--five' frontend/src/features/admin/AdminDashboard.tsx
 
 echo "Phase 5 admin catalogue verification passed: admin-only bounded import, dry-run-first CSV intake, source checks and moderation workflow are present."
