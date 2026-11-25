@@ -155,8 +155,9 @@ public class KhathaService {
             if(isOverdue(account))
                 throw new BadRequestException("An overdue balance must be cleared before new credit can be reactivated");
         } else if(status==KhathaAccountStatus.CLOSED) {
-            if(account.getOutstandingBalance().signum()>0)
-                throw new BadRequestException("An account cannot be closed while money is outstanding");
+            if(account.getOutstandingBalance().signum()>0
+                    || (account.getCreditBalance()!=null && account.getCreditBalance().signum()>0))
+                throw new BadRequestException("An account cannot be closed while a debt or customer credit balance remains");
         } else if(status!=KhathaAccountStatus.PAUSED) {
             throw new BadRequestException("Only pause, reactivate or close is permitted");
         }
