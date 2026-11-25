@@ -64,6 +64,7 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 - GET /api/admin/khatha/accounts
 - GET /api/admin/khatha/{accountId}/ledger
 - GET /api/admin/khatha/repayments
+- GET /api/admin/khatha/audit-logs
 
 ### Checkout
 - GET /api/payments/methods?shopId={shopId} advertises KHATHA only when the signed-in customer has usable credit with that shop.
