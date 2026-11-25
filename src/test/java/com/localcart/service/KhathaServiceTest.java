@@ -38,7 +38,7 @@ class KhathaServiceTest {
 
     @Test void orderDebitUsesAvailableCreditAndStartsRepaymentClock() {
         User customer=user(10L,Role.CUSTOMER); Shop shop=shop(3L);
-        KhathaAccount account=account(shop,customer,"1000.00","100.00");
+        KhathaAccount account=account(shop,customer,"1000.00","0.00");
         Order order=order(77L,shop,customer,250.0);
         when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
         when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","77")).thenReturn(false);
@@ -47,7 +47,7 @@ class KhathaServiceTest {
 
         service.chargeOrder(order,customer);
 
-        assertEquals(new BigDecimal("350.00"),account.getOutstandingBalance());
+        assertEquals(new BigDecimal("250.00"),account.getOutstandingBalance());
         assertNotNull(account.getDueDate());
         verify(ledger).save(argThat(e->e.getEntryType()==KhathaLedgerEntryType.PURCHASE_DEBIT
                 && e.getAmount().compareTo(new BigDecimal("250.00"))==0 && "77".equals(e.getSourceId())));
