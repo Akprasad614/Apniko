@@ -8,6 +8,7 @@ interface Overview{totalAccounts:number;activeAccounts:number;pausedAccounts:num
 interface Account{id:number;shopName:string;customerName:string;creditLimit:number;outstandingBalance:number;availableCredit:number;status:string;dueDate:string|null;overdue:boolean;repaymentDays:number}
 interface Ledger{id:number;entryType:string;amount:number;outstandingAfter:number;description:string;actorName:string|null;actorRole:string|null;createdAt:string}
 interface Repayment{id:number;accountId:number;amount:number;channel:string;status:string;reference:string|null;decisionReason:string|null;createdAt:string}
+interface AuditEvent{id:number;accountId:number;action:string;reason:string;actorUserId:number;actorName:string;actorEmail:string;actorRole:string;createdAt:string}
 const money=(v:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(v??0)
 const date=(v:string|null)=>v?new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'—'
 function message(error:unknown){return error instanceof ApiError?error.message:error instanceof Error?error.message:'Could not load Khatha reporting data.'}
@@ -18,6 +19,7 @@ export function AdminKhathaPanel({token}:{token:string}){
  const [selectedId,setSelectedId]=useState<number|null>(null)
  const [ledger,setLedger]=useState<Ledger[]>([])
  const [repayments,setRepayments]=useState<Repayment[]>([])
+ const [auditEvents,setAuditEvents]=useState<AuditEvent[]>([])
  const [loading,setLoading]=useState(true)
  const [error,setError]=useState('')
  useEffect(()=>{
@@ -26,8 +28,9 @@ export function AdminKhathaPanel({token}:{token:string}){
    apiRequest<Overview>('/api/admin/khatha/overview',{},token),
    apiRequest<Account[]>('/api/admin/khatha/accounts',{},token),
    apiRequest<Repayment[]>('/api/admin/khatha/repayments',{},token),
-  ]).then(([summary,all,requests])=>{
-   if(active){setOverview(summary);setAccounts(all);setRepayments(requests);setSelectedId(current=>current&&all.some(a=>a.id===current)?current:(all[0]?.id??null))}
+   apiRequest<AuditEvent[]>('/api/admin/khatha/audit-logs',{},token),
+  ]).then(([summary,all,requests,events])=>{
+   if(active){setOverview(summary);setAccounts(all);setRepayments(requests);setAuditEvents(events);setSelectedId(current=>current&&all.some(a=>a.id===current)?current:(all[0]?.id??null))}
   }).catch(e=>{if(active)setError(message(e))}).finally(()=>{if(active)setLoading(false)})
   return()=>{active=false}
  },[token])
@@ -73,6 +76,12 @@ export function AdminKhathaPanel({token}:{token:string}){
      </section>
     </div>}
    </div>
+   <section className="khatha-panel khatha-admin-audit">
+    <div className="khatha-panel-heading"><div><p className="khatha-eyebrow">ACCOUNTABILITY</p><h2>Recent audit events</h2></div><span>{auditEvents.length} events</span></div>
+    {auditEvents.length?<div className="khatha-ledger">{auditEvents.slice(0,30).map(event=><article key={event.id}>
+     <div><strong>{event.action.replaceAll('_',' ')} · Account #{event.accountId}</strong><small>{date(event.createdAt)} · {event.actorName} ({event.actorRole})</small><small>{event.reason}</small></div>
+    </article>)}</div>:<p className="khatha-help">No audit events have been recorded yet.</p>}
+   </section>
    <p className="khatha-help khatha-admin-note">Administration is read-only in this workspace. Balance changes must be initiated by authorised shop/customer workflows and remain attributable in the audit trail.</p>
   </>}
  </section>
