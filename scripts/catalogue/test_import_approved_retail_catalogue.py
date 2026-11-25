@@ -44,6 +44,9 @@ class ApprovedRetailCatalogueImporterTests(unittest.TestCase):
         row.update(overrides)
         return row
 
+    def test_normalizes_repeated_whitespace_in_csv_values(self):
+        self.assertEqual("Parle G Gold", importer.clean("  Parle   G\\tGold  "))
+
     def test_maps_verified_retail_identity_and_keeps_row_pending_review(self):
         self.write_csv([self.valid_row()])
         products, stats = importer.load_csv(self.path)
