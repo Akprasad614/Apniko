@@ -29,6 +29,12 @@ public class KhathaLedgerEntry {
 
     public KhathaLedgerEntry() {}
     @PrePersist protected void onCreate(){if(createdAt==null) createdAt=LocalDateTime.now();}
+    @PreUpdate protected void preventUpdate(){
+        throw new IllegalStateException("Khatha ledger entries are append-only and cannot be updated");
+    }
+    @PreRemove protected void preventDelete(){
+        throw new IllegalStateException("Khatha ledger entries are append-only and cannot be deleted");
+    }
     public Long getId(){return id;}
     public KhathaAccount getAccount(){return account;} public void setAccount(KhathaAccount v){account=v;}
     public KhathaLedgerEntryType getEntryType(){return entryType;} public void setEntryType(KhathaLedgerEntryType v){entryType=v;}
