@@ -79,7 +79,7 @@ class KhathaServiceTest {
         KhathaLedgerEntry debit=new KhathaLedgerEntry();
         debit.setAmount(new BigDecimal("250.00"));
         when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
-        when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","77")).thenReturn(false);
+        when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","77")).thenReturn(false,true);
         when(ledger.findByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","77")).thenReturn(Optional.of(debit));
         when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
         when(ledger.save(any())).thenAnswer(call->call.getArgument(0));
