@@ -97,6 +97,8 @@ public class KhathaController {
     public ResponseEntity<List<KhathaLedgerEntryResponse>> adminLedger(@PathVariable Long accountId){return ResponseEntity.ok(service.adminLedger(accountId));}
     @GetMapping("/admin/khatha/repayments")
     public ResponseEntity<List<KhathaRepaymentResponse>> adminRepayments(){return ResponseEntity.ok(service.adminRepayments());}
+    @GetMapping("/admin/khatha/audit-logs")
+    public ResponseEntity<List<KhathaAuditLogResponse>> adminAuditLogs(){return ResponseEntity.ok(service.adminAuditLogs());}
 
     private String email(){return SecurityUtils.getCurrentUserEmail();}
 }
