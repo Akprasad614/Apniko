@@ -68,6 +68,14 @@ public class KhathaService {
                 .map(KhathaLedgerEntryResponse::from).toList();
     }
 
+    @Transactional(readOnly=true)
+    public List<KhathaRepaymentResponse> customerRepayments(Long id,String email) {
+        User customer=requireUser(email,Role.CUSTOMER);
+        KhathaAccount account=findAccount(id); requireCustomer(account,customer);
+        return repayments.findByAccountIdOrderByCreatedAtDesc(id).stream()
+                .map(KhathaRepaymentResponse::from).toList();
+    }
+
     @Transactional
     public KhathaAccountResponse acceptTerms(Long id,String email) {
         User customer=requireUser(email,Role.CUSTOMER);
@@ -361,7 +369,7 @@ public class KhathaService {
         a.setActorEmail(actor.getEmail());a.setActorRole(actor.getRole().name());audit.save(a);
     }
     private boolean isUsable(KhathaAccount a) {
-        return a.getStatus()==KhathaAccountStatus.ACTIVE && a.getAcceptedAt()!=null
+        return a.getShop()!=null && a.getShop().isActive() && a.getStatus()==KhathaAccountStatus.ACTIVE && a.getAcceptedAt()!=null
                 && a.getAcceptedTermsVersion()==a.getTermsVersion()
                 && (a.getDueDate()==null || !a.getDueDate().isBefore(LocalDate.now()))
                 && a.getOutstandingBalance().compareTo(a.getCreditLimit())<0;
