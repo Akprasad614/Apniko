@@ -1,8 +1,9 @@
 # Apniko — Phases 0–13 completion and Phase 14 handoff
 
 **Repository integration branch:** `chore/phase-0-foundation-cleanup`  
-**Latest integrated Phase 10 merge:** `3d863ff0b40f8f0118cbeb53cdfde884569c0e08`  
-**Main branch:** not modified by this work.
+**Integration head at the Phase 14 repository handoff:** `85d04b931488667db2e05e01ba4110fc0d7445fd`  
+**Phase 14 repository handoff:** PR #80, merged into the integration branch.  
+**Main branch:** unchanged.
 
 This handoff separates repository implementation from work that must be performed by the project owner in the actual staging/production environment.
 
@@ -13,15 +14,15 @@ This handoff separates repository implementation from work that must be performe
 | 0 | Repository audit, architecture and database cleanup | Complete |
 | 1 | Application foundation, authentication and navigation | Complete |
 | 2 | Customer, Shopkeeper, Delivery Partner and Admin applications | Complete |
-| 3 | Authentic Indian grocery product catalogue | Complete |
+| 3 | Authentic Indian grocery product catalogue | Implemented; complete licensed retail dataset pending |
 | 4 | Text-only catalogue; no product image infrastructure or Open Food Facts | Complete |
-| 5 | Admin catalogue management and bulk import | Complete* |
+| 5 | Admin catalogue management and bulk import | Implemented; commercial source rights pending |
 | 6 | Shopkeeper catalogue, inventory and shop management | Complete |
 | 7 | Customer marketplace and shopping experience | Complete |
-| 8 | Checkout and payment system | Complete* |
+| 8 | Checkout and payment system | Implemented; Razorpay sandbox acceptance pending |
 | 9 | Order management and delivery operations | Complete |
-| 10 | GPS, customer location and nearby shops | Complete* |
-| 11 | Apniko Khatha — customer credit and ledger | Complete |
+| 10 | GPS, customer location and nearby shops | Implemented; real-device verification pending |
+| 11 | Apniko Khatha — customer credit and ledger | Implemented; staging financial regression pending |
 | 12 | Notifications, analytics and operational insights | Complete |
 | 13 | Integration, security and reliability | Complete* |
 
@@ -50,6 +51,8 @@ These actions must be carried out by the owner with access to the actual environ
 
 Never commit real database passwords, JWT secrets, payment keys, webhook secrets, admin tokens, private agreement files or populated `.env.production` files.
 
-## Start Phase 14 when ready
+## Current Phase 14 position
 
-Phase 14 is staging deployment and end-to-end verification. Start only after this implementation PR is merged. The first staging run should use a fresh backup and a staging-only database; no production data should be used for early verification.
+The Phase 14 repository handoff is already integrated through PR #80. The remaining work is environment-dependent: review the actual MySQL schema, prepare and approve the migration baseline, deploy staging with HTTPS, complete the application/payment/Khatha/GPS acceptance checks, and establish the operational safeguards recorded in `PHASE14-STAGING-READINESS.md`.
+
+Use a staging-only database and synthetic accounts. Do not use production customer data for early verification. Phase 15 remains blocked until the Phase 14 sign-off record is complete.
