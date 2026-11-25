@@ -142,6 +142,11 @@ public class AdminService {
     }
 
     public AdminShopResponse updateShopLocation(Long shopId, ShopLocationRequest request) {
+        if (request == null || request.latitude() == null || request.longitude() == null
+                || !Double.isFinite(request.latitude()) || request.latitude() < -90 || request.latitude() > 90
+                || !Double.isFinite(request.longitude()) || request.longitude() < -180 || request.longitude() > 180) {
+            throw new BadRequestException("Enter a valid latitude and longitude for the shop pin");
+        }
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Shop not found with id " + shopId
