@@ -27,9 +27,9 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 ## Accounting and security rules
 
 - A purchase is a PURCHASE_DEBIT; a verified repayment is a REPAYMENT_CREDIT.
-- An eligible order cancellation creates a separate ORDER_REVERSAL entry. It does not erase or mutate the original purchase entry. If part of the cancelled order was already repaid, the excess is carried as customer credit and offsets future Khatha purchases.
+- An eligible order cancellation creates a separate ORDER_REVERSAL entry. It does not erase or mutate the original purchase entry. Repayment allocations are released by appending allocation-release records. If part of the cancelled order was already repaid, the excess is carried as customer credit and offsets future Khatha purchases.
 - Ledger source keys and repayment idempotency keys are unique. Reusing an idempotency key with different amount/channel/reference details is rejected.
-- Account balance changes are transactional and account rows are pessimistically locked. The entity also carries an optimistic version.
+- Account balance changes are transactional and account rows are pessimistically locked. Confirmed repayments and credit adjustments are allocated FIFO to original debit entries; order cancellation releases only allocations against that order, preserving other orders' debt. The entity also carries an optimistic version.
 - Credit is available only when the shop is active, current terms have been accepted, the account is active, the account is not overdue and available credit remains.
 - A repayment request does not change the outstanding balance. The shopkeeper must verify receipt.
 - Interest, late fees, automatic bank/UPI deductions and payment mandates are not enabled.
@@ -75,6 +75,7 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 The new JPA entities are:
 - khatha_accounts (including outstanding and customer credit balances)
 - khatha_ledger_entries
+- khatha_balance_allocations (FIFO allocation and release records linking repayments/adjustments to original debit entries)
 - khatha_repayments
 - khatha_audit_logs
 
