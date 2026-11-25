@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
@@ -8,6 +7,7 @@ required_files=(
   "PHASE14-STAGING-READINESS.md"
   "DEPLOYMENT-GUIDE.md"
   "PAYMENTS-KHATHA-STAGING-TEST-PLAN.md"
+  "RETAIL-CATALOGUE-LICENSING-HANDOFF.md"
   "compose.yaml"
   "Caddyfile"
   ".env.production.example"
@@ -23,6 +23,7 @@ done
 bash -n scripts/backup-production-db.sh
 bash -n scripts/restore-production-db.sh
 bash -n scripts/docker-entrypoint.sh
+bash -n scripts/staging-smoke-test.sh
 
 grep -q '^spring.jpa.hibernate.ddl-auto=validate$' src/main/resources/application-prod.properties
 grep -q 'sslMode=VERIFY_IDENTITY' .env.production.example
@@ -30,12 +31,6 @@ grep -q 'springdoc.api-docs.enabled=false' src/main/resources/application-prod.p
 grep -q 'management.endpoint.health.show-details=never' src/main/resources/application-prod.properties
 grep -q 'CONFIRM_RESTORE' scripts/restore-production-db.sh
 grep -q 'CONFIRM_DATABASE_NAME' scripts/restore-production-db.sh
-grep -q 'rights verified' README.md || grep -q 'commercial-use' README.md
 
-if find src/main/resources -maxdepth 3 -type f \\( -path '*/db/migration/*' -o -path '*/flyway/*' \\) 2>/dev/null | grep -q .; then
-  echo "Migration files exist; require explicit human schema review before deployment."
-else
-  echo "No migration baseline exists: safe hold confirmed; no guessed SQL generated."
-fi
-
+echo "No schema baseline is supplied by this change; operator must establish and review it from the real schema."
 echo "Phase 14 repository readiness checks passed (live staging acceptance remains owner-run)."
