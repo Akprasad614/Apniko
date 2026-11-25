@@ -11,6 +11,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
 
 class KhathaServiceTest {
     private KhathaAccountRepository accounts;
@@ -169,6 +170,50 @@ class KhathaServiceTest {
 
         assertEquals(new BigDecimal("100.00"),account.getOutstandingBalance());
         assertEquals(new BigDecimal("150.00"),account.getCreditBalance());
+    }
+
+    @Test void confirmedRepaymentAllocatesFifoAcrossOriginalOrderDebits() {
+        User shopkeeper=user(11L,Role.SHOPKEEPER);
+        User customer=user(10L,Role.CUSTOMER);
+        Shop shop=shop(3L); shop.setOwner(shopkeeper);
+        KhathaAccount account=account(shop,customer,"1000.00","150.00");
+        KhathaLedgerEntry firstDebit=new KhathaLedgerEntry();
+        setId(firstDebit,601L); firstDebit.setEntryType(KhathaLedgerEntryType.PURCHASE_DEBIT);
+        firstDebit.setOutstandingChange(new BigDecimal("50.00"));
+        firstDebit.setSourceId("101");
+        KhathaLedgerEntry secondDebit=new KhathaLedgerEntry();
+        setId(secondDebit,602L); secondDebit.setEntryType(KhathaLedgerEntryType.PURCHASE_DEBIT);
+        secondDebit.setOutstandingChange(new BigDecimal("100.00"));
+        secondDebit.setSourceId("102");
+
+        KhathaRepayment repayment=new KhathaRepayment();
+        setId(repayment,44L); repayment.setAccount(account); repayment.setAmount(new BigDecimal("70.00"));
+        repayment.setChannel(KhathaRepaymentChannel.CASH_AT_SHOP);
+        repayment.setStatus(KhathaRepaymentStatus.PENDING);
+
+        when(users.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(accounts.findByIdForUpdate(1L)).thenReturn(Optional.of(account));
+        when(repayments.findByIdForUpdate(44L)).thenReturn(Optional.of(repayment));
+        when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"REPAYMENT","44")).thenReturn(false);
+        when(ledger.findByAccountIdAndEntryTypeInOrderByCreatedAtAscIdAsc(
+                1L,java.util.List.of(KhathaLedgerEntryType.PURCHASE_DEBIT,KhathaLedgerEntryType.ADJUSTMENT_DEBIT)))
+                .thenReturn(java.util.List.of(firstDebit,secondDebit));
+        when(allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(601L)).thenReturn(java.util.List.of());
+        when(allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(602L)).thenReturn(java.util.List.of());
+        when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
+        when(repayments.save(any())).thenAnswer(call->call.getArgument(0));
+        when(ledger.save(any())).thenAnswer(call->{KhathaLedgerEntry entry=call.getArgument(0);setId(entry,700L);return entry;});
+        when(allocations.save(any())).thenAnswer(call->call.getArgument(0));
+
+        service.confirmRepayment(1L,44L,shopkeeper.getEmail());
+
+        assertEquals(new BigDecimal("80.00"),account.getOutstandingBalance());
+        ArgumentCaptor<KhathaBalanceAllocation> captor=ArgumentCaptor.forClass(KhathaBalanceAllocation.class);
+        verify(allocations,times(2)).save(captor.capture());
+        assertEquals(new BigDecimal("50.00"),captor.getAllValues().get(0).getAmount());
+        assertEquals(601L,captor.getAllValues().get(0).getDebitEntry().getId());
+        assertEquals(new BigDecimal("20.00"),captor.getAllValues().get(1).getAmount());
+        assertEquals(602L,captor.getAllValues().get(1).getDebitEntry().getId());
     }
 
     private User user(Long id,Role role) {
