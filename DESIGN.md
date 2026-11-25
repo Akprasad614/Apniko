@@ -2,7 +2,7 @@
 
 ## Art direction
 
-**Neighbourhood market, not generic SaaS dashboard.** The visual language takes cues from printed grocery labels, produce-market signage, warm paper, ink, painted shop fronts and simple editorial layouts. Avoid the default AI-generated look: no purple/blue gradients, glassmorphism, excessive rounded cards, random metric tiles or decorative charts without a job to do.
+**Neighbourhood market, not generic SaaS dashboard.** The visual language takes cues from printed grocery labels, produce-market signage, warm paper, ink, painted shop fronts and simple editorial layouts. Avoid generic template-driven styling: no purple/blue gradients, glassmorphism, excessive rounded cards, random metric tiles or decorative charts without a clear purpose.
 
 The customer experience should feel welcoming and tactile. Shopkeeper and delivery interfaces should feel calm, legible and operationally efficient.
 
