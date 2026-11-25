@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ApiError, apiRequest } from '../../lib/api'
 import '../customer/khatha.css'
-import './khatha-workspace.css'
+import '../shopkeeper/khatha-workspace.css'
+import './khatha-admin.css'
 
 interface Overview{totalAccounts:number;activeAccounts:number;pausedAccounts:number;pendingRepayments:number;overdueAccounts:number;totalOutstanding:number}
 interface Account{id:number;shopName:string;customerName:string;creditLimit:number;outstandingBalance:number;availableCredit:number;status:string;dueDate:string|null;overdue:boolean;repaymentDays:number}
