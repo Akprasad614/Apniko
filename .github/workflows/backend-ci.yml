@@ -92,5 +92,8 @@ jobs:
       - name: Verify passive DAST security guardrails
         run: bash scripts/verify-phase4.sh
 
+      - name: Verify Phase 13 integration, security and reliability contracts
+        run: bash scripts/verify-phase13-integration-reliability.sh
+
       - name: Run Maven verification and tests
         run: ./mvnw -B -ntp verify
