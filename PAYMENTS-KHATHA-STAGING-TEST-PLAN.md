@@ -2,6 +2,19 @@
 
 Use staging-only synthetic users and Razorpay test mode. Do not use real payment credentials or real customer financial records. This document defines cases; it does not claim those tests have run.
 
+## Existing automated regression coverage
+
+The current repository's Phase 8 workflow runs `./mvnw verify`, frontend lint/typecheck/unit tests and the Phase 7 Playwright customer-to-delivery suite. The existing payment gateway HTTP contract tests run against an ephemeral local server without internet credentials and cover order creation, payment fetch, refund request and rejection of unsafe provider base URLs. These are code-level regressions; they do not verify Razorpay sandbox account behavior or real webhook delivery.
+
+Before staging, inspect and run the focused project tests with:
+
+```bash
+./mvnw -B -ntp -Dtest='*Razorpay*Test,*Khatha*Test,*Ledger*Test' test
+./mvnw -B -ntp verify
+```
+
+The pattern is intentionally advisory: confirm the actual test class names in the current checkout before narrowing by `-Dtest`; the full `verify` suite remains authoritative.
+
 ## Razorpay sandbox
 
 | ID | Scenario | Expected invariant |
