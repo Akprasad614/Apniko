@@ -123,7 +123,8 @@ public class PaymentService {
         if (payment.getId() != null) {
             if (payment.getStatus() == PaymentStatus.PAID
                     || payment.getStatus() == PaymentStatus.REFUND_PENDING
-                    || payment.getStatus() == PaymentStatus.REFUNDED) {
+                    || payment.getStatus() == PaymentStatus.REFUNDED
+                    || payment.getStatus() == PaymentStatus.REVERSED) {
                 if (payment.getMethod() == PaymentMethod.KHATHA
                         && request.getMethod() == PaymentMethod.KHATHA
                         && payment.getStatus() == PaymentStatus.PAID) {
