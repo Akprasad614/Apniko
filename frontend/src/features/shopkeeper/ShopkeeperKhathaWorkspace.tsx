@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, apiRequest } from '../../lib/api'
 import '../customer/khatha.css'
+import './khatha-workspace.css'
 
 interface Account {
   id:number; shopId:number; shopName:string; customerId:number; customerName:string
