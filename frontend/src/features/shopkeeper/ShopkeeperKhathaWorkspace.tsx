@@ -6,11 +6,11 @@ import './khatha-workspace.css'
 
 interface Account {
   id:number; shopId:number; shopName:string; customerId:number; customerName:string
-  creditLimit:number; outstandingBalance:number; availableCredit:number; status:string
+  creditLimit:number; outstandingBalance:number; availableCredit:number; creditBalance:number; status:string
   repaymentDays:number; dueDate:string|null; overdue:boolean
 }
 interface Customer {id:number;name:string;email:string}
-interface Ledger {id:number;entryType:string;amount:number;outstandingAfter:number;description:string;createdAt:string}
+interface Ledger {id:number;entryType:string;amount:number;outstandingAfter:number;description:string;createdAt:string;creditBalanceAfter:number|null;creditBalanceChange:number|null;outstandingChange:number|null}
 interface Repayment {id:number;accountId:number;amount:number;channel:string;status:string;reference:string|null;note:string|null;decisionReason:string|null;createdAt:string}
 const money=(v:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(v??0)
 const date=(v:string|null)=>v?new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'—'
@@ -159,7 +159,7 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
     {selected&&<div className="khatha-detail">
      <div className="khatha-balance-card"><div className="khatha-balance-top"><span>{selected.customerName}</span><span className={'khatha-status khatha-status--'+selected.status.toLowerCase()}>{selected.status}</span></div>
       <p>Outstanding balance</p><strong className="khatha-balance-value">{money(selected.outstandingBalance)}</strong>
-      <div className="khatha-balance-metrics"><span><small>Credit limit</small><b>{money(selected.creditLimit)}</b></span><span><small>Available</small><b>{money(selected.availableCredit)}</b></span><span><small>Due date</small><b>{date(selected.dueDate)}</b></span></div>
+      <div className="khatha-balance-metrics"><span><small>Credit limit</small><b>{money(selected.creditLimit)}</b></span><span><small>Available</small><b>{money(selected.availableCredit)}</b></span><span><small>Customer credit</small><b>{money(selected.creditBalance)}</b></span><span><small>Due date</small><b>{date(selected.dueDate)}</b></span></div>
      </div>
      <section className="khatha-panel">
       <div className="khatha-panel-heading"><div><p className="khatha-eyebrow">ACCOUNT CONTROLS</p><h2>Manage terms and status</h2></div></div>
@@ -196,7 +196,7 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
       </form>
      </section>
      <section className="khatha-panel"><div className="khatha-panel-heading"><div><p className="khatha-eyebrow">IMMUTABLE HISTORY</p><h2>Ledger</h2></div></div>
-      {ledger.length?<div className="khatha-ledger">{ledger.map(l=><article key={l.id}><div><strong>{l.description}</strong><small>{date(l.createdAt)} · {l.entryType.replaceAll('_',' ')}</small></div><div><b>{money(l.amount)}</b><small>Balance {money(l.outstandingAfter)}</small></div></article>)}</div>:<p className="khatha-help">No ledger entries.</p>}
+      {ledger.length?<div className="khatha-ledger">{ledger.map(l=><article key={l.id}><div><strong>{l.description}</strong><small>{date(l.createdAt)} · {l.entryType.replaceAll('_',' ')}</small></div><div><b>{money(l.amount)}</b><small>Balance {money(l.outstandingAfter)} · Credit {money(l.creditBalanceAfter??0)}</small></div></article>)}</div>:<p className="khatha-help">No ledger entries.</p>}
      </section>
     </div>}
    </div>}
