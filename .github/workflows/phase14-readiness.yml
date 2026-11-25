@@ -1,0 +1,55 @@
+# Phase 14 — Staging deployment readiness, payment/Khatha tests, and operations
+
+**Status: repository preparation only; staging environment not deployed or accepted.**
+
+This workflow validates the phase 14 handoff artifacts and exercises existing CI checks. It does not connect to staging or production, consume secrets, run migrations, or represent external acceptance.
+
+on:
+  pull_request:
+    branches: [ "chore/**", "feature/**" ]
+  push:
+    branches: [ "chore/**", "feature/**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase14-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    name: Phase 14 repository readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Verify deployment handoff files and safety gates
+        run: bash scripts/verify-phase14-readiness.sh
+
+      - name: Validate compose configuration (no real credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
+          printf 'ci-dummy-secret\n' > "$temp_dir/db_password.txt"
+          openssl rand -base64 48 > "$temp_dir/jwt_secret.txt"
+          chmod 600 "$temp_dir/"*.txt
+          export DB_URL='jdbc:mysql://mysql.invalid:3306/apniko?sslMode=VERIFY_IDENTITY'
+          export DB_USERNAME='ci_runtime'
+          export DB_PASSWORD_FILE="$temp_dir/db_password.txt"
+          export JWT_SECRET_FILE="$temp_dir/jwt_secret.txt"
+          export APNIKO_DOMAIN='apniko.example.invalid'
+          export ACME_EMAIL='ops@example.invalid'
+          export APNIKO_IMAGE_TAG='phase14-validation'
+          docker compose config --quiet
