@@ -411,7 +411,8 @@ public class KhathaService {
         return a.getShop()!=null && a.getShop().isActive() && a.getStatus()==KhathaAccountStatus.ACTIVE && a.getAcceptedAt()!=null
                 && a.getAcceptedTermsVersion()==a.getTermsVersion()
                 && (a.getDueDate()==null || !a.getDueDate().isBefore(LocalDate.now()))
-                && (a.getOutstandingBalance().compareTo(a.getCreditLimit())<0\n                    || (a.getCreditBalance()!=null && a.getCreditBalance().signum()>0));
+                && (a.getOutstandingBalance().compareTo(a.getCreditLimit())<0
+                    || (a.getCreditBalance()!=null && a.getCreditBalance().signum()>0));
     }
     private boolean isOverdue(KhathaAccount a) {
         return a.getOutstandingBalance().signum()>0 && a.getDueDate()!=null && a.getDueDate().isBefore(LocalDate.now());
