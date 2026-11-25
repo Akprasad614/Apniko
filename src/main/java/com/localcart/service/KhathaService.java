@@ -224,19 +224,33 @@ public class KhathaService {
         KhathaAccount account=lockAccount(id); requireShop(account.getShop(),actor);
         BigDecimal amount=money(request.amount()), next;
         KhathaLedgerEntryType type;
+        BigDecimal creditApplied=ZERO;
+        BigDecimal outstandingChange;
         if(request.type()==KhathaAdjustmentType.CREDIT) {
             if(amount.compareTo(account.getOutstandingBalance())>0) throw new BadRequestException("A credit adjustment cannot exceed the outstanding balance");
-            next=account.getOutstandingBalance().subtract(amount); type=KhathaLedgerEntryType.ADJUSTMENT_CREDIT;
+            next=account.getOutstandingBalance().subtract(amount);
+            type=KhathaLedgerEntryType.ADJUSTMENT_CREDIT;
+            outstandingChange=amount.negate();
         } else {
-            next=account.getOutstandingBalance().add(amount);
+            BigDecimal currentCredit=account.getCreditBalance()==null?ZERO:account.getCreditBalance();
+            creditApplied=amount.min(currentCredit);
+            outstandingChange=amount.subtract(creditApplied);
+            next=account.getOutstandingBalance().add(outstandingChange);
             if(next.compareTo(account.getCreditLimit())>0) throw new BadRequestException("Adjustment exceeds the approved credit limit");
             type=KhathaLedgerEntryType.ADJUSTMENT_DEBIT;
-            if(account.getDueDate()==null) account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
+            account.setCreditBalance(currentCredit.subtract(creditApplied));
+            if(account.getOutstandingBalance().signum()==0 && outstandingChange.signum()>0)
+                account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
         }
         account.setOutstandingBalance(next);
         if(next.signum()==0) account.setDueDate(null);
         accounts.save(account);
         KhathaLedgerEntry entry=newEntry(account,type,amount,next,"ADJUSTMENT",UUID.randomUUID().toString(),request.reason().trim(),actor);
+        if(request.type()==KhathaAdjustmentType.DEBIT) {
+            entry.setCreditBalanceChange(creditApplied.negate());
+            entry.setCreditBalanceAfter(account.getCreditBalance());
+            entry.setOutstandingChange(outstandingChange);
+        }
         entry=ledger.save(entry);
         if(request.type()==KhathaAdjustmentType.CREDIT) allocateCredit(account,entry,amount);
         writeAudit(account,actor,"BALANCE_ADJUSTMENT",request.reason().trim());
