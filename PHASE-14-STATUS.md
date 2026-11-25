@@ -16,13 +16,13 @@
 | 11 | Apniko Khatha — customer credit and ledger | Implemented; staging financial regression and reconciliation pending |
 | 12 | Notifications, analytics and operational insights | Complete |
 | 13 | Integration, security and reliability | Repository verification passed; staging acceptance pending |
-| 14 | Staging deployment and testing | **Repository preparation in review; staging not deployed / not accepted** |
+| 14 | Staging deployment and testing | **Repository preparation complete; live staging acceptance pending** |
 | 15 | Production deployment and public launch | **Blocked — do not start** |
 | 16 | Future AI features and intelligent automation | Planned |
 
 ## Phase 14 current result
 
-Repository-side handoff now includes staging acceptance gates, database migration-baseline procedure, owner deployment guide, payment/Khatha test plan, a staging environment template, a readiness verifier and a PR workflow. Existing Compose/Caddy/health/backup/restore automation is retained.
+Repository-side handoff now includes staging acceptance gates, database migration-baseline procedure, owner deployment guide, payment/Khatha test plan, retail licensing handoff, a staging environment template, HTTPS smoke-test script, a readiness verifier and a PR workflow. Existing Compose/Caddy/health/backup/restore automation is retained. The new workflow validates the handoff and production configuration but deliberately never targets a live staging/production service.
 
 Outstanding owner-run gates are listed in `PHASE14-STAGING-READINESS.md`: actual schema inventory and reviewed migration baseline, real staging HTTPS deploy, application and role acceptance, Razorpay sandbox/webhook/refund tests, Khatha financial regression/reconciliation, Android/iOS GPS verification, main-branch protections, external monitoring/alert delivery, encrypted off-site backup + successful restore drill, and retail catalogue commercial rights and verified products.
 
