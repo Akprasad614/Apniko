@@ -75,6 +75,36 @@ barcode and printed pack size where relevant), category mapping, field-level
 provenance and an update policy. The source must be explicitly approved before
 an adapter or import is added.
 
+## Approved commercial retail-source intake
+
+The Mendeley reference importer is not a retail SKU importer. A separate
+source-neutral CSV tool is available at
+`scripts/catalogue/import_approved_retail_catalogue.py`. It accepts only a
+strict schema for sellable retail variants: stable source record ID, product
+name, barcode/GTIN, printed pack size, net quantity/unit, category and
+subcategory, with optional MRP and provenance fields. Unknown fields are
+rejected, including image and photo URLs. GTIN check digits and numeric fields
+are validated locally before any API call.
+
+This tool does not fetch, scrape or mirror retailer websites. The operator
+must obtain a lawful export or written permission from the source owner. Before
+an API import can proceed, the backend runtime must be configured with the
+exact source name, HTTPS URL, licence, permission reference, and two explicit
+true flags confirming reviewed reuse rights and commercial-use permission.
+Those flags default to false. Do not enable them based only on public
+availability or an unreviewed email/website statement.
+
+The admin API repeats the exact source allowlist check and requires a verified
+GTIN, pack size and net quantity. New retail rows always enter
+`NEEDS_REVIEW`; an administrator must verify the retail variant and approve
+it before customer publication. A successful import does not set shop prices,
+stock or availability.
+
+The example deployment file contains blank/false placeholders for these
+settings. Keep private agreement files and credentials off Git; store only an
+operator-approved permission reference in the runtime configuration and
+preserve the applicable provenance in the source-record audit table.
+
 ## Local catalogue reset
 
 The backup-first helper is
