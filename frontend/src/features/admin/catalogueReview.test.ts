@@ -21,3 +21,26 @@ describe('catalogue review display helpers', () => {
     expect(formatCatalogueReviewDate('not-a-date')).toBe('Not recorded')
   })
 })
+
+
+describe('catalogue category name validation', () => {
+  const categories = [
+    { id: 1, name: 'Staples', subcategories: [{ id: 11, name: 'Rice' }] },
+    { id: 2, name: 'Snacks', subcategories: [{ id: 22, name: 'Chips' }] },
+  ]
+
+  it('detects duplicate top-level category names after trimming and case folding', () => {
+    expect(categoryNameExists(categories, ' staples ', null)).toBe(true)
+    expect(categoryNameExists(categories, 'Beverages', null)).toBe(false)
+  })
+
+  it('detects a duplicate only under the selected parent category', () => {
+    expect(categoryNameExists(categories, ' rice ', 1)).toBe(true)
+    expect(categoryNameExists(categories, 'Rice', 2)).toBe(false)
+    expect(categoryNameExists(categories, 'Chips', 1)).toBe(false)
+  })
+
+  it('does not treat an empty name as a duplicate', () => {
+    expect(categoryNameExists(categories, '   ', null)).toBe(false)
+  })
+})
