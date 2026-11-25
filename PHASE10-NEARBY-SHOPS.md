@@ -1,6 +1,6 @@
 # Phase 10 — customer GPS and nearby-shop discovery
 
-**Implementation status: code and CI acceptance added on the Phase 5/8/10 completion branch.**
+**Implementation status: complete in the Phase 10 integration branch, including customer address capture, nearby-shop discovery, admin shop-pin management, and validation tests.**
 **Real-store pin coverage: requires the operator to verify and save a coordinate for each shop.**
 
 ## Shop coordinate ownership
@@ -9,7 +9,9 @@ Each shop may have an optional latitude/longitude. Coordinates are store data, n
 
 - An administrator can enter a verified pin in the Shops section, or capture the browser's current device location while physically standing at that shop.
 - The admin must check that the pin belongs to the actual store entrance before saving.
-- The admin API validates latitude (-90..90) and longitude (-180..180).
+- The admin API validates latitude (-90..90) and longitude (-180..180) in both request validation and the service layer; non-finite values are rejected.
+- Shopkeeper create/update flows accept either no coordinates or a complete valid pair. A partial pair, NaN, infinity, or out-of-range value is rejected.
+- Customer saved addresses use the same paired-coordinate rule. GPS-derived coordinates are optional and are saved only when the customer explicitly confirms and saves the address.
 - Older shop create/update requests may omit coordinates. An update that omits both values preserves an existing pin; a half-supplied pair is rejected.
 - Public shop responses expose the pin only as map location data; customer identity and phone fields are not included.
 
@@ -23,7 +25,7 @@ On an explicit tap, the browser requests location permission. The customer selec
 4. Filters to the selected radius and sorts nearest first.
 5. Returns the distance rounded to one decimal place.
 
-Customer coordinates are used to answer that request and are not written to the customer profile or shop database. A customer who denies location permission can continue to use the regular shop list.
+Customer coordinates are used to answer that request and are not written to the customer profile or shop database. This nearby-search request is separate from saved delivery addresses: an address pin is stored only after the customer confirms and saves that address. A customer who denies location permission, has location disabled, or uses a browser without Geolocation can continue to use the regular shop list. Geolocation requires a secure browser context (HTTPS, or localhost during development).
 
 ## Endpoint
 
@@ -49,4 +51,4 @@ Development uses the existing Hibernate update workflow to create nullable `shop
 
 ## Verification
 
-The backend CI executes `scripts/verify-phase10-geolocation.sh` and the Maven test suite. The service tests cover nearest-first ordering, radius exclusion, inactive and unpinned shops, and coordinate/radius validation.
+The backend CI executes `scripts/verify-phase10-geolocation.sh` and the Maven test suite. The service tests cover nearest-first ordering, radius exclusion, inactive and unpinned shops, coordinate/radius validation, partial coordinate-pair rejection, non-finite coordinate rejection, and administrator pin persistence. Customer address ownership and saved-address behaviour are covered by the address-service tests.
