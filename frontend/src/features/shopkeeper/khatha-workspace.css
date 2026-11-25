@@ -1,0 +1,10 @@
+.khatha-workspace-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin:0 0 1rem}
+.khatha-workspace-stats article{display:grid;gap:.3rem;padding:1rem;border:1px solid var(--lc-line,#e1e5dd);border-radius:13px;background:#fffdf8}
+.khatha-workspace-stats small{color:#77837b;font-size:.67rem}.khatha-workspace-stats strong{color:#214637;font-size:1.18rem;letter-spacing:-.03em}
+.khatha-actions{display:flex;flex-wrap:wrap;gap:.45rem;margin:.5rem 0 .8rem}
+.khatha-secondary,.khatha-confirm{border:1px solid #d8dfd5;border-radius:9px;padding:.55rem .75rem;background:#f8faf5;color:#315243;font-size:.72rem;font-weight:800;cursor:pointer}
+.khatha-confirm{border-color:#b5cdb8;background:#e9f2e7;color:#28583a}
+.khatha-direct-repayment{margin-top:1rem;padding-top:1rem;border-top:1px solid #edf0ea}
+.khatha-form--offer{grid-template-columns:repeat(3,minmax(0,1fr))}
+.khatha-form--offer .khatha-help,.khatha-form--offer .khatha-primary{grid-column:1/-1}
+@media(max-width:760px){.khatha-workspace-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.khatha-form--offer{grid-template-columns:1fr}.khatha-form--offer .khatha-help,.khatha-form--offer .khatha-primary{grid-column:auto}}
