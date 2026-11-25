@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, apiRequest } from '../../lib/api'
 import { useAuth } from '../../auth/AuthProvider'
@@ -41,7 +41,7 @@ export function CustomerKhatha(){
   const [reference,setReference]=useState('')
   const [note,setNote]=useState('')
 
-  async function loadAccounts(){
+  const loadAccounts=useCallback(async()=>{
     setLoading(true); setError('')
     try{
       const result=await apiRequest<Account[]>('/api/customer/khatha',{},token)
@@ -49,8 +49,8 @@ export function CustomerKhatha(){
       setSelectedId(current=>current && result.some(a=>a.id===current)?current:(result[0]?.id??null))
     }catch(e){setError(errorMessage(e))}
     finally{setLoading(false)}
-  }
-  useEffect(()=>{void loadAccounts()},[token])
+  },[token])
+  useEffect(()=>{void loadAccounts()},[loadAccounts])
   useEffect(()=>{
     if(selectedId===null){setLedger([]);setRepayments([]);return}
     let active=true
