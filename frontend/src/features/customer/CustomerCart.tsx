@@ -117,7 +117,7 @@ export function CustomerCart() {
   const invalidItems = basket?.items.some((item) => !item.available || item.quantity > item.availableStock) ?? false
   const canCheckout = Boolean(
     basket?.items.length && !invalidItems && !busy && !loadingBasket
-    && !loadingCheckoutOptions,
+    && !loadingCheckoutOptions && (paymentMethod !== 'KHATHA' || hasKhatha),
   )
 
   useEffect(() => {
