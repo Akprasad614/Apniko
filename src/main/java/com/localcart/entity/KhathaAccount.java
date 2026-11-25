@@ -16,6 +16,7 @@ public class KhathaAccount {
     @ManyToOne(fetch=FetchType.LAZY, optional=false) @JoinColumn(name="customer_id", nullable=false) private User customer;
     @Column(nullable=false, precision=12, scale=2) private BigDecimal creditLimit=BigDecimal.ZERO;
     @Column(nullable=false, precision=12, scale=2) private BigDecimal outstandingBalance=BigDecimal.ZERO;
+    @Column(nullable=false, precision=12, scale=2) private BigDecimal creditBalance=BigDecimal.ZERO;
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=20) private KhathaAccountStatus status=KhathaAccountStatus.OFFERED;
     @Column(nullable=false) private int repaymentDays=15;
     @Column(nullable=false) private int termsVersion=1;
@@ -37,6 +38,7 @@ public class KhathaAccount {
     public User getCustomer(){return customer;} public void setCustomer(User v){customer=v;}
     public BigDecimal getCreditLimit(){return creditLimit;} public void setCreditLimit(BigDecimal v){creditLimit=v;}
     public BigDecimal getOutstandingBalance(){return outstandingBalance;} public void setOutstandingBalance(BigDecimal v){outstandingBalance=v;}
+    public BigDecimal getCreditBalance(){return creditBalance;} public void setCreditBalance(BigDecimal v){creditBalance=v;}
     public KhathaAccountStatus getStatus(){return status;} public void setStatus(KhathaAccountStatus v){status=v;}
     public int getRepaymentDays(){return repaymentDays;} public void setRepaymentDays(int v){repaymentDays=v;}
     public int getTermsVersion(){return termsVersion;} public void setTermsVersion(int v){termsVersion=v;}
