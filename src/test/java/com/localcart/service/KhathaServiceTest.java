@@ -1,6 +1,7 @@
 package com.localcart.service;
 
 import com.localcart.entity.*;
+import com.localcart.dto.KhathaAdjustmentRequest;
 import com.localcart.exception.BadRequestException;
 import com.localcart.repository.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -216,6 +217,54 @@ class KhathaServiceTest {
         assertEquals(601L,captor.getAllValues().get(0).getDebitEntry().getId());
         assertEquals(new BigDecimal("20.00"),captor.getAllValues().get(1).getAmount());
         assertEquals(602L,captor.getAllValues().get(1).getDebitEntry().getId());
+    }
+
+
+    @Test void closedAccountCannotBeReopened() {
+        User shopkeeper=user(11L,Role.SHOPKEEPER);
+        User customer=user(10L,Role.CUSTOMER);
+        Shop shop=shop(3L); shop.setOwner(shopkeeper);
+        KhathaAccount account=account(shop,customer,"1000.00","0.00");
+        account.setStatus(KhathaAccountStatus.CLOSED);
+        when(users.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(accounts.findByIdForUpdate(1L)).thenReturn(Optional.of(account));
+
+        assertThrows(BadRequestException.class,
+                ()->service.updateStatus(1L,KhathaAccountStatus.PAUSED,shopkeeper.getEmail()));
+        verify(accounts,never()).save(any());
+    }
+
+    @Test void unacceptedOfferCannotBePausedBeforeCustomerAcceptance() {
+        User shopkeeper=user(11L,Role.SHOPKEEPER);
+        User customer=user(10L,Role.CUSTOMER);
+        Shop shop=shop(3L); shop.setOwner(shopkeeper);
+        KhathaAccount account=account(shop,customer,"1000.00","0.00");
+        account.setStatus(KhathaAccountStatus.OFFERED);
+        account.setAcceptedAt(null);
+        account.setAcceptedTermsVersion(0);
+        when(users.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(accounts.findByIdForUpdate(1L)).thenReturn(Optional.of(account));
+
+        assertThrows(BadRequestException.class,
+                ()->service.updateStatus(1L,KhathaAccountStatus.PAUSED,shopkeeper.getEmail()));
+        verify(accounts,never()).save(any());
+    }
+
+    @Test void debitAdjustmentCannotCreateDebtOnPausedAccount() {
+        User shopkeeper=user(11L,Role.SHOPKEEPER);
+        User customer=user(10L,Role.CUSTOMER);
+        Shop shop=shop(3L); shop.setOwner(shopkeeper);
+        KhathaAccount account=account(shop,customer,"1000.00","0.00");
+        account.setStatus(KhathaAccountStatus.PAUSED);
+        when(users.findByEmail(shopkeeper.getEmail())).thenReturn(Optional.of(shopkeeper));
+        when(accounts.findByIdForUpdate(1L)).thenReturn(Optional.of(account));
+
+        KhathaAdjustmentRequest request=new KhathaAdjustmentRequest(
+                new BigDecimal("25.00"),KhathaAdjustmentType.DEBIT,"Agreed adjustment for returned goods");
+        assertThrows(BadRequestException.class,
+                ()->service.adjustBalance(1L,request,shopkeeper.getEmail()));
+        verify(accounts,never()).save(any());
+        verify(ledger,never()).save(any());
     }
 
     private User user(Long id,Role role) {

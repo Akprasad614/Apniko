@@ -165,7 +165,7 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
       <div className="khatha-panel-heading"><div><p className="khatha-eyebrow">ACCOUNT CONTROLS</p><h2>Manage terms and status</h2></div></div>
       <div className="khatha-actions">
        {selected.status==='ACTIVE'||selected.status==='OVERDUE'?<button type="button" className="khatha-secondary" disabled={busy} onClick={()=>void setStatus('PAUSED')}>Pause account</button>:selected.status==='PAUSED'?<button type="button" className="khatha-secondary" disabled={busy} onClick={()=>void setStatus('ACTIVE')}>Reactivate account</button>:null}
-       {selected.outstandingBalance===0&&selected.status!=='CLOSED'&&<button type="button" className="khatha-secondary" disabled={busy} onClick={()=>void setStatus('CLOSED')}>Close account</button>}
+       {selected.outstandingBalance===0&&selected.creditBalance===0&&selected.status!=='CLOSED'&&<button type="button" className="khatha-secondary" disabled={busy} onClick={()=>void setStatus('CLOSED')}>Close account</button>}
        {selected.status!=='CLOSED'&&<button type="button" className="khatha-secondary" onClick={()=>{setEditLimit(String(selected.creditLimit));setEditDays(String(selected.repaymentDays))}}>Edit credit terms</button>}
       </div>
       {editLimit!==''&&<form className="khatha-form" onSubmit={saveTerms}>

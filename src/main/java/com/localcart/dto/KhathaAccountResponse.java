@@ -7,8 +7,9 @@ public record KhathaAccountResponse(Long id,Long shopId,String shopName,Long cus
  LocalDate dueDate,boolean overdue,int termsVersion,int acceptedTermsVersion,LocalDateTime acceptedAt,
  LocalDateTime createdAt,LocalDateTime updatedAt) {
  public static KhathaAccountResponse from(KhathaAccount a) {
-  boolean overdue=a.getOutstandingBalance().signum()>0 && a.getDueDate()!=null && a.getDueDate().isBefore(LocalDate.now());
-  BigDecimal available=a.getCreditLimit().subtract(a.getOutstandingBalance()).max(BigDecimal.ZERO);
+  boolean overdue=a.getOutstandingBalance().signum()>0 && a.getDueDate()!=null && a.getDueDate().isBefore(LocalDate.now(ZoneId.of("Asia/Kolkata")));
+  BigDecimal available=a.getCreditLimit().subtract(a.getOutstandingBalance()).max(BigDecimal.ZERO)
+   .add(a.getCreditBalance()==null?BigDecimal.ZERO:a.getCreditBalance().max(BigDecimal.ZERO));
   String displayStatus=overdue && a.getStatus()==KhathaAccountStatus.ACTIVE?"OVERDUE":a.getStatus().name();
   return new KhathaAccountResponse(a.getId(),a.getShop().getId(),a.getShop().getName(),
    a.getCustomer().getId(),a.getCustomer().getName(),a.getCreditLimit(),a.getOutstandingBalance(),

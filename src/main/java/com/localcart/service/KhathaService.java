@@ -14,11 +14,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
 public class KhathaService {
     private static final BigDecimal ZERO = new BigDecimal("0.00");
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Kolkata");
     private final KhathaAccountRepository accounts;
     private final KhathaLedgerEntryRepository ledger;
     private final KhathaBalanceAllocationRepository allocations;
@@ -90,7 +92,7 @@ public class KhathaService {
         account.setAcceptedAt(LocalDateTime.now());
         account.setStatus(KhathaAccountStatus.ACTIVE);
         if(account.getOutstandingBalance().signum()>0)
-            account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
+            account.setDueDate(businessDate().plusDays(account.getRepaymentDays()));
         accounts.save(account);
         writeAudit(account,customer,"TERMS_ACCEPTED","Customer accepted the displayed credit limit and repayment terms");
         notifyUser(account.getShop().getOwner(),"Khatha offer accepted",
@@ -149,6 +151,10 @@ public class KhathaService {
     public KhathaAccountResponse updateStatus(Long id,KhathaAccountStatus status,String email) {
         User actor=requireUser(email,Role.SHOPKEEPER);
         KhathaAccount account=lockAccount(id); requireShop(account.getShop(),actor);
+        if(account.getStatus()==KhathaAccountStatus.CLOSED && status!=KhathaAccountStatus.CLOSED)
+            throw new BadRequestException("A closed Khatha account cannot be reopened; create a new account after review");
+        if(account.getStatus()==KhathaAccountStatus.OFFERED && status==KhathaAccountStatus.PAUSED)
+            throw new BadRequestException("Accept the offer before pausing this account");
         if(status==KhathaAccountStatus.ACTIVE) {
             if(account.getAcceptedAt()==null || account.getAcceptedTermsVersion()!=account.getTermsVersion())
                 throw new BadRequestException("The customer must accept the current terms before the account can be reactivated");
@@ -250,6 +256,10 @@ public class KhathaService {
     public KhathaLedgerEntryResponse adjustBalance(Long id,KhathaAdjustmentRequest request,String email) {
         User actor=requireUser(email,Role.SHOPKEEPER);
         KhathaAccount account=lockAccount(id); requireShop(account.getShop(),actor);
+        if(request.type()==KhathaAdjustmentType.DEBIT
+                && (account.getStatus()!=KhathaAccountStatus.ACTIVE || account.getAcceptedAt()==null
+                    || account.getAcceptedTermsVersion()!=account.getTermsVersion() || isOverdue(account)))
+            throw new BadRequestException("A new debit adjustment requires an active, accepted and non-overdue Khatha account");
         BigDecimal amount=money(request.amount()), next;
         KhathaLedgerEntryType type;
         BigDecimal creditApplied=ZERO;
@@ -268,7 +278,7 @@ public class KhathaService {
             type=KhathaLedgerEntryType.ADJUSTMENT_DEBIT;
             account.setCreditBalance(currentCredit.subtract(creditApplied));
             if(account.getOutstandingBalance().signum()==0 && outstandingChange.signum()>0)
-                account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
+                account.setDueDate(businessDate().plusDays(account.getRepaymentDays()));
         }
         account.setOutstandingBalance(next);
         if(next.signum()==0) account.setDueDate(null);
@@ -364,7 +374,7 @@ public class KhathaService {
         if(next.compareTo(account.getCreditLimit())>0)
             throw new BadRequestException("This order exceeds your available Khatha credit");
         if(account.getOutstandingBalance().signum()==0 && outstandingAdded.signum()>0)
-            account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
+            account.setDueDate(businessDate().plusDays(account.getRepaymentDays()));
         account.setCreditBalance(currentCredit.subtract(creditApplied));
         account.setOutstandingBalance(next); accounts.save(account);
         KhathaLedgerEntry entry=newEntry(account,KhathaLedgerEntryType.PURCHASE_DEBIT,amount,next,"ORDER",orderId,
@@ -538,12 +548,12 @@ public class KhathaService {
     private boolean isUsable(KhathaAccount a) {
         return a.getShop()!=null && a.getShop().isActive() && a.getStatus()==KhathaAccountStatus.ACTIVE && a.getAcceptedAt()!=null
                 && a.getAcceptedTermsVersion()==a.getTermsVersion()
-                && (a.getDueDate()==null || !a.getDueDate().isBefore(LocalDate.now()))
+                && (a.getDueDate()==null || !a.getDueDate().isBefore(businessDate()))
                 && (a.getOutstandingBalance().compareTo(a.getCreditLimit())<0
                     || (a.getCreditBalance()!=null && a.getCreditBalance().signum()>0));
     }
     private boolean isOverdue(KhathaAccount a) {
-        return a.getOutstandingBalance().signum()>0 && a.getDueDate()!=null && a.getDueDate().isBefore(LocalDate.now());
+        return a.getOutstandingBalance().signum()>0 && a.getDueDate()!=null && a.getDueDate().isBefore(businessDate());
     }
     private User requireUser(String email,Role role) {
         if(blank(email)) throw new BadRequestException("User is not authenticated");
@@ -565,4 +575,5 @@ public class KhathaService {
     private BigDecimal money(BigDecimal value) {return value.setScale(2,RoundingMode.HALF_UP);}
     private boolean blank(String value) {return value==null || value.isBlank();}
     private String trim(String value) {return blank(value)?null:value.trim();}
+    private LocalDate businessDate() {return LocalDate.now(BUSINESS_ZONE);}
 }
