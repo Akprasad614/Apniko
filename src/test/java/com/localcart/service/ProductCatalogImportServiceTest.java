@@ -265,6 +265,59 @@ class ProductCatalogImportServiceTest {
     }
 
     @Test
+    void requeuesPreviouslyApprovedProductWhenApprovedRetailSourceChangesItsData() {
+        approvedSource.setName("Approved Retail Partner");
+        approvedSource.setUrl("https://catalogue.partner.example/catalogue");
+        approvedSource.setLicense("COMMERCIAL-PARTNER-LICENSE");
+        approvedSource.setPermissionReference("CONTRACT-2026-APNIKO-01");
+        approvedSource.setRightsVerified(true);
+        approvedSource.setCommercialUsePermitted(true);
+
+        mockCategory();
+        Product existing = new Product();
+        ReflectionTestUtils.setField(existing, "id", 92L);
+        existing.setName("Parle-G Gold");
+        existing.setBrand("Parle");
+        existing.setBarcode("8901058001235");
+        existing.setPackSize("100 g");
+        existing.setNetQuantity(new BigDecimal("100"));
+        existing.setNetQuantityUnit("g");
+        existing.setCategory("SNACKS");
+        existing.setSubcategory("CHIPS");
+        existing.setDescription("Previously reviewed product text");
+        existing.setMrp(new BigDecimal("19.00"));
+        existing.setMrpSource("pack");
+        existing.setCatalogueSource("Approved Retail Partner");
+        existing.setCatalogueSourceLicense("COMMERCIAL-PARTNER-LICENSE");
+        existing.setCatalogueReviewStatus(ProductCatalogueReviewStatus.ACTIVE);
+        existing.setCatalogueReviewedAt(java.time.Instant.parse("2026-11-01T10:00:00Z"));
+        existing.setCatalogueReviewedBy("admin@example.test");
+
+        when(productRepository.findByBarcode("8901058001235")).thenReturn(Optional.of(existing));
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
+                "Approved Retail Partner", "partner:sku-1001")).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProductImportItem updated = new ProductImportItem(
+                "Parle-G Gold", "Parle", "8901058001235", "100 g",
+                new BigDecimal("100"), "g", "parle-g", "Updated verified product description",
+                "SNACKS", "CHIPS", new BigDecimal("20.00"), "pack",
+                "partner:sku-1001", null,
+                "{\\"sourceRecordId\\":\\"partner:sku-1001\\",\\"verifiedVariant\\":true}",
+                "partner:sku-1001", null);
+
+        ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(updated));
+
+        assertEquals(1, response.updated());
+        assertEquals(ProductCatalogueReviewStatus.NEEDS_REVIEW, existing.getCatalogueReviewStatus());
+        assertTrue(existing.getCatalogueReviewReason().contains("re-review is required"));
+        assertNull(existing.getCatalogueReviewedAt());
+        assertNull(existing.getCatalogueReviewedBy());
+        assertEquals("Updated verified product description", existing.getDescription());
+        verify(productRepository).save(existing);
+    }
+
+    @Test
     void rejectsRetailSourceThatIsNotConfiguredAndApprovedByTheOperator() {
         ProductImportBatchRequest request = approvedRetailBatch(
                 new ProductImportItem("Parle-G", "Parle", "8901058001235", "100 g",
