@@ -47,7 +47,7 @@ SOURCE_ID = re.compile(r"^[^\s]{1,160}$")
 
 
 def clean(value: object) -> str:
-    return "" if value is None else re.sub(r"\\s+", " ", str(value)).strip()
+    return "" if value is None else re.sub(r"\s+", " ", str(value)).strip()
 
 
 def valid_gtin(value: str) -> bool:
