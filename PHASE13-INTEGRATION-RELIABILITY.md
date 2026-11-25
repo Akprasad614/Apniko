@@ -10,7 +10,7 @@ Phase 13 is the cross-feature release audit after the customer, shopkeeper, deli
 - Checks the application role boundaries for admin, shopkeeper, delivery partner and customer routes.
 - Rejects global Spring CSRF disablement and requires the session cookie to remain HttpOnly.
 - Checks that payment initiation locks the order, verifies the customer owns it, and uses the official Razorpay endpoint allowlist and HMAC signature verification.
-- Checks Khatha ledger source uniqueness/idempotency, pessimistic account locking, India business timezone, shopkeeper repayment verification and append-only API/repository boundaries.
+- Checks Khatha ledger source uniqueness/idempotency, pessimistic account locking, India business timezone and shopkeeper repayment verification. The ledger repository exposes only append/read methods (not JpaRepository's inherited delete methods), while JPA lifecycle callbacks reject updates and deletes.
 - Checks cancellation reversal accounting rather than deletion of financial history.
 - Checks production schema validation, private health/error diagnostics and file-mounted database/JWT secrets.
 - Syntax-checks the guarded backup/restore scripts and verifies that GitHub Actions references remain pinned to full commit SHAs with version comments.
@@ -46,7 +46,7 @@ The following require owner/operator access and must not be simulated or marked 
 ## Financial and catalogue safety
 
 - No customer or shopkeeper can silently debit a bank/UPI account; Khatha repayments remain pending until shopkeeper verification.
-- Ledger history remains append-only; reversals are separate records.
+- Ledger history is append-only at the application/JPA layer: repository deletes are not exposed and entity update/delete callbacks reject mutation; reversals are separate records. Direct privileged SQL remains an operator/database-control concern.
 - Production Hibernate schema mode remains `validate`; no auto-DDL migration is performed in production.
 - No product images, Open Food Facts data, unlicensed retailer catalogue copies, fabricated products or sample prices are introduced.
 
