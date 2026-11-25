@@ -5,14 +5,14 @@
 
 ## What the administrator can do
 
-- Create a master catalogue product and maintain category/subcategory data.
+- Create a master catalogue product; create and maintain top-level categories and subcategories from the admin workspace.
 - View the paginated moderation queue for `NEEDS_REVIEW`, `ACTIVE`, and `HIDDEN` records.
 - Search review records by product name, brand, barcode, category and subcategory.
 - Approve a product, return it to review, or hide it with a recorded reason.
 - Reviewers and timestamps are retained by the backend.
 - Add a product to a shop only after it is an eligible active master catalogue item; shopkeepers then set their own shop price, stock and availability.
 
-The customer-facing admin workspace uses `AdminDashboard` and `CatalogueReviewQueue`. The backend import endpoint is administrator-only:
+The customer-facing admin workspace uses `AdminDashboard` and `CatalogueReviewQueue`. Administrators can create top-level categories and one-level subcategories in the workspace; the UI refreshes the category tree after creation and prevents obvious duplicate names at the same level. The backend remains authoritative for validation and uniqueness. The catalogue tab also documents the controlled CLI bulk-intake process, dry-run review, HTTPS apply requirements and credential handling. The backend import endpoint is administrator-only:
 
 - `POST /api/admin/catalogue/import`
 - `GET /api/admin/catalogue/review-queue`
@@ -38,7 +38,7 @@ python scripts/catalogue/import_catalogue.py /path/to/indian-packaged-foods-v1.c
 
 The importer checks the 25-column schema, 852-row count, source checksum, row identity, source-quality issues and stable record IDs. It reports the eligibility and rejection counts without making API calls or database changes.
 
-The CLI supports small, bounded batches (maximum 250 rows), explicit `--apply`, and separate `--license-confirmed` / `--commercial-use-confirmed` attestations. Applying also requires the administrator token and a local or HTTPS API target. The backend independently limits batches, validates the exact allowed source and licence, and retains source provenance.
+The CLI supports small, bounded batches (maximum 250 rows), explicit `--apply`, and separate `--license-confirmed` / `--commercial-use-confirmed` attestations. Its Python unit suite is run by the Phase 2/3 intake verification in backend CI; Java service tests cover API source validation, retail-identity rejection, idempotent row linkage and moderation rules. Applying also requires the administrator token and a local or HTTPS API target. The backend independently limits batches, validates the exact allowed source and licence, and retains source provenance.
 
 **Important source limitation:** this Mendeley dataset is a packaged-food research/reference source, not a complete retail SKU feed. It lacks verified retail GTIN/barcode and retail pack size. Its rows are held in `NEEDS_REVIEW`; they cannot be made customer-visible until an administrator has independent evidence for those retail identity fields. No current selling price, MRP, pack size, stock, nutrition fact or barcode is inferred from the source.
 
