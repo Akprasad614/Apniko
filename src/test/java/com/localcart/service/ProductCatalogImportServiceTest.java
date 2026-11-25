@@ -243,7 +243,7 @@ class ProductCatalogImportServiceTest {
         ProductImportItem retailItem = new ProductImportItem(
                 "Parle-G Gold", "Parle", "8901058001235", "100 g",
                 new BigDecimal("100"), "g", "parle-g", "Glucose biscuits",
-                "SNACKS", "BISCUITS", new BigDecimal("20.00"), "pack",
+                "SNACKS", "CHIPS", new BigDecimal("20.00"), "pack",
                 "partner:sku-1001", null,
                 "{\\"sourceRecordId\\":\\"partner:sku-1001\\",\\"verifiedVariant\\":true}",
                 "partner:sku-1001", null);
@@ -268,7 +268,7 @@ class ProductCatalogImportServiceTest {
     void rejectsRetailSourceThatIsNotConfiguredAndApprovedByTheOperator() {
         ProductImportBatchRequest request = approvedRetailBatch(
                 new ProductImportItem("Parle-G", "Parle", "8901058001235", "100 g",
-                        new BigDecimal("100"), "g", null, null, "SNACKS", "BISCUITS",
+                        new BigDecimal("100"), "g", null, null, "SNACKS", "CHIPS",
                         null, null, "partner:sku-1", null, "{\\"source\\":\\"partner\\"}",
                         "partner:sku-1", null));
 
@@ -287,7 +287,7 @@ class ProductCatalogImportServiceTest {
 
         ProductImportItem incomplete = new ProductImportItem(
                 "Parle-G Gold", "Parle", null, "100 g", null, null, null, null,
-                "SNACKS", "BISCUITS", null, null, "partner:sku-2", null,
+                "SNACKS", "CHIPS", null, null, "partner:sku-2", null,
                 "{\\"source\\":\\"partner\\"}", "partner:sku-2", null);
         ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(incomplete));
 
