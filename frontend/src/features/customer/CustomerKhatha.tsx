@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { ApiError, apiRequest } from '../../lib/api'
 import { useAuth } from '../../auth/AuthProvider'
 import './khatha.css'
@@ -73,7 +74,7 @@ export function CustomerKhatha(){
     }catch(e){setError(errorMessage(e))}
     finally{setBusy(false)}
   }
-  async function requestRepayment(event:React.FormEvent<HTMLFormElement>){
+  async function requestRepayment(event:FormEvent<HTMLFormElement>){
     event.preventDefault()
     if(!selected||!amount)return
     setBusy(true);setError('');setNotice('')
