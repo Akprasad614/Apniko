@@ -154,7 +154,7 @@ public class KhathaService {
     public KhathaRepaymentResponse requestRepayment(Long id,KhathaRepaymentRequest request,String email) {
         User customer=requireUser(email,Role.CUSTOMER);
         KhathaAccount account=lockAccount(id); requireCustomer(account,customer);
-        KhathaRepayment existing=findIdempotent(request.idempotencyKey(),id);
+        KhathaRepayment existing=findIdempotent(request,id);
         if(existing!=null) return KhathaRepaymentResponse.from(existing);
         validateRepayment(account,request);
         if(request.channel()==KhathaRepaymentChannel.UPI_TRANSFER && blank(request.reference()))
@@ -325,10 +325,16 @@ public class KhathaService {
                 "ORDER_REVERSAL",id,"Credit restored after cancellation of order #"+order.getId(),actor));
     }
 
-    private KhathaRepayment findIdempotent(String key,Long accountId) {
+    private KhathaRepayment findIdempotent(KhathaRepaymentRequest request,Long accountId) {
+        String key=request.idempotencyKey();
         if(blank(key)) throw new BadRequestException("An idempotency key is required");
         return repayments.findByIdempotencyKey(key.trim()).map(previous->{
-            if(!previous.getAccount().getId().equals(accountId)) throw new BadRequestException("This idempotency key belongs to another account");
+            if(!previous.getAccount().getId().equals(accountId))
+                throw new BadRequestException("This idempotency key belongs to another account");
+            if(previous.getAmount().compareTo(money(request.amount()))!=0
+                    || previous.getChannel()!=request.channel()
+                    || !Objects.equals(previous.getReference(),trim(request.reference())))
+                throw new BadRequestException("This idempotency key was reused with different repayment details");
             return previous;
         }).orElse(null);
     }
