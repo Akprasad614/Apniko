@@ -10,6 +10,8 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 - View shop-wise offers, credit limit, available credit, outstanding amount, carried credit balance and due date.
 - Accept the current version of shopkeeper-offered terms before using credit.
 - View an append-only ledger and repayment request history.
+- Receive in-app notifications for offers, accepted terms, purchases, reversals, repayments and balance changes.
+- Receive a scheduled due-date reminder up to three days before the due date and a one-time overdue reminder.
 - Submit a cash-at-shop or UPI repayment notice. A notice remains pending until the shopkeeper verifies receipt; a customer cannot mark their own repayment as paid.
 
 ### Shopkeeper
@@ -34,6 +36,7 @@ Apniko Khatha digitises the customer–kirana shop credit arrangement. Each acco
 - A repayment request does not change the outstanding balance. The shopkeeper must verify receipt.
 - Interest, late fees, automatic bank/UPI deductions and payment mandates are not enabled.
 - All terms/status changes, repayment decisions and balance adjustments create audit records. Ledger entries are never edited through an API.
+- Khatha lifecycle events use Apniko's existing in-app notification system. A daily 9:00 AM Asia/Kolkata scheduler sends due-date and overdue reminders using idempotent notification source keys; it never initiates or collects a payment.
 
 ## Main API surface
 
@@ -78,6 +81,7 @@ The new JPA entities are:
 - khatha_balance_allocations (FIFO allocation and release records linking repayments/adjustments to original debit entries)
 - khatha_repayments
 - khatha_audit_logs
+- Existing notifications table is reused for Khatha event and reminder notifications.
 
 Development uses the repository's existing Hibernate schema-update workflow. Production uses schema validation and must not rely on Hibernate to create these tables. A production Flyway/SQL migration must be prepared from the actual, backed-up target schema and reviewed by the owner before deployment. No production database was accessed or changed by this phase.
 
