@@ -4,6 +4,7 @@ import com.localcart.dto.AdminShopResponse;
 import com.localcart.dto.AssignShopOwnerRequest;
 import com.localcart.dto.CreateManagedUserRequest;
 import com.localcart.dto.UpdateActiveStatusRequest;
+import com.localcart.dto.ShopLocationRequest;
 import com.localcart.dto.UserResponse;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
@@ -249,6 +250,27 @@ class AdminServiceCoverageTest {
 
         assertFalse(response.isActive());
         assertFalse(shop.isActive());
+    }
+
+    @Test
+    void savesVerifiedShopCoordinatesForAdmin() {
+        Shop shop = shop(18L, "Pinned Market", null);
+        when(shopRepository.findById(18L)).thenReturn(Optional.of(shop));
+        when(shopRepository.save(shop)).thenReturn(shop);
+
+        AdminShopResponse response = service.updateShopLocation(
+                18L, new ShopLocationRequest(12.9716, 77.5946));
+
+        assertEquals(12.9716, response.getLatitude());
+        assertEquals(77.5946, response.getLongitude());
+        verify(shopRepository).save(shop);
+    }
+
+    @Test
+    void rejectsNonFiniteAdminShopCoordinates() {
+        assertThrows(BadRequestException.class, () -> service.updateShopLocation(
+                18L, new ShopLocationRequest(Double.NaN, 77.5946)));
+        verifyNoInteractions(shopRepository);
     }
 
     private static CreateManagedUserRequest managedRequest(String name, String email, String password) {
