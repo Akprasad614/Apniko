@@ -339,11 +339,11 @@ export function AdminDashboard() {
       return
     }
 
-    const duplicate = categories.some((category) => (
-      parentCategoryId
-        ? category.subcategories.some((child) => child.name.toLocaleLowerCase() === name.toLocaleLowerCase())
-        : category.name.toLocaleLowerCase() === name.toLocaleLowerCase()
-    ))
+    const duplicate = categoryNameExists(
+      categories,
+      name,
+      parentCategoryId ? Number(parentCategoryId) : null,
+    )
     if (duplicate) {
       setError('A category with that name already exists at this level.')
       return
