@@ -64,6 +64,17 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
   return()=>{active=false}
  },[selectedId,token])
  const selected=accounts.find(a=>a.id===selectedId)??null
+
+ async function refreshAccountHistory(accountId:number){
+  try{
+   const [entries,requests]=await Promise.all([
+    apiRequest<Ledger[]>(`/api/shopkeeper/khatha/${accountId}/ledger`,{},token),
+    apiRequest<Repayment[]>(`/api/shopkeeper/khatha/${accountId}/repayments`,{},token),
+   ])
+   setLedger(entries)
+   setRepayments(requests)
+  }catch(e){setError(message(e))}
+ }
  function updateAccount(updated:Account){setAccounts(current=>current.map(a=>a.id===updated.id?updated:a))}
  async function offerCredit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();setBusy(true);setError('');setNotice('')
@@ -101,7 +112,7 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
     method:'POST',body:JSON.stringify({reason:decision==='reject'?'Shopkeeper could not verify receipt':null}),
    },token)
    setRepayments(current=>current.map(r=>r.id===result.id?result:r))
-   if(decision==='confirm'){setNotice('Repayment verified and ledger balance updated.');await load()}
+   if(decision==='confirm'){setNotice('Repayment verified and ledger balance updated.');await load();await refreshAccountHistory(selected.id)}
    else setNotice('Repayment request rejected. The outstanding balance is unchanged.')
   }catch(e){setError(message(e))}finally{setBusy(false)}
  }
@@ -113,7 +124,7 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
     method:'POST',body:JSON.stringify({amount:Number(repaymentAmount),channel:'CASH_AT_SHOP',idempotencyKey:crypto.randomUUID(),note:'Cash received and recorded by shopkeeper'}),
    },token)
    setRepayments(current=>[result,...current]);setRepaymentAmount('')
-   setNotice('Cash repayment recorded and deducted from the outstanding balance.');await load()
+   setNotice('Cash repayment recorded and deducted from the outstanding balance.');await load();await refreshAccountHistory(selected.id)
   }catch(e){setError(message(e))}finally{setBusy(false)}
  }
  async function adjustBalance(event:FormEvent<HTMLFormElement>){
@@ -123,7 +134,7 @@ export function ShopkeeperKhathaWorkspace({token,shopId}:{token:string;shopId:nu
    await apiRequest<Ledger>(`/api/shopkeeper/khatha/${selected.id}/adjustments`,{
     method:'POST',body:JSON.stringify({amount:Number(adjustmentAmount),type:adjustmentType,reason:adjustmentReason}),
    },token)
-   setAdjustmentAmount('');setNotice('Audited balance adjustment recorded.');await load()
+   setAdjustmentAmount('');setNotice('Audited balance adjustment recorded.');await load();await refreshAccountHistory(selected.id)
   }catch(e){setError(message(e))}finally{setBusy(false)}
  }
 
