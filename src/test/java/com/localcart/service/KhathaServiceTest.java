@@ -79,11 +79,13 @@ class KhathaServiceTest {
         User customer=user(10L,Role.CUSTOMER); User actor=user(11L,Role.SHOPKEEPER); Shop shop=shop(3L);
         KhathaAccount account=account(shop,customer,"1000.00","350.00");
         KhathaLedgerEntry debit=new KhathaLedgerEntry();
+        setId(debit,770L);
         debit.setAmount(new BigDecimal("250.00"));
         debit.setOutstandingChange(new BigDecimal("250.00"));
         when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
         when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","77")).thenReturn(false,true);
         when(ledger.findByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","77")).thenReturn(Optional.of(debit));
+        when(allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(770L)).thenReturn(java.util.List.of());
         when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
         when(ledger.save(any())).thenAnswer(call->call.getArgument(0));
         Order order=order(77L,shop,customer,250.0);
@@ -116,6 +118,7 @@ class KhathaServiceTest {
         User customer=user(10L,Role.CUSTOMER); User actor=user(11L,Role.SHOPKEEPER); Shop shop=shop(3L);
         KhathaAccount account=account(shop,customer,"1000.00","100.00");
         KhathaLedgerEntry debit=new KhathaLedgerEntry();
+        setId(debit,89L);
         debit.setAmount(new BigDecimal("300.00"));
         debit.setOutstandingChange(new BigDecimal("300.00"));
         debit.setCreditBalanceChange(BigDecimal.ZERO);
@@ -127,7 +130,7 @@ class KhathaServiceTest {
         when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
         when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","89")).thenReturn(false);
         when(ledger.findByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","89")).thenReturn(Optional.of(debit));
-        when(allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(debit.getId())).thenReturn(java.util.List.of(allocation));
+        when(allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(89L)).thenReturn(java.util.List.of(allocation));
         when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
         when(ledger.save(any())).thenAnswer(call->call.getArgument(0));
         when(allocations.save(any())).thenAnswer(call->call.getArgument(0));
