@@ -93,6 +93,9 @@ public class KhathaService {
             account.setDueDate(LocalDate.now().plusDays(account.getRepaymentDays()));
         accounts.save(account);
         writeAudit(account,customer,"TERMS_ACCEPTED","Customer accepted the displayed credit limit and repayment terms");
+        notifyUser(account.getShop().getOwner(),"Khatha offer accepted",
+                customer.getName()+" accepted the Khatha offer for "+account.getShop().getName()+".",
+                NotificationType.PAYMENT,"khatha:accepted:"+account.getId()+":"+account.getTermsVersion(),null);
         return KhathaAccountResponse.from(account);
     }
 
@@ -115,6 +118,9 @@ public class KhathaService {
         account.setStatus(KhathaAccountStatus.OFFERED); account.setTermsVersion(1); account.setAcceptedTermsVersion(0);
         account=accounts.save(account);
         writeAudit(account,actor,"CREDIT_OFFERED","Credit offer created; customer acceptance is required");
+        notifyUser(customer,"Khatha credit offer",
+                shop.getName()+" offered you "+money(limit)+" INR of Khatha credit. Review and accept the terms in Apniko.",
+                NotificationType.PAYMENT,"khatha:offer:"+account.getId(),null);
         return KhathaAccountResponse.from(account);
     }
 
@@ -133,6 +139,9 @@ public class KhathaService {
         account.setAcceptedAt(null); account.setStatus(KhathaAccountStatus.OFFERED);
         accounts.save(account);
         writeAudit(account,actor,"TERMS_UPDATED",request.reason().trim());
+        notifyUser(account.getCustomer(),"Khatha terms changed",
+                account.getShop().getName()+" updated your Khatha terms. Review and accept the new terms before using credit.",
+                NotificationType.PAYMENT,"khatha:terms:"+account.getId()+":"+account.getTermsVersion(),null);
         return KhathaAccountResponse.from(account);
     }
 
@@ -153,6 +162,9 @@ public class KhathaService {
         }
         account.setStatus(status); accounts.save(account);
         writeAudit(account,actor,"STATUS_"+status.name(),"Shopkeeper changed account status to "+status.name());
+        notifyUser(account.getCustomer(),"Khatha account "+status.name().toLowerCase(Locale.ROOT),
+                "Your Khatha account with "+account.getShop().getName()+" is now "+status.name().toLowerCase(Locale.ROOT)+".",
+                NotificationType.PAYMENT,"khatha:status:"+account.getId()+":"+UUID.randomUUID(),null);
         return KhathaAccountResponse.from(account);
     }
 
@@ -166,7 +178,11 @@ public class KhathaService {
         if(request.channel()==KhathaRepaymentChannel.UPI_TRANSFER && blank(request.reference()))
             throw new BadRequestException("Enter the UPI transaction reference for shopkeeper verification");
         KhathaRepayment repayment=newRepayment(account,request,KhathaRepaymentStatus.PENDING);
-        return KhathaRepaymentResponse.from(repayments.save(repayment));
+        repayment=repayments.save(repayment);
+        notifyUser(account.getShop().getOwner(),"Khatha repayment request",
+                account.getCustomer().getName()+" submitted a "+money(repayment.getAmount())+" INR repayment request for "+account.getShop().getName()+". Verify receipt before confirming.",
+                NotificationType.PAYMENT,"khatha:repayment-request:"+repayment.getId(),null);
+        return KhathaRepaymentResponse.from(repayment);
     }
 
     @Transactional
@@ -183,6 +199,9 @@ public class KhathaService {
         repayment.setConfirmedAt(LocalDateTime.now()); repayment.setDecisionReason("Receipt verified by shopkeeper");
         repayments.save(repayment);
         writeAudit(account,actor,"REPAYMENT_CONFIRMED","Confirmed repayment #"+repaymentId);
+        notifyUser(account.getCustomer(),"Khatha repayment confirmed",
+                "Your "+money(repayment.getAmount())+" INR repayment to "+account.getShop().getName()+" was confirmed. Outstanding balance: "+money(account.getOutstandingBalance())+" INR.",
+                NotificationType.PAYMENT,"khatha:repayment-confirmed:"+repaymentId,null);
         return KhathaRepaymentResponse.from(repayment);
     }
 
@@ -199,6 +218,9 @@ public class KhathaService {
         repayment.setDecisionReason(blank(reason)?"Shopkeeper could not verify receipt":reason.trim());
         repayments.save(repayment);
         writeAudit(account,actor,"REPAYMENT_REJECTED","Rejected repayment #"+repaymentId+": "+repayment.getDecisionReason());
+        notifyUser(account.getCustomer(),"Khatha repayment needs attention",
+                "Your repayment request for "+account.getShop().getName()+" could not be confirmed. "+repayment.getDecisionReason(),
+                NotificationType.PAYMENT,"khatha:repayment-rejected:"+repaymentId,null);
         return KhathaRepaymentResponse.from(repayment);
     }
 
@@ -217,6 +239,9 @@ public class KhathaService {
         repayment=repayments.save(repayment);
         applyRepayment(account,repayment,actor,"REPAYMENT");
         writeAudit(account,actor,"REPAYMENT_RECORDED","Recorded repayment #"+repayment.getId());
+        notifyUser(account.getCustomer(),"Khatha repayment recorded",
+                account.getShop().getName()+" recorded your "+money(repayment.getAmount())+" INR repayment. Outstanding balance: "+money(account.getOutstandingBalance())+" INR.",
+                NotificationType.PAYMENT,"khatha:repayment-recorded:"+repayment.getId(),null);
         return KhathaRepaymentResponse.from(repayment);
     }
 
@@ -256,6 +281,9 @@ public class KhathaService {
         entry=ledger.save(entry);
         if(request.type()==KhathaAdjustmentType.CREDIT) allocateCredit(account,entry,amount);
         writeAudit(account,actor,"BALANCE_ADJUSTMENT",request.reason().trim());
+        notifyUser(account.getCustomer(),"Khatha balance updated",
+                account.getShop().getName()+" recorded a Khatha balance adjustment. New outstanding balance: "+money(account.getOutstandingBalance())+" INR.",
+                NotificationType.PAYMENT,"khatha:adjustment:"+entry.getId(),null);
         return KhathaLedgerEntryResponse.from(entry);
     }
 
@@ -344,6 +372,12 @@ public class KhathaService {
         entry.setOutstandingChange(outstandingAdded);
         entry.setCreditBalanceAfter(account.getCreditBalance());
         ledger.save(entry);
+        notifyUser(customer,"Khatha purchase recorded",
+                "Order #"+order.getId()+" was charged to your Khatha account at "+account.getShop().getName()+". Outstanding balance: "+money(account.getOutstandingBalance())+" INR.",
+                NotificationType.ORDER,"khatha:order-customer:"+order.getId(),order.getId());
+        notifyUser(account.getShop().getOwner(),"Khatha order debit",
+                customer.getName()+" used Khatha for order #"+order.getId()+".",
+                NotificationType.ORDER,"khatha:order-shop:"+order.getId(),order.getId());
     }
 
     @Transactional
@@ -402,6 +436,9 @@ public class KhathaService {
         reversal.setCreditBalanceChange(restoredCredit);
         reversal.setCreditBalanceAfter(nextCredit);
         ledger.save(reversal);
+        notifyUser(account.getCustomer(),"Khatha credit restored",
+                "Order #"+order.getId()+" was cancelled. The corresponding Khatha credit has been restored to your account.",
+                NotificationType.PAYMENT,"khatha:order-reversal:"+order.getId(),order.getId());
     }
 
     private void allocateCredit(KhathaAccount account,KhathaLedgerEntry creditEntry,BigDecimal amount) {
@@ -479,6 +516,19 @@ public class KhathaService {
         if(actor!=null){e.setActorName(actor.getName());e.setActorEmail(actor.getEmail());e.setActorRole(actor.getRole().name());}
         return e;
     }
+    private void notifyUser(User recipient,String title,String message,NotificationType type,String sourceKey,Long relatedOrderId) {
+        if(recipient==null || recipient.getId()==null) return;
+        if(notificationRepository.existsBySourceKey(sourceKey)) return;
+        Notification notification=new Notification();
+        notification.setRecipientUserId(recipient.getId());
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setType(type);
+        notification.setSourceKey(sourceKey);
+        notification.setRelatedOrderId(relatedOrderId);
+        notificationRepository.save(notification);
+    }
+
     private void writeAudit(KhathaAccount account,User actor,String action,String reason) {
         KhathaAuditLog a=new KhathaAuditLog(); a.setAccountId(account.getId()); a.setAction(action);
         a.setReason(reason);a.setActorUserId(actor.getId());a.setActorName(actor.getName());
