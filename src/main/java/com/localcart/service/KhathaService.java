@@ -286,6 +286,11 @@ public class KhathaService {
     }
 
     @Transactional(readOnly=true)
+    public List<KhathaAuditLogResponse> adminAuditLogs() {
+        return audit.findAllByOrderByCreatedAtDesc().stream().map(KhathaAuditLogResponse::from).toList();
+    }
+
+    @Transactional(readOnly=true)
     public KhathaAdminOverviewResponse adminOverview() {
         List<KhathaAccount> all=accounts.findAll();
         long active=all.stream().filter(a->a.getStatus()==KhathaAccountStatus.ACTIVE).count();
