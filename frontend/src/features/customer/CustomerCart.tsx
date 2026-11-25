@@ -8,7 +8,7 @@ import type { Basket, MarketplaceShop } from './marketplace'
 import type { CustomerAddress } from './CustomerAddresses'
 import './customer-shell.css'
 
-type PaymentMethod = 'COD' | 'RAZORPAY'
+type PaymentMethod = 'COD' | 'RAZORPAY' | 'KHATHA'
 interface PaymentStart {
   id: number
   orderId: number
@@ -113,10 +113,11 @@ export function CustomerCart() {
   )
   const itemCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
   const hasRazorpay = paymentMethods.includes('RAZORPAY')
+  const hasKhatha = paymentMethods.includes('KHATHA')
   const invalidItems = basket?.items.some((item) => !item.available || item.quantity > item.availableStock) ?? false
   const canCheckout = Boolean(
     basket?.items.length && !invalidItems && !busy && !loadingBasket
-    && !loadingCheckoutOptions,
+    && !loadingCheckoutOptions && (paymentMethod !== 'KHATHA' || hasKhatha),
   )
 
   useEffect(() => {
@@ -156,7 +157,7 @@ export function CustomerCart() {
     setLoadingCheckoutOptions(true)
     Promise.all([
       apiRequest<CustomerAddress[]>('/api/customer/addresses', {}, token),
-      apiRequest<PaymentMethod[]>('/api/payments/methods', {}, token),
+      apiRequest<PaymentMethod[]>(selectedShopId === null ? '/api/payments/methods' : '/api/payments/methods?shopId=' + selectedShopId, {}, token),
     ])
       .then(([savedAddresses, methods]) => {
         if (!active) return
@@ -169,9 +170,9 @@ export function CustomerCart() {
           ?? savedAddresses[0]
         setSelectedAddressId(selected?.id ?? null)
         if (selected) window.localStorage.setItem(SELECTED_ADDRESS_KEY, String(selected.id))
-        const allowed = methods.filter((method): method is PaymentMethod => method === 'COD' || method === 'RAZORPAY')
+        const allowed = methods.filter((method): method is PaymentMethod => method === 'COD' || method === 'RAZORPAY' || method === 'KHATHA')
         setPaymentMethods(allowed.includes('COD') ? allowed : ['COD', ...allowed])
-        if (!allowed.includes('RAZORPAY')) setPaymentMethod('COD')
+        setPaymentMethod(current => allowed.includes(current) ? current : 'COD')
       })
       .catch((loadError: unknown) => {
         if (active) {
@@ -181,7 +182,7 @@ export function CustomerCart() {
       })
       .finally(() => { if (active) setLoadingCheckoutOptions(false) })
     return () => { active = false }
-  }, [token])
+  }, [selectedShopId, token])
 
   function selectShop(value: string) {
     const id = Number(value)
@@ -279,6 +280,15 @@ export function CustomerCart() {
       if (paymentMethod === 'COD') {
         window.localStorage.removeItem(SELECTED_ADDRESS_KEY)
         navigate('/customer/orders?placed=' + order.id)
+        return
+      }
+
+      if (paymentMethod === 'KHATHA') {
+        if (payment.status !== 'PAID') {
+          throw new Error('Khatha payment was not confirmed. Check your account before retrying.')
+        }
+        window.localStorage.removeItem(SELECTED_ADDRESS_KEY)
+        navigate('/customer/orders?khatha=paid&placed=' + order.id)
         return
       }
 
@@ -459,12 +469,19 @@ export function CustomerCart() {
                 <span className="customer-payment-option__symbol">↗</span>
                 <span><strong>Pay online with Razorpay</strong><small>{hasRazorpay ? 'UPI, cards and supported online options at secure checkout.' : 'Online payment is not configured on this server yet.'}</small></span>
               </label>
+              {hasKhatha && (
+                <label className={'customer-payment-option' + (paymentMethod === 'KHATHA' ? ' is-selected' : '')}>
+                  <input type="radio" name="paymentMethod" value="KHATHA" checked={paymentMethod === 'KHATHA'} onChange={() => setPaymentMethod('KHATHA')} />
+                  <span className="customer-payment-option__symbol">ख</span>
+                  <span><strong>Apniko Khatha</strong><small>Use your available credit with this shop. The balance is recorded in your Khatha ledger.</small></span>
+                </label>
+              )}
             </div>
           </section>
 
           <p className="customer-cart-phase-note">The total currently includes item prices only. Delivery charges are not configured in this build. The shopkeeper will choose how to fulfil this order before accepting it.</p>
           <button className="customer-cart-checkout" type="button" disabled={!canCheckout} onClick={() => void placeOrder()}>
-            {busy ? 'Processing…' : paymentMethod === 'RAZORPAY' ? 'Continue to secure payment' : 'Place order'} <span aria-hidden="true">→</span>
+            {busy ? 'Processing…' : paymentMethod === 'RAZORPAY' ? 'Continue to secure payment' : paymentMethod === 'KHATHA' ? 'Place order using Khatha' : 'Place order'} <span aria-hidden="true">→</span>
           </button>
         </aside>
       </div>

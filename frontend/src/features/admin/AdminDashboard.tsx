@@ -6,11 +6,12 @@ import { Button } from '../../components/Button'
 import { Wordmark } from '../../components/Wordmark'
 import { ApiError, apiRequest } from '../../lib/api'
 import { CatalogueReviewQueue } from './CatalogueReviewQueue'
+import { AdminKhathaPanel } from './AdminKhathaPanel'
 import '../shared/operations.css'
 import { NotificationCenter } from '../shared/NotificationCenter'
 
 type StaffRole = 'SHOPKEEPER' | 'DELIVERY_PARTNER'
-type AdminTab = 'overview' | 'people' | 'shops' | 'catalogue'
+type AdminTab = 'overview' | 'people' | 'shops' | 'catalogue' | 'khatha'
 
 interface AdminUser {
   id: number
@@ -410,6 +411,7 @@ export function AdminDashboard() {
             ['people', 'People'],
             ['shops', 'Shops'],
             ['catalogue', 'Product catalogue'],
+            ['khatha', 'Khatha'],
           ] as const).map(([key, label]) => (
             <button type="button" key={key} className={tab === key ? 'is-active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => { setTab(key); setError(''); setNotice('') }}>
               {label}
@@ -423,6 +425,7 @@ export function AdminDashboard() {
             ['people', 'People', '♙'],
             ['shops', 'Shops', '⌖'],
             ['catalogue', 'Catalogue', '▦'],
+            ['khatha', 'Khatha', '₹'],
           ] as const).map(([key, label, symbol]) => (
             <button
               key={key}
@@ -573,6 +576,7 @@ export function AdminDashboard() {
                 <CatalogueReviewQueue token={token} />
               </section>
             )}
+            {tab === 'khatha' && <AdminKhathaPanel token={token} />}
           </>
         )}
       </main>
