@@ -43,6 +43,20 @@ The following require owner/operator access and must not be simulated or marked 
 7. Configure external uptime/error monitoring, alert routing, log retention and incident ownership.
 8. Obtain documented commercial reuse rights and provenance for any retail catalogue source before publishing imported products.
 
+## Final repository integration note
+
+Phase 10 location hardening was merged into the integration branch through PR
+#77 at `3d863ff0b40f8f0118cbeb53cdfde884569c0e08`. Its backend, frontend,
+Phase 7/8, CodeQL, OWASP ZAP, OSV, static-security and SBOM workflows all
+passed on the pull-request head before merge.
+
+Phase 5 now includes an owner-configurable commercial retail source gate and a
+generic dry-run-first CSV importer. The Mendeley reference dataset remains
+restricted to review candidates; a future retail source remains disabled until
+the owner has reviewed its licence/agreement and explicitly configured the
+exact source identity and commercial permissions. Imported retail rows remain
+hidden in `NEEDS_REVIEW` pending administrator approval.
+
 ## Financial and catalogue safety
 
 - No customer or shopkeeper can silently debit a bank/UPI account; Khatha repayments remain pending until shopkeeper verification.
