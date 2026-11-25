@@ -27,6 +27,7 @@ required=(
   "scripts/backup-production-db.sh"
   "scripts/restore-production-db.sh"
   "src/test/java/com/localcart/service/KhathaServiceTest.java"
+  "src/test/java/com/localcart/entity/KhathaLedgerEntryImmutabilityTest.java"
   "src/test/java/com/localcart/service/PaymentServiceTest.java"
   "src/test/java/com/localcart/integration/OrderPersistenceIntegrationTest.java"
 )
