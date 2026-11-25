@@ -45,12 +45,14 @@ class ProductCatalogImportServiceTest {
     private ProductCatalogImportService service;
     private ProductCategory parent;
     private ProductCategory subcategory;
+    private com.localcart.config.ApprovedCatalogueSourceProperties approvedSource;
 
     @BeforeEach
     void setUp() {
+        approvedSource = new com.localcart.config.ApprovedCatalogueSourceProperties();
         service = new ProductCatalogImportService(
                 productRepository, categoryRepository, sourceRecordRepository,
-                new ProductCatalogueQualityService(), new ObjectMapper());
+                new ProductCatalogueQualityService(), new ObjectMapper(), approvedSource);
         parent = new ProductCategory("SNACKS", "snacks", null);
         ReflectionTestUtils.setField(parent, "id", 1L);
         subcategory = new ProductCategory("CHIPS", "snacks-chips", parent);
@@ -217,6 +219,143 @@ class ProductCatalogImportServiceTest {
         assertThrows(BadRequestException.class, () -> service.importBatch(unapprovedSource));
         assertThrows(BadRequestException.class, () -> service.importBatch(unapprovedUrl));
         verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
+    }
+
+    @Test
+    void importsConfiguredApprovedRetailRowsAsReviewCandidates() {
+        approvedSource.setName("Approved Retail Partner");
+        approvedSource.setUrl("https://catalogue.partner.example/catalogue");
+        approvedSource.setLicense("COMMERCIAL-PARTNER-LICENSE");
+        approvedSource.setPermissionReference("CONTRACT-2026-APNIKO-01");
+        approvedSource.setRightsVerified(true);
+        approvedSource.setCommercialUsePermitted(true);
+
+        mockCategory();
+        when(productRepository.findByBarcode("8901058001235")).thenReturn(Optional.empty());
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
+                "Approved Retail Partner", "partner:sku-1001")).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
+            Product product = invocation.getArgument(0);
+            ReflectionTestUtils.setField(product, "id", 91L);
+            return product;
+        });
+
+        ProductImportItem retailItem = new ProductImportItem(
+                "Parle-G Gold", "Parle", "8901058001235", "100 g",
+                new BigDecimal("100"), "g", "parle-g", "Glucose biscuits",
+                "SNACKS", "CHIPS", new BigDecimal("20.00"), "pack",
+                "partner:sku-1001", null,
+                "{\"sourceRecordId\":\"partner:sku-1001\",\"verifiedVariant\":true}",
+                "partner:sku-1001", null);
+        ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(retailItem));
+
+        assertEquals(1, response.inserted());
+        assertEquals(0, response.rejected());
+        verify(productRepository).save(argThat(product ->
+                product.getBarcode().equals("8901058001235")
+                        && product.getPackSize().equals("100 g")
+                        && product.getNetQuantity().compareTo(new BigDecimal("100")) == 0
+                        && product.getCatalogueReviewStatus() == ProductCatalogueReviewStatus.NEEDS_REVIEW
+                        && product.getCatalogueReviewReason().contains("pending administrator review")));
+        verify(sourceRecordRepository).save(argThat(source ->
+                source.getSourceName().equals("Approved Retail Partner")
+                        && source.getPermissionReference().equals("CONTRACT-2026-APNIKO-01")
+                        && Boolean.TRUE.equals(source.getReuseRightsVerified())
+                        && Boolean.TRUE.equals(source.getCommercialUsePermitted())));
+    }
+
+    @Test
+    void requeuesPreviouslyApprovedProductWhenApprovedRetailSourceChangesItsData() {
+        approvedSource.setName("Approved Retail Partner");
+        approvedSource.setUrl("https://catalogue.partner.example/catalogue");
+        approvedSource.setLicense("COMMERCIAL-PARTNER-LICENSE");
+        approvedSource.setPermissionReference("CONTRACT-2026-APNIKO-01");
+        approvedSource.setRightsVerified(true);
+        approvedSource.setCommercialUsePermitted(true);
+
+        mockCategory();
+        Product existing = new Product();
+        ReflectionTestUtils.setField(existing, "id", 92L);
+        existing.setName("Parle-G Gold");
+        existing.setBrand("Parle");
+        existing.setBarcode("8901058001235");
+        existing.setPackSize("100 g");
+        existing.setNetQuantity(new BigDecimal("100"));
+        existing.setNetQuantityUnit("g");
+        existing.setCategory("SNACKS");
+        existing.setSubcategory("CHIPS");
+        existing.setDescription("Previously reviewed product text");
+        existing.setMrp(new BigDecimal("19.00"));
+        existing.setMrpSource("pack");
+        existing.setCatalogueSource("Approved Retail Partner");
+        existing.setCatalogueSourceLicense("COMMERCIAL-PARTNER-LICENSE");
+        existing.setCatalogueReviewStatus(ProductCatalogueReviewStatus.ACTIVE);
+        existing.setCatalogueReviewedAt(java.time.Instant.parse("2026-11-01T10:00:00Z"));
+        existing.setCatalogueReviewedBy("admin@example.test");
+
+        when(productRepository.findByBarcode("8901058001235")).thenReturn(Optional.of(existing));
+        when(sourceRecordRepository.findBySourceNameAndSourceRecordId(
+                "Approved Retail Partner", "partner:sku-1001")).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProductImportItem updated = new ProductImportItem(
+                "Parle-G Gold", "Parle", "8901058001235", "100 g",
+                new BigDecimal("100"), "g", "parle-g", "Updated verified product description",
+                "SNACKS", "CHIPS", new BigDecimal("20.00"), "pack",
+                "partner:sku-1001", null,
+                "{\"sourceRecordId\":\"partner:sku-1001\",\"verifiedVariant\":true}",
+                "partner:sku-1001", null);
+
+        ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(updated));
+
+        assertEquals(1, response.updated());
+        assertEquals(ProductCatalogueReviewStatus.NEEDS_REVIEW, existing.getCatalogueReviewStatus());
+        assertTrue(existing.getCatalogueReviewReason().contains("re-review is required"));
+        assertNull(existing.getCatalogueReviewedAt());
+        assertNull(existing.getCatalogueReviewedBy());
+        assertEquals("Updated verified product description", existing.getDescription());
+        verify(productRepository).save(existing);
+    }
+
+    @Test
+    void rejectsRetailSourceThatIsNotConfiguredAndApprovedByTheOperator() {
+        ProductImportBatchRequest request = approvedRetailBatch(
+                new ProductImportItem("Parle-G", "Parle", "8901058001235", "100 g",
+                        new BigDecimal("100"), "g", null, null, "SNACKS", "CHIPS",
+                        null, null, "partner:sku-1", null, "{\"source\":\"partner\"}",
+                        "partner:sku-1", null));
+
+        assertThrows(BadRequestException.class, () -> service.importBatch(request));
+        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
+    }
+
+    @Test
+    void rejectsApprovedRetailRowsWithoutVerifiedRetailIdentity() {
+        approvedSource.setName("Approved Retail Partner");
+        approvedSource.setUrl("https://catalogue.partner.example/catalogue");
+        approvedSource.setLicense("COMMERCIAL-PARTNER-LICENSE");
+        approvedSource.setPermissionReference("CONTRACT-2026-APNIKO-01");
+        approvedSource.setRightsVerified(true);
+        approvedSource.setCommercialUsePermitted(true);
+
+        ProductImportItem incomplete = new ProductImportItem(
+                "Parle-G Gold", "Parle", null, "100 g", null, null, null, null,
+                "SNACKS", "CHIPS", null, null, "partner:sku-2", null,
+                "{\"source\":\"partner\"}", "partner:sku-2", null);
+        ProductImportBatchResponse response = service.importBatch(approvedRetailBatch(incomplete));
+
+        assertEquals(1, response.rejected());
+        assertTrue(response.errors().get(0).contains("verified GTIN barcode"));
+        verifyNoInteractions(productRepository, categoryRepository, sourceRecordRepository);
+    }
+
+    private ProductImportBatchRequest approvedRetailBatch(ProductImportItem item) {
+        return new ProductImportBatchRequest(
+                "Approved Retail Partner",
+                "https://catalogue.partner.example/catalogue",
+                "COMMERCIAL-PARTNER-LICENSE",
+                "Approved Retail Partner; COMMERCIAL-PARTNER-LICENSE; CONTRACT-2026-APNIKO-01; Apniko modifications.",
+                true, true, "CONTRACT-2026-APNIKO-01", List.of(item));
     }
 
     private void mockCategory() {

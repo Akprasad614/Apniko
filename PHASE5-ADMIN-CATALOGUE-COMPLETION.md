@@ -1,7 +1,7 @@
 # Phase 5 — Admin catalogue management and bulk intake
 
-**Implementation status: complete for the audited admin intake and moderation workflow.**
-**Catalogue population status: source-constrained; no unverified products are published.**
+**Implementation status: complete for admin management, moderation and owner-approved retail CSV intake.**
+**Catalogue population status: source-constrained until the project owner obtains and configures a qualifying commercial retail source. No unverified products are published.**
 
 ## What the administrator can do
 
@@ -50,6 +50,38 @@ The CLI supports small, bounded batches (maximum 250 rows), explicit `--apply`, 
 - Do not treat an arbitrary public dataset or Kaggle mirror as commercially reusable.
 - Admit another source only after its owner, reuse/commercial rights, attribution, record identifiers, sellable variant fields and update terms have been reviewed and documented.
 - Product photos and image infrastructure remain excluded by Phase 4.
+
+## Owner-approved commercial retail CSV intake
+
+The Mendeley importer above is retained only as a reference-data path. It cannot populate sellable retail variants. For a separately licensed retail feed, use the source-neutral importer:
+
+```bash
+python scripts/catalogue/import_approved_retail_catalogue.py /path/to/approved-retail-catalogue.csv \
+  --source-name "Approved Retail Partner" \
+  --source-url "https://partner.example/catalogue" \
+  --license "COMMERCIAL-PARTNER-LICENSE" \
+  --permission-reference "SIGNED-AGREEMENT-OR-LICENCE-REFERENCE" \
+  --attribution "Approved Retail Partner; COMMERCIAL-PARTNER-LICENSE; SIGNED-AGREEMENT-OR-LICENCE-REFERENCE; Apniko modifications."
+```
+
+The CSV must contain exactly these columns:
+
+`source_record_id,name,brand,barcode,pack_size,net_quantity,net_quantity_unit,variant_group_key,description,category,subcategory,mrp,mrp_source,source_modified_at`
+
+The loader rejects duplicate source IDs, invalid GTIN check digits, missing retail identity, invalid quantity/MRP values and extra columns. Image/photo fields are not accepted. The default is a local dry run; it never downloads or scrapes a source.
+
+Before applying, the project owner must independently review the agreement/licence and configure the exact approved source on the backend host:
+
+- `APNIKO_CATALOGUE_SOURCE_NAME`
+- `APNIKO_CATALOGUE_SOURCE_URL`
+- `APNIKO_CATALOGUE_SOURCE_LICENSE`
+- `APNIKO_CATALOGUE_SOURCE_PERMISSION_REFERENCE`
+- `APNIKO_CATALOGUE_SOURCE_RIGHTS_VERIFIED=true`
+- `APNIKO_CATALOGUE_SOURCE_COMMERCIAL_USE_PERMITTED=true`
+
+The last two settings must remain false until the permission review is complete. The request must also include both explicit CLI confirmations, an administrator JWT in `APNIKO_ADMIN_TOKEN`, and an HTTPS API URL (localhost HTTP is allowed for development). The backend repeats the source allowlist check and requires verified retail GTIN, pack size and net quantity.
+
+**All imported retail rows enter `NEEDS_REVIEW`.** A catalogue administrator must inspect the original packaging/source evidence and approve each product before it becomes customer-visible. Importing data does not create shop inventory or shop prices.
 
 ## Acceptance evidence
 
