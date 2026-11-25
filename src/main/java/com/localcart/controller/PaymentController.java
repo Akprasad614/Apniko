@@ -23,8 +23,9 @@ public class PaymentController {
 
     @GetMapping("/methods")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ResponseEntity<List<com.localcart.entity.PaymentMethod>> getAvailableMethods() {
-        return ResponseEntity.ok(paymentService.getAvailableMethods());
+    public ResponseEntity<List<com.localcart.entity.PaymentMethod>> getAvailableMethods(
+            @RequestParam(required = false) Long shopId) {
+        return ResponseEntity.ok(paymentService.getAvailableMethods(shopId));
     }
 
     @PostMapping("/orders/{orderId}/initiate")
