@@ -5,6 +5,8 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import java.util.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public interface KhathaAccountRepository extends JpaRepository<KhathaAccount,Long> {
     Optional<KhathaAccount> findByShopIdAndCustomerId(Long shopId, Long customerId);
@@ -19,4 +21,8 @@ public interface KhathaAccountRepository extends JpaRepository<KhathaAccount,Lon
     @Query("select a from KhathaAccount a join fetch a.customer where a.shop.id=:shopId order by a.updatedAt desc")
     List<KhathaAccount> findShopAccounts(@Param("shopId") Long shopId);
     List<KhathaAccount> findAllByOrderByUpdatedAtDesc();
+    List<KhathaAccount> findByOutstandingBalanceGreaterThanAndDueDateBetween(
+            BigDecimal minimumBalance, LocalDate startDate, LocalDate endDate);
+    List<KhathaAccount> findByOutstandingBalanceGreaterThanAndDueDateBefore(
+            BigDecimal minimumBalance, LocalDate dueBefore);
 }
