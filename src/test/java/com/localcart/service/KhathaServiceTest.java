@@ -15,6 +15,7 @@ import static org.mockito.Mockito.*;
 class KhathaServiceTest {
     private KhathaAccountRepository accounts;
     private KhathaLedgerEntryRepository ledger;
+    private KhathaBalanceAllocationRepository allocations;
     private KhathaRepaymentRepository repayments;
     private KhathaAuditLogRepository audit;
     private ShopRepository shops;
@@ -25,12 +26,13 @@ class KhathaServiceTest {
     @BeforeEach void setup() {
         accounts=mock(KhathaAccountRepository.class);
         ledger=mock(KhathaLedgerEntryRepository.class);
+        allocations=mock(KhathaBalanceAllocationRepository.class);
         repayments=mock(KhathaRepaymentRepository.class);
         audit=mock(KhathaAuditLogRepository.class);
         shops=mock(ShopRepository.class);
         users=mock(UserRepository.class);
         orders=mock(OrderRepository.class);
-        service=new KhathaService(accounts,ledger,repayments,audit,shops,users,orders);
+        service=new KhathaService(accounts,ledger,allocations,repayments,audit,shops,users,orders);
     }
 
     @Test void orderDebitUsesAvailableCreditAndStartsRepaymentClock() {
@@ -117,18 +119,53 @@ class KhathaServiceTest {
         debit.setAmount(new BigDecimal("300.00"));
         debit.setOutstandingChange(new BigDecimal("300.00"));
         debit.setCreditBalanceChange(BigDecimal.ZERO);
+        KhathaLedgerEntry repaymentCredit=new KhathaLedgerEntry();
+        setId(repaymentCredit,501L);
+        KhathaBalanceAllocation allocation=new KhathaBalanceAllocation();
+        allocation.setAccount(account); allocation.setDebitEntry(debit); allocation.setCreditEntry(repaymentCredit);
+        allocation.setAmount(new BigDecimal("200.00")); allocation.setAllocationType(KhathaAllocationType.ALLOCATED);
         when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
         when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","89")).thenReturn(false);
         when(ledger.findByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","89")).thenReturn(Optional.of(debit));
+        when(allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(debit.getId())).thenReturn(java.util.List.of(allocation));
         when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
         when(ledger.save(any())).thenAnswer(call->call.getArgument(0));
+        when(allocations.save(any())).thenAnswer(call->call.getArgument(0));
 
         service.reverseOrderDebit(order(89L,shop,customer,300.0),actor);
 
         assertEquals(new BigDecimal("0.00"),account.getOutstandingBalance());
         assertEquals(new BigDecimal("200.00"),account.getCreditBalance());
+        verify(allocations).save(argThat(saved->saved.getAllocationType()==KhathaAllocationType.RELEASED
+                && saved.getAmount().compareTo(new BigDecimal("200.00"))==0));
         verify(ledger).save(argThat(e->e.getEntryType()==KhathaLedgerEntryType.ORDER_REVERSAL
                 && e.getCreditBalanceAfter().compareTo(new BigDecimal("200.00"))==0));
+    }
+
+    @Test void cancellingOneOrderDoesNotEraseAnotherOrdersUnpaidBalance() {
+        User customer=user(10L,Role.CUSTOMER); User actor=user(11L,Role.SHOPKEEPER); Shop shop=shop(3L);
+        // Order A created 200 of debt, order B created another 100. A repayment of 150
+        // was allocated FIFO to A, leaving A=50 and B=100 outstanding.
+        KhathaAccount account=account(shop,customer,"1000.00","150.00");
+        KhathaLedgerEntry orderDebit=new KhathaLedgerEntry();
+        setId(orderDebit,90L); orderDebit.setAmount(new BigDecimal("200.00"));
+        orderDebit.setOutstandingChange(new BigDecimal("200.00"));
+        KhathaLedgerEntry repaymentCredit=new KhathaLedgerEntry(); setId(repaymentCredit,901L);
+        KhathaBalanceAllocation allocation=new KhathaBalanceAllocation();
+        allocation.setAccount(account); allocation.setDebitEntry(orderDebit); allocation.setCreditEntry(repaymentCredit);
+        allocation.setAmount(new BigDecimal("150.00")); allocation.setAllocationType(KhathaAllocationType.ALLOCATED);
+        when(accounts.findByShopAndCustomerForUpdate(3L,10L)).thenReturn(Optional.of(account));
+        when(ledger.existsByAccountIdAndSourceTypeAndSourceId(1L,"ORDER_REVERSAL","90")).thenReturn(false);
+        when(ledger.findByAccountIdAndSourceTypeAndSourceId(1L,"ORDER","90")).thenReturn(Optional.of(orderDebit));
+        when(allocations.findByDebitEntryIdOrderByCreatedAtAscIdAsc(90L)).thenReturn(java.util.List.of(allocation));
+        when(accounts.save(any())).thenAnswer(call->call.getArgument(0));
+        when(ledger.save(any())).thenAnswer(call->call.getArgument(0));
+        when(allocations.save(any())).thenAnswer(call->call.getArgument(0));
+
+        service.reverseOrderDebit(order(90L,shop,customer,200.0),actor);
+
+        assertEquals(new BigDecimal("100.00"),account.getOutstandingBalance());
+        assertEquals(new BigDecimal("150.00"),account.getCreditBalance());
     }
 
     private User user(Long id,Role role) {
