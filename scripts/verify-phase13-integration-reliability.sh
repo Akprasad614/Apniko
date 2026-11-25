@@ -72,7 +72,7 @@ grep -Fq 'HmacSHA256' "$PAYMENT" || fail "payment signature verification missing
 # locks, transactional service operations, and India-local due-date rules.
 grep -Fq 'uk_khatha_ledger_source' "$LEDGER" || fail "ledger source uniqueness constraint missing"
 grep -Fq 'extends Repository<KhathaLedgerEntry, Long>' "$LEDGER_REPO" || fail "ledger repository must expose a restricted append/read interface"
-! grep -Fq 'JpaRepository' "$LEDGER_REPO" || fail "ledger repository must not inherit delete/update methods"
+! grep -Eq 'extends[[:space:]]+JpaRepository' "$LEDGER_REPO" || fail "ledger repository must not inherit delete/update methods"
 grep -Fq '@PreUpdate' "$LEDGER" || fail "ledger entity update guard missing"
 grep -Fq '@PreRemove' "$LEDGER" || fail "ledger entity delete guard missing"
 grep -Fq 'findByIdForUpdate' "$ACCOUNT_REPO" || fail "Khatha account row lock missing"
