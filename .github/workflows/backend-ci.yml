@@ -97,3 +97,6 @@ jobs:
 
       - name: Run Maven verification and tests
         run: ./mvnw -B -ntp verify
+
+      - name: Verify baseline and upgrade of an existing legacy schema
+        run: bash scripts/verify-flyway-existing-schema.sh
