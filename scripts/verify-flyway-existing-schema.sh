@@ -18,7 +18,7 @@ mysql_ci() {
 }
 
 # This schema is created only inside the disposable CI MySQL service.
-mysql_ci -e "CREATE DATABASE `$TEST_SCHEMA` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"
+mysql_ci -e "CREATE DATABASE $TEST_SCHEMA CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"
 mysql_ci "$TEST_SCHEMA" < src/main/resources/db/migration/V1__legacy_localcart_schema_baseline.sql
 
 export FLYWAY_URL="$MIGRATION_URL"
