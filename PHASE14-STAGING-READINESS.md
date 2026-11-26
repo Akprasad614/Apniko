@@ -14,12 +14,12 @@ This phase prepares repository automation, safety checks and an operator procedu
 2. Identify the authoritative schema source: the actual application database and the exact code revision that created it. Do not infer a baseline from entity annotations alone.
 3. Restore the backup into an isolated disposable database. Record server version, database name, charset/collation, tables, views, triggers, routines, events, indexes, foreign keys and migration history, if any.
 4. Compare the restored schema with the complete JPA entity mapping and application SQL. Resolve every mismatch before proceeding.
-5. Prepare a Flyway baseline and migration set from the reviewed schema snapshot. The first migration must represent the reviewed actual schema; subsequent migrations must be explicit, ordered and repeatable in a clean disposable database.
-6. Test both paths: (a) empty disposable database to baseline plus all migrations; (b) restored schema copy to the baseline marker and subsequent migrations as designed. Compare the resulting schemas and run the backend suite.
-7. Obtain approval for the SQL and backup/restore evidence. Only then may the staging migration identity apply the migration. The runtime identity remains DML-only.
+5. Review `V1__legacy_localcart_schema_baseline.sql` and `V2__align_schema_with_current_apniko_entities.sql` as described in `DATABASE-MIGRATION-BASELINE.md`. Confirm that the intended target matches V1 before baselining it.
+6. Test both paths on isolated MySQL: an empty database migrated through V1 and V2, and a restored legacy schema baselined at version 1 then migrated through V2. Compare schema shape and confirm the existing address row and other application records remain intact.
+7. Obtain approval for the SQL and backup/restore evidence. Apply migrations with a separate DDL-only identity using the Flyway Maven plugin. The runtime identity stays DML-only and Hibernate uses `validate`.
 8. Production requires separate approval and a verified backup. Do not set Hibernate to `update`; production remains in `validate` mode.
 
-No migration SQL is included in this repository change because the canonical application schema has not been inspected. Do not generate or apply a guessed baseline.
+The V1/V2 migration set is based on the schema-only dump supplied from the owner's local MySQL database on 26 November 2026. It is not proof that a future staging or production database has the same schema. Restore and compare every target before baselining it. The first upgrade deliberately retains the legacy photo tables and `products.image_url` column.
 
 ## Staging infrastructure
 
@@ -65,7 +65,7 @@ docker compose --env-file .env.staging -f compose.yaml logs --tail=200 backend f
 ```
 
 6. Confirm HTTPS certificate validity, frontend health, backend readiness, no public actuator/database ports and no secret leakage in logs.
-7. Apply only the reviewed staging migration using the migration identity, then run the application with Hibernate validation. Retain a pre-migration backup and the previous immutable image.
+7. Apply the reviewed migration with the separate DDL-only identity before starting the `prod` application container. The production profile disables Flyway execution in the app and keeps Hibernate validation enabled. Retain a pre-migration backup and the previous immutable image.
 
 ## Staging acceptance evidence
 

@@ -16,7 +16,7 @@
 | 11 | Apniko Khatha — customer credit and ledger | Implemented; staging regression and reconciliation pending |
 | 12 | Notifications, analytics and operational insights | Complete |
 | 13 | Integration, security and reliability | Repository verification passed; live staging acceptance pending |
-| 14 | Staging deployment and testing | Repository preparation integrated; live staging acceptance pending |
+| 14 | Staging deployment and testing | Versioned Flyway baseline/upgrade prepared; live staging acceptance pending |
 | 15 | Production deployment and public launch | Blocked until Phase 14 sign-off |
 
 ## Phase 14 repository work
@@ -24,6 +24,8 @@
 The staging handoff is integrated through PR #80. It includes the staging acceptance matrix, database migration-baseline procedure, owner deployment guide, Razorpay/Khatha test plan, retail catalogue licensing handoff, staging environment template, HTTPS smoke-test helper, readiness verifier and a dedicated GitHub Actions workflow.
 
 The existing Compose, Caddy, production profile, health checks and guarded backup/restore scripts are retained.
+
+The candidate database migration set contains a schema-only V1 snapshot from the owner's 26 November 2026 MySQL export and a V2 upgrade adding the five Khatha tables, shop coordinates, catalogue source metadata, supported payment enum values and safe legacy address-column nullability. Production migrations run separately with a DDL-only identity; the application runtime remains DML-only and Hibernate uses `validate`.
 
 ## Remaining release gates
 

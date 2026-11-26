@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      SPRING_FLYWAY_ENABLED: "false"
       DB_URL: ${DB_URL:?Set DB_URL to the managed MySQL JDBC URL with TLS verification}
       DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME to the least-privilege application user}
       DB_PASSWORD_FILE: /run/secrets/db_password

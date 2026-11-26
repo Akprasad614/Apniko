@@ -4,13 +4,12 @@ This is the handoff for the person who provisions infrastructure and performs de
 
 ## A. Before touching a database
 
-- Choose the authoritative existing schema or intentionally provision a fresh database only after the full reviewed schema migration baseline is available.
-- Back up the known-good database and verify the dump checksum.
-- Restore a copy to a disposable database and inspect it. Do not run SQL generated from a guessed entity schema.
-- Review the full migration SQL with the project owner. Establish the first Flyway baseline and test clean-install and upgrade paths.
-- Keep Hibernate production mode at `validate`. Do not set `ddl-auto=update`.
-
-The current repository does not contain the reviewed complete baseline. Stop here for any new production database until it has been prepared and reviewed.
+- The repository now includes a schema-only V1 snapshot of the inspected 18-table legacy `localcart` schema and a V2 forward migration to the current Apniko entity mappings. Review `DATABASE-MIGRATION-BASELINE.md`.
+- Back up the known-good database, copy it to an encrypted off-host location and verify the dump checksum.
+- Restore a copy to a disposable database and test both the empty-database and legacy-upgrade paths before staging.
+- For a new empty database, run Flyway migrate (V1 then V2). For an existing database, baseline at version 1 only after verifying that its schema exactly matches V1, then run migrate.
+- Run Flyway with a separate DDL-only migration identity. The runtime identity remains DML-only.
+- Keep Hibernate in `validate` mode. Do not set `ddl-auto=update`. Production app startup does not run Flyway.
 
 ## B. Host and DNS
 
@@ -51,7 +50,7 @@ docker compose --env-file .env.production ps
 docker compose --env-file .env.production logs --tail=150 backend frontend caddy
 ```
 
-Do not deploy from a dirty worktree. Do not use `latest`. The app should not start successfully if DB/JWT secrets are missing. Confirm backend readiness from inside the backend container:
+Before starting Compose, apply the reviewed migrations with the separate DDL-only identity as described in `DATABASE-MIGRATION-BASELINE.md`. The `prod` profile disables Flyway in the application container; do not grant schema-change privileges to the runtime user. Do not deploy from a dirty worktree or use `latest`. The app should not start successfully if DB/JWT secrets are missing. Confirm backend readiness from inside the backend container:
 
 ```bash
 docker compose --env-file .env.production exec backend wget -qO- http://127.0.0.1:8080/actuator/health/readiness
