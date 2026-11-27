@@ -1,12 +1,10 @@
 package com.localcart.repository;
 
 import com.localcart.entity.NotificationSyncState;
-import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.jpa.repository.Lock;
 
 import java.util.Optional;
 
@@ -30,11 +28,21 @@ public interface NotificationSyncStateRepository
     );
 
     /**
-     * A pessimistic lock forces a current database read after an upsert.
-     * This avoids reading a stale REPEATABLE_READ snapshot when another
-     * transaction created the singleton row first.
+     * A locking read forces a current database read after an upsert. This
+     * avoids reading a stale REPEATABLE_READ snapshot when another transaction
+     * created the singleton row first.
+     *
+     * Use the plain MySQL/TiDB FOR UPDATE form instead of Hibernate's generated
+     * "FOR UPDATE OF <alias>" form, because some TiDB Cloud Starter versions
+     * do not support aliases in that clause.
+     *
+     * Callers must invoke this repository method inside a transaction.
      */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select state from NotificationSyncState state where state.id = :id")
+    @Query(value = """
+            SELECT *
+            FROM notification_sync_state
+            WHERE id = :id
+            FOR UPDATE
+            """, nativeQuery = true)
     Optional<NotificationSyncState> findLockedById(@Param("id") Long id);
 }
