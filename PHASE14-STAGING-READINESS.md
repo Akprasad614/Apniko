@@ -21,6 +21,21 @@ This phase prepares repository automation, safety checks and an operator procedu
 
 The V1/V2 migration set is based on the schema-only dump supplied from the owner's local MySQL database on 26 November 2026. It is not proof that a future staging or production database has the same schema. Restore and compare every target before baselining it. The first upgrade deliberately retains the legacy photo tables and `products.image_url` column.
 
+## Free staging deployment route
+
+For a no-cost staging/demo deployment without purchasing a VPS or custom domain, use the tested-in-repository topology documented in `DEPLOYMENT-GUIDE.md`:
+
+- Render Free Docker web service in Singapore for Spring Boot.
+- Cloudflare Pages in the global CDN for the React/Vite frontend.
+- Cloudflare Pages Function proxy for `/api/*`, preserving same-origin cookie and CSRF behaviour.
+- TiDB Cloud Starter `apniko_staging` database; backend runtime uses only the DML-only account.
+
+Do not split the cookie-authenticated UI and API across separate `*.onrender.com` hostnames. Render's shared service hostname is a public suffix, so sibling service hostnames are not a safe same-site cookie design. Do not use Vercel Hobby for a commercial project; its terms restrict Hobby usage to personal/non-commercial projects.
+
+Render Free services sleep after 15 minutes idle, have 512 MB RAM, no persistent disk, and are intended for testing/hobby use rather than production. Cloudflare Pages Functions share the Workers Free daily request quota (100,000 requests/day). Use synthetic records and Razorpay sandbox only. A successful free staging deployment is not production sign-off and does not complete the Phase 14 acceptance matrix.
+
+The API proxy is configured using the Pages runtime variable `APNIKO_API_ORIGIN`; keep the frontend `VITE_API_BASE_URL` unset/empty so requests stay at the Pages origin. Configure Pages Functions to fail closed when the daily free request allowance is exhausted.
+
 ## Staging infrastructure
 
 - Linux Docker host with Docker Engine and the Compose plugin; DNS records pointed at the host; inbound TCP 80/443 and UDP 443 as appropriate.
