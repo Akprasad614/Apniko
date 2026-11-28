@@ -19,8 +19,15 @@ read_secret() {
 
 : "${DB_PASSWORD_FILE:=/run/secrets/db_password}"
 : "${JWT_SECRET_FILE:=/run/secrets/jwt_secret}"
-read_secret "$DB_PASSWORD_FILE" DB_PASSWORD
-read_secret "$JWT_SECRET_FILE" JWT_SECRET
+
+# Docker Compose supplies mounted secret files. Platforms such as Render can
+# instead provide encrypted runtime environment variables directly.
+if [ -z "${DB_PASSWORD:-}" ]; then
+  read_secret "$DB_PASSWORD_FILE" DB_PASSWORD
+fi
+if [ -z "${JWT_SECRET:-}" ]; then
+  read_secret "$JWT_SECRET_FILE" JWT_SECRET
+fi
 
 : "${SPRING_PROFILES_ACTIVE:=prod}"
 export SPRING_PROFILES_ACTIVE
