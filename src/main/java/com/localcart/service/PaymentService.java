@@ -18,6 +18,7 @@ import com.localcart.repository.OrderRepository;
 import com.localcart.repository.PaymentRepository;
 import com.localcart.repository.UserRepository;
 import com.localcart.security.SecurityUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,12 @@ public class PaymentService {
     private final RazorpayGatewayClient razorpayGatewayClient;
     private final ObjectMapper objectMapper;
     private final String webhookSecret;
+    private KhathaService khathaService;
+
+    @Autowired
+    public void setKhathaService(KhathaService khathaService) {
+        this.khathaService = khathaService;
+    }
 
     public PaymentService(
             PaymentRepository paymentRepository,
@@ -63,9 +70,19 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public List<PaymentMethod> getAvailableMethods() {
-        return razorpayGatewayClient.isConfigured()
-                ? List.of(PaymentMethod.COD, PaymentMethod.RAZORPAY)
-                : List.of(PaymentMethod.COD);
+        return getAvailableMethods(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentMethod> getAvailableMethods(Long shopId) {
+        List<PaymentMethod> methods = razorpayGatewayClient.isConfigured()
+                ? new java.util.ArrayList<>(List.of(PaymentMethod.COD, PaymentMethod.RAZORPAY))
+                : new java.util.ArrayList<>(List.of(PaymentMethod.COD));
+        if (shopId != null && khathaService != null
+                && khathaService.hasAvailableCreditForCustomer(shopId, SecurityUtils.getCurrentUserEmail())) {
+            methods.add(PaymentMethod.KHATHA);
+        }
+        return List.copyOf(methods);
     }
 
     @Transactional
@@ -106,7 +123,13 @@ public class PaymentService {
         if (payment.getId() != null) {
             if (payment.getStatus() == PaymentStatus.PAID
                     || payment.getStatus() == PaymentStatus.REFUND_PENDING
-                    || payment.getStatus() == PaymentStatus.REFUNDED) {
+                    || payment.getStatus() == PaymentStatus.REFUNDED
+                    || payment.getStatus() == PaymentStatus.REVERSED) {
+                if (payment.getMethod() == PaymentMethod.KHATHA
+                        && request.getMethod() == PaymentMethod.KHATHA
+                        && payment.getStatus() == PaymentStatus.PAID) {
+                    return PaymentResponse.from(payment, null);
+                }
                 throw new BadRequestException("This order already has a completed payment");
             }
 
@@ -135,6 +158,17 @@ public class PaymentService {
         payment.setPaidAt(null);
 
         payment = paymentRepository.save(payment);
+
+        if (request.getMethod() == PaymentMethod.KHATHA) {
+            if (khathaService == null) {
+                throw new BadRequestException("Khatha is not available on this server");
+            }
+            // The account row is locked and debited in the same transaction as this payment.
+            khathaService.chargeOrder(order, customer);
+            payment.setStatus(PaymentStatus.PAID);
+            payment.setPaidAt(LocalDateTime.now());
+            return PaymentResponse.from(paymentRepository.save(payment), null);
+        }
 
         if (request.getMethod() == PaymentMethod.COD) {
             return PaymentResponse.from(payment, null);

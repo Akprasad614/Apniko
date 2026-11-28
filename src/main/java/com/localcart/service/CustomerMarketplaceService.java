@@ -2,7 +2,7 @@ package com.localcart.service;
 
 import com.localcart.dto.InventoryResponse;
 import com.localcart.dto.PriceComparisonResponse;
-import com.localcart.dto.ShopResponse;
+import com.localcart.dto.CustomerMarketplaceShopResponse;
 import com.localcart.entity.Shop;
 import com.localcart.entity.ProductCatalogueReviewStatus;
 import com.localcart.entity.ShopInventory;
@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Comparator;
 
 @Service
 @Transactional(readOnly = true)
@@ -41,16 +42,58 @@ public class CustomerMarketplaceService {
         this.productRepository = productRepository;
     }
 
-    public List<ShopResponse> getActiveShops() {
+    public List<CustomerMarketplaceShopResponse> getActiveShops() {
 
         return shopRepository.findAll()
                 .stream()
                 .filter(Shop::isActive)
-                .map(this::toShopResponse)
+                .map(this::toCustomerShopResponse)
                 .toList();
     }
 
-    public ShopResponse getActiveShop(Long shopId) {
+    /**
+     * The customer's coordinates are used for this one search only and are never persisted.
+     */
+    public List<CustomerMarketplaceShopResponse> getNearbyShops(
+            double latitude, double longitude, double radiusKm) {
+        if (!Double.isFinite(latitude) || latitude < -90 || latitude > 90
+                || !Double.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            throw new BadRequestException("Enter valid latitude and longitude coordinates");
+        }
+        if (!Double.isFinite(radiusKm) || radiusKm <= 0 || radiusKm > 50) {
+            throw new BadRequestException("Search radius must be greater than 0 and no more than 50 km");
+        }
+
+        return shopRepository.findAll().stream()
+                .filter(Shop::isActive)
+                .filter(shop -> shop.getLatitude() != null && shop.getLongitude() != null)
+                .map(shop -> new NearbyShop(shop,
+                        distanceKm(latitude, longitude, shop.getLatitude(), shop.getLongitude())))
+                .filter(item -> item.distanceKm() <= radiusKm)
+                .sorted(Comparator.comparingDouble(NearbyShop::distanceKm)
+                        .thenComparing(item -> item.shop().getName(), String.CASE_INSENSITIVE_ORDER))
+                .limit(100)
+                .map(item -> toCustomerShopResponse(item.shop(), item.distanceKm()))
+                .toList();
+    }
+
+    private record NearbyShop(Shop shop, double distanceKm) { }
+
+    private double distanceKm(double latitude1, double longitude1,
+                              double latitude2, double longitude2) {
+        final double earthRadiusKm = 6371.0088;
+        double lat1 = Math.toRadians(latitude1);
+        double lat2 = Math.toRadians(latitude2);
+        double latDelta = Math.toRadians(latitude2 - latitude1);
+        double lonDelta = Math.toRadians(longitude2 - longitude1);
+        double a = Math.sin(latDelta / 2) * Math.sin(latDelta / 2)
+                + Math.cos(lat1) * Math.cos(lat2)
+                * Math.sin(lonDelta / 2) * Math.sin(lonDelta / 2);
+        a = Math.min(1.0, Math.max(0.0, a));
+        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    public CustomerMarketplaceShopResponse getActiveShop(Long shopId) {
 
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() ->
@@ -60,7 +103,7 @@ public class CustomerMarketplaceService {
             throw new ResourceNotFoundException("Shop is not active");
         }
 
-        return toShopResponse(shop);
+        return toCustomerShopResponse(shop);
     }
 
     public List<InventoryResponse> getShopProducts(Long shopId) {
@@ -205,17 +248,21 @@ public class CustomerMarketplaceService {
         return value.trim();
     }
 
-    private ShopResponse toShopResponse(Shop shop) {
+    private CustomerMarketplaceShopResponse toCustomerShopResponse(Shop shop) {
+        return toCustomerShopResponse(shop, null);
+    }
 
-        ShopResponse response = new ShopResponse();
-        response.setId(shop.getId());
-        response.setName(shop.getName());
-        response.setOwnerName(shop.getOwnerName());
-        response.setPhone(shop.getPhone());
-        response.setAddress(shop.getAddress());
-        response.setActive(shop.isActive());
-        response.setDeliveryMode(shop.getDeliveryMode());
-        return response;
+    private CustomerMarketplaceShopResponse toCustomerShopResponse(Shop shop, Double distanceKm) {
+        return new CustomerMarketplaceShopResponse(
+                shop.getId(),
+                shop.getName(),
+                shop.getAddress(),
+                shop.isActive(),
+                shop.getDeliveryMode(),
+                shop.getLatitude(),
+                shop.getLongitude(),
+                distanceKm == null ? null : Math.round(distanceKm * 10.0) / 10.0
+        );
     }
 
     private InventoryResponse toInventoryResponse(ShopInventory inventory) {
@@ -235,14 +282,6 @@ public class CustomerMarketplaceService {
         response.setPrice(inventory.getPrice());
         response.setStockQuantity(inventory.getStockQuantity());
         response.setAvailable(inventory.isAvailable());
-        var photo = inventory.getProduct().getPhoto();
-        if (photo != null && photo.getApprovedImageUrl() != null) {
-            response.setImageUrl(photo.getApprovedImageUrl());
-            response.setImageSourceName(photo.getSourceName());
-            response.setImageSourceUrl(photo.getSourceUrl());
-            response.setImageLicense(photo.getLicense());
-            response.setImageAttribution(photo.getAttribution());
-        }
         return response;
     }
 

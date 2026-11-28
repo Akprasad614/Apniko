@@ -1,13 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { apiRequest } from '../lib/api'
 import { isAppRole } from '../lib/roles'
 import type { AppRole } from '../lib/roles'
 
-const SESSION_KEY = 'apniko.auth.session'
-
 export interface AuthSession {
-  token: string
+  // Present only in the isolated bearer-token compatibility mode used by API tests.
+  // Production browser sessions use an HttpOnly cookie and never expose the JWT to JS.
+  token?: string
   userId: number
   name: string
   email: string
@@ -15,7 +15,7 @@ export interface AuthSession {
 }
 
 interface AuthResponse {
-  token: string
+  token?: string | null
   userId: number
   name: string
   email: string
@@ -24,57 +24,58 @@ interface AuthResponse {
 
 interface AuthContextValue {
   session: AuthSession | null
+  loading: boolean
   signIn: (email: string, password: string) => Promise<AuthSession>
   signUpCustomer: (name: string, email: string, password: string) => Promise<AuthSession>
-  signOut: () => void
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-function readStoredSession(): AuthSession | null {
-  try {
-    const raw = window.sessionStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    const parsed: unknown = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return null
-    const candidate = parsed as Partial<AuthSession>
-    if (
-      typeof candidate.token !== 'string' ||
-      typeof candidate.userId !== 'number' ||
-      typeof candidate.name !== 'string' ||
-      typeof candidate.email !== 'string' ||
-      !isAppRole(candidate.role)
-    ) return null
-    return candidate as AuthSession
-  } catch {
-    return null
-  }
-}
-
-function saveSession(response: AuthResponse): AuthSession {
+function toSession(response: AuthResponse): AuthSession {
   if (!isAppRole(response.role)) {
     throw new Error('Apniko returned an unknown account role. Contact support.')
   }
-  const session: AuthSession = {
-    token: response.token,
+
+  return {
+    ...(response.token ? { token: response.token } : {}),
     userId: response.userId,
     name: response.name,
     email: response.email,
     role: response.role,
   }
-  window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  return session
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(readStoredSession)
+  const [session, setSession] = useState<AuthSession | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    apiRequest<AuthResponse>('/api/auth/session')
+      .then((response) => {
+        if (active) setSession(toSession(response))
+      })
+      .catch(() => {
+        // A missing/expired browser cookie is an ordinary signed-out state.
+        if (active) setSession(null)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const signIn = useCallback(async (email: string, password: string): Promise<AuthSession> => {
     const response = await apiRequest<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    const nextSession = saveSession(response)
+    const nextSession = toSession(response)
     setSession(nextSession)
     return nextSession
   }, [])
@@ -88,19 +89,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify({ name, email, password, role: 'CUSTOMER' }),
     })
-    const nextSession = saveSession(response)
+    const nextSession = toSession(response)
     setSession(nextSession)
     return nextSession
   }, [])
 
-  const signOut = useCallback(() => {
-    window.sessionStorage.removeItem(SESSION_KEY)
-    setSession(null)
-  }, [])
+  const signOut = useCallback(async () => {
+    try {
+      await apiRequest<void>('/api/auth/logout', { method: 'POST' }, session?.token)
+    } finally {
+      setSession(null)
+    }
+  }, [session?.token])
 
   const value = useMemo(
-    () => ({ session, signIn, signUpCustomer, signOut }),
-    [session, signIn, signUpCustomer, signOut],
+    () => ({ session, loading, signIn, signUpCustomer, signOut }),
+    [session, loading, signIn, signUpCustomer, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -36,6 +36,12 @@ export function CustomerAccount() {
           <span>Payment choices and checkout preferences</span>
           <b>View payment methods →</b>
         </Link>
+        <Link to="/customer/account/khatha" className="customer-account-card">
+          <span className="customer-account-card__symbol" aria-hidden="true">₹</span>
+          <strong>Apniko Khatha</strong>
+          <span>See shop credit, outstanding balance and repayments</span>
+          <b>Open Khatha →</b>
+        </Link>
         <Link to="/customer/orders" className="customer-account-card">
           <span className="customer-account-card__symbol" aria-hidden="true">▤</span>
           <strong>Order history</strong>

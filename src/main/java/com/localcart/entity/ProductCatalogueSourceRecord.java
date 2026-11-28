@@ -35,6 +35,15 @@ public class ProductCatalogueSourceRecord {
     @Column(name = "attribution", nullable = false, length = 500)
     private String attribution;
 
+    @Column(name = "reuse_rights_verified")
+    private Boolean reuseRightsVerified;
+
+    @Column(name = "commercial_use_permitted")
+    private Boolean commercialUsePermitted;
+
+    @Column(name = "permission_reference", length = 500)
+    private String permissionReference;
+
     @Column(name = "source_modified_at")
     private Instant sourceModifiedAt;
 
@@ -46,6 +55,10 @@ public class ProductCatalogueSourceRecord {
 
     @Column(name = "imported_at", nullable = false)
     private Instant importedAt;
+
+    // Raw Mendeley row metadata is retained for provenance/review, not exposed as shop price or customer nutrition facts.
+    @Column(name = "source_metadata_json", columnDefinition = "TEXT")
+    private String sourceMetadataJson;
 
     public ProductCatalogueSourceRecord() {
     }
@@ -63,6 +76,12 @@ public class ProductCatalogueSourceRecord {
     public void setSourceLicense(String sourceLicense) { this.sourceLicense = sourceLicense; }
     public String getAttribution() { return attribution; }
     public void setAttribution(String attribution) { this.attribution = attribution; }
+    public Boolean getReuseRightsVerified() { return reuseRightsVerified; }
+    public void setReuseRightsVerified(Boolean reuseRightsVerified) { this.reuseRightsVerified = reuseRightsVerified; }
+    public Boolean getCommercialUsePermitted() { return commercialUsePermitted; }
+    public void setCommercialUsePermitted(Boolean commercialUsePermitted) { this.commercialUsePermitted = commercialUsePermitted; }
+    public String getPermissionReference() { return permissionReference; }
+    public void setPermissionReference(String permissionReference) { this.permissionReference = permissionReference; }
     public Instant getSourceModifiedAt() { return sourceModifiedAt; }
     public void setSourceModifiedAt(Instant sourceModifiedAt) { this.sourceModifiedAt = sourceModifiedAt; }
     public BigDecimal getReportedMrp() { return reportedMrp; }
@@ -71,4 +90,6 @@ public class ProductCatalogueSourceRecord {
     public void setReportedMrpSource(String reportedMrpSource) { this.reportedMrpSource = reportedMrpSource; }
     public Instant getImportedAt() { return importedAt; }
     public void setImportedAt(Instant importedAt) { this.importedAt = importedAt; }
+    public String getSourceMetadataJson() { return sourceMetadataJson; }
+    public void setSourceMetadataJson(String sourceMetadataJson) { this.sourceMetadataJson = sourceMetadataJson; }
 }

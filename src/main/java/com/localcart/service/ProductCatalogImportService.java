@@ -1,5 +1,8 @@
 package com.localcart.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.localcart.dto.ProductImportBatchRequest;
 import com.localcart.dto.ProductImportBatchResponse;
 import com.localcart.dto.ProductImportItem;
@@ -11,6 +14,9 @@ import com.localcart.exception.BadRequestException;
 import com.localcart.repository.ProductCatalogueSourceRecordRepository;
 import com.localcart.repository.ProductCategoryRepository;
 import com.localcart.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,37 +25,45 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.text.Normalizer;
 import java.util.*;
 
 @Service
 @Transactional
 public class ProductCatalogImportService {
 
-    private static final Set<String> SUPPORTED_MRP_SOURCES =
-            Set.of("pack", "brand", "gov", "off");
-    private static final Set<String> SUPPORTED_LICENSES = Set.of(
-            "ODbL-1.0", "DbCL-1.0", "CC0-1.0", "CC-BY-4.0",
-            "CC-BY-SA-4.0", "CC-BY-SA-3.0", "Public-Domain"
-    );
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductCatalogImportService.class);
+    private static final String MENDELEY_SOURCE = "Mendeley Indian Packaged Foods Dataset (2026)";
+    private static final String MENDELEY_LICENSE = "CC-BY-4.0";
+    private static final String MENDELEY_URL = "https://data.mendeley.com/datasets/rhswn9z9xr/1";
+    private static final String MENDELEY_DOI = "10.17632/rhswn9z9xr.1";
+    private static final Set<String> SUPPORTED_MRP_SOURCES = Set.of("pack", "brand", "gov");
 
     private final ProductRepository productRepository;
     private final ProductCategoryRepository categoryRepository;
     private final ProductCatalogueSourceRecordRepository sourceRecordRepository;
     private final ProductCatalogueQualityService catalogueQualityService;
+    private final ObjectMapper objectMapper;
+    private final com.localcart.config.ApprovedCatalogueSourceProperties approvedSource;
 
     public ProductCatalogImportService(
             ProductRepository productRepository,
             ProductCategoryRepository categoryRepository,
             ProductCatalogueSourceRecordRepository sourceRecordRepository,
-            ProductCatalogueQualityService catalogueQualityService) {
+            ProductCatalogueQualityService catalogueQualityService,
+            ObjectMapper objectMapper,
+            com.localcart.config.ApprovedCatalogueSourceProperties approvedSource) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.sourceRecordRepository = sourceRecordRepository;
         this.catalogueQualityService = catalogueQualityService;
+        this.objectMapper = objectMapper;
+        this.approvedSource = approvedSource;
     }
 
     public ProductImportBatchResponse importBatch(ProductImportBatchRequest request) {
         validateSource(request);
+        boolean mendeleySource = MENDELEY_SOURCE.equals(request.sourceName().trim());
 
         int inserted = 0;
         int updated = 0;
@@ -60,7 +74,7 @@ public class ProductCatalogImportService {
         for (int index = 0; index < request.products().size(); index++) {
             ProductImportItem item = request.products().get(index);
             try {
-                validateItem(item);
+                validateItem(item, mendeleySource);
                 String barcode = normalizeBarcode(item.barcode());
                 String identityKey = identityKey(item, barcode);
                 ProductCategory category = findCategory(item.category(), item.subcategory());
@@ -100,9 +114,13 @@ public class ProductCatalogImportService {
                 sourceRecord.setSourceUrl(request.sourceUrl().trim());
                 sourceRecord.setSourceLicense(request.sourceLicense().trim());
                 sourceRecord.setAttribution(request.attribution().trim());
+                sourceRecord.setReuseRightsVerified(request.reuseRightsVerified());
+                sourceRecord.setCommercialUsePermitted(request.commercialUsePermitted());
+                sourceRecord.setPermissionReference(request.permissionReference().trim());
                 sourceRecord.setSourceModifiedAt(item.sourceModifiedAt());
                 sourceRecord.setReportedMrp(item.mrp());
                 sourceRecord.setReportedMrpSource(normalizeMrpSource(item.mrpSource()));
+                sourceRecord.setSourceMetadataJson(item.sourceMetadataJson());
                 sourceRecord.setImportedAt(Instant.now());
 
                 if (changed || created) {
@@ -119,6 +137,7 @@ public class ProductCatalogImportService {
                     unchanged++;
                 }
             } catch (IllegalArgumentException | IllegalStateException exception) {
+                LOGGER.warn("Rejected catalogue row {}: {}", index + 1, exception.getMessage());
                 errors.add("Row " + (index + 1) + ": " + exception.getMessage());
             }
         }
@@ -136,35 +155,122 @@ public class ProductCatalogImportService {
         if (request.products().size() > 500) {
             throw new BadRequestException("Import batches cannot exceed 500 products");
         }
-        URI uri;
-        try {
-            uri = URI.create(request.sourceUrl().trim());
-        } catch (RuntimeException exception) {
-            throw new BadRequestException("Source URL must be a valid HTTPS URL");
+
+        String sourceName = requiredText(request.sourceName(), "sourceName", 80);
+        String sourceUrl = requiredText(request.sourceUrl(), "sourceUrl", 500);
+        String sourceLicense = requiredText(request.sourceLicense(), "sourceLicense", 80);
+        String permissionReference = requiredText(request.permissionReference(), "permissionReference", 500);
+        String attribution = requiredText(request.attribution(), "attribution", 500);
+        String normalizedAttribution = attribution.toLowerCase(Locale.ROOT);
+
+        if (MENDELEY_SOURCE.equals(sourceName)) {
+            URI uri;
+            try {
+                uri = URI.create(sourceUrl);
+            } catch (RuntimeException exception) {
+                throw new BadRequestException("Source URL must be the approved Mendeley dataset URL");
+            }
+            boolean approvedMendeleyUrl = "https".equalsIgnoreCase(uri.getScheme())
+                    && "data.mendeley.com".equalsIgnoreCase(uri.getHost())
+                    && "/datasets/rhswn9z9xr/1".equals(uri.getPath())
+                    && uri.getUserInfo() == null
+                    && (uri.getPort() == -1 || uri.getPort() == 443)
+                    && uri.getQuery() == null
+                    && uri.getFragment() == null;
+            if (!approvedMendeleyUrl || !MENDELEY_URL.equals(sourceUrl)) {
+                throw new BadRequestException("Only the approved Mendeley dataset version 1 URL is accepted");
+            }
+            if (!MENDELEY_LICENSE.equals(sourceLicense)) {
+                throw new BadRequestException("Only the Mendeley Indian Packaged Foods dataset under CC-BY-4.0 is accepted");
+            }
+            if (!MENDELEY_DOI.equalsIgnoreCase(permissionReference)
+                    || !normalizedAttribution.contains(MENDELEY_DOI)
+                    || !normalizedAttribution.contains("cc by 4.0")
+                    || !normalizedAttribution.contains("apniko modifications")) {
+                throw new BadRequestException(
+                        "Attribution must retain the dataset DOI, CC BY 4.0 and disclose Apniko modifications");
+            }
+        } else {
+            URI uri;
+            try {
+                uri = URI.create(sourceUrl);
+            } catch (RuntimeException exception) {
+                throw new BadRequestException("Approved retail source URL must be a valid HTTPS URL");
+            }
+            if (!"https".equalsIgnoreCase(uri.getScheme())
+                    || uri.getHost() == null || uri.getHost().isBlank()
+                    || uri.getUserInfo() != null
+                    || (uri.getPort() != -1 && uri.getPort() != 443)
+                    || uri.getQuery() != null || uri.getFragment() != null) {
+                throw new BadRequestException("Approved retail source URL must use HTTPS without credentials, query or fragment");
+            }
+            if (approvedSource == null
+                    || !approvedSource.matches(sourceName, sourceUrl, sourceLicense, permissionReference)) {
+                throw new BadRequestException(
+                        "Retail catalogue source is not configured as an owner-approved commercial source");
+            }
+            if (!normalizedAttribution.contains(sourceName.toLowerCase(Locale.ROOT))
+                    || !normalizedAttribution.contains(sourceLicense.toLowerCase(Locale.ROOT))
+                    || !normalizedAttribution.contains(permissionReference.toLowerCase(Locale.ROOT))
+                    || !normalizedAttribution.contains("apniko modifications")) {
+                throw new BadRequestException(
+                        "Attribution must identify the approved source, licence, permission reference and Apniko modifications");
+            }
         }
-        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null) {
-            throw new BadRequestException("Source URL must use HTTPS");
+
+        if (!Boolean.TRUE.equals(request.reuseRightsVerified())
+                || !Boolean.TRUE.equals(request.commercialUsePermitted())) {
+            LOGGER.warn("Blocked catalogue import because reuse/commercial-use attestations were not confirmed");
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Import blocked: reuse_rights_verified and commercial_use_permitted must both be true");
         }
-        if (!SUPPORTED_LICENSES.contains(request.sourceLicense().trim())) {
-            throw new BadRequestException("Unsupported licence identifier; document the licence before importing");
-        }
-        requiredText(request.sourceName(), "sourceName", 80);
-        requiredText(request.attribution(), "attribution", 500);
     }
 
-    private void validateItem(ProductImportItem item) {
+    private void validateItem(ProductImportItem item, boolean mendeleySource) {
         if (item == null) {
             throw new IllegalArgumentException("product row is empty");
+        }
+        if (mendeleySource && ((item.barcode() != null && !item.barcode().isBlank())
+                || (item.packSize() != null && !item.packSize().isBlank())
+                || item.netQuantity() != null
+                || (item.netQuantityUnit() != null && !item.netQuantityUnit().isBlank())
+                || item.mrp() != null
+                || (item.mrpSource() != null && !item.mrpSource().isBlank()))) {
+            throw new IllegalArgumentException(
+                    "Mendeley reference rows must not populate unverified barcode, retail pack-size, quantity or price fields");
+        }
+        if (!mendeleySource) {
+            if (normalizeBarcode(item.barcode()) == null) {
+                throw new IllegalArgumentException("Approved retail imports require a verified GTIN barcode");
+            }
+            requiredText(item.packSize(), "packSize", 80);
+            if (item.netQuantity() == null || item.netQuantityUnit() == null || item.netQuantityUnit().isBlank()) {
+                throw new IllegalArgumentException("Approved retail imports require netQuantity and netQuantityUnit");
+            }
         }
         requiredText(item.name(), "name", 120);
         requiredText(item.category(), "category", 80);
         requiredText(item.subcategory(), "subcategory", 100);
-        requiredText(item.sourceRecordId(), "sourceRecordId", 160);
+        String sourceRecordId = requiredText(item.sourceRecordId(), "sourceRecordId", 160);
+        String identityDiscriminator = requiredText(item.identityDiscriminator(), "identityDiscriminator", 160);
+        if (!sourceRecordId.equals(identityDiscriminator)) {
+            throw new IllegalArgumentException("identityDiscriminator must match the stable source record ID");
+        }
+        requiredText(item.sourceMetadataJson(), "sourceMetadataJson", 8000);
         optionalText(item.brand(), "brand", 100);
         optionalText(item.packSize(), "packSize", 80);
         optionalText(item.netQuantityUnit(), "netQuantityUnit", 20);
         optionalText(item.variantGroupKey(), "variantGroupKey", 120);
         optionalText(item.description(), "description", 1000);
+        optionalText(item.sourceReviewReason(), "sourceReviewReason", 500);
+        try {
+            JsonNode metadata = objectMapper.readTree(item.sourceMetadataJson());
+            if (metadata == null || !metadata.isObject()) {
+                throw new IllegalArgumentException("sourceMetadataJson must be a JSON object");
+            }
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("sourceMetadataJson must contain valid JSON");
+        }
 
         if (item.netQuantity() != null
                 && (item.netQuantity().signum() <= 0
@@ -199,20 +305,34 @@ public class ProductCatalogImportService {
         }
         String normalized = value.trim().toLowerCase(Locale.ROOT);
         if (!SUPPORTED_MRP_SOURCES.contains(normalized)) {
-            throw new IllegalArgumentException("MRP source must be pack, brand, gov or off");
+            throw new IllegalArgumentException("MRP source must be pack, brand or gov");
         }
         return normalized;
     }
 
     private ProductCategory findCategory(String categoryName, String subcategoryName) {
+        String parentName = requiredText(categoryName, "category", 80);
+        String childName = requiredText(subcategoryName, "subcategory", 100);
         ProductCategory parent = categoryRepository
-                .findByNameIgnoreCaseAndParentIsNull(categoryName.trim())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "unknown category '" + categoryName + "'"));
+                .findByNameIgnoreCaseAndParentIsNull(parentName)
+                .orElseGet(() -> {
+                    ProductCategory created = new ProductCategory(
+                            parentName, categorySlug(parentName), null);
+                    return categoryRepository.save(created);
+                });
         return categoryRepository.findByNameIgnoreCaseAndParent_Id(
-                        subcategoryName.trim(), parent.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "subcategory '" + subcategoryName + "' does not belong to " + categoryName));
+                        childName, parent.getId())
+                .orElseGet(() -> categoryRepository.save(new ProductCategory(
+                        childName, categorySlug(parent.getSlug() + "-" + childName), parent)));
+    }
+
+    private String categorySlug(String value) {
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        String slug = normalized.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "");
+        return slug.length() > 120 ? slug.substring(0, 120) : slug;
     }
 
     private boolean applyProductData(Product product,
@@ -271,15 +391,44 @@ public class ProductCatalogImportService {
             changed = true;
         }
 
-        // Automatic checks apply to imported records until an administrator
-        // explicitly reviews them. A later source refresh must not undo that decision.
-        if (product.getCatalogueReviewedAt() == null
+        // Mendeley is a nutrition/reference dataset, not a retail-SKU feed.
+        // It contains no verified GTIN or retail pack size, so none of its rows
+        // may become customer-visible until those facts are independently supplied.
+        boolean mendeleyReferenceRow = MENDELEY_SOURCE.equals(request.sourceName().trim());
+        boolean retailIdentityIncomplete = blank(product.getBarcode()) || blank(product.getPackSize());
+        if (mendeleyReferenceRow && retailIdentityIncomplete) {
+            String reason = "Reference dataset row only: verified retail GTIN and pack size are not supplied. "
+                    + "Complete the retail identity from an approved source before publishing.";
+            if (item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()) {
+                reason += " Source quality review: " + item.sourceReviewReason().trim();
+            }
+            if (product.getCatalogueReviewStatus() != ProductCatalogueReviewStatus.NEEDS_REVIEW) {
+                product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+                changed = true;
+            }
+            if (!Objects.equals(product.getCatalogueReviewReason(), reason)) {
+                product.setCatalogueReviewReason(reason);
+                changed = true;
+            }
+        } else if (product.getCatalogueReviewedAt() == null
                 && (authoritative || product.getCatalogueReviewStatus() == null)) {
-            ProductCatalogueQualityService.Assessment assessment =
-                    catalogueQualityService.assess(product);
-            ProductCatalogueReviewStatus nextStatus = assessment.status();
-            if (product.getCatalogueReviewStatus() != nextStatus) {
-                product.setCatalogueReviewStatus(nextStatus);
+            ProductCatalogueQualityService.Assessment assessment;
+            if (!mendeleyReferenceRow) {
+                String reason = "Approved retail source import is pending administrator review before customer publication.";
+                if (item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()) {
+                    reason += " Source quality review: " + item.sourceReviewReason().trim();
+                }
+                assessment = new ProductCatalogueQualityService.Assessment(
+                        ProductCatalogueReviewStatus.NEEDS_REVIEW, reason);
+            } else {
+                assessment = item.sourceReviewReason() != null && !item.sourceReviewReason().isBlank()
+                        ? new ProductCatalogueQualityService.Assessment(
+                                ProductCatalogueReviewStatus.NEEDS_REVIEW,
+                                item.sourceReviewReason().trim())
+                        : catalogueQualityService.assess(product);
+            }
+            if (product.getCatalogueReviewStatus() != assessment.status()) {
+                product.setCatalogueReviewStatus(assessment.status());
                 changed = true;
             }
             if (!Objects.equals(product.getCatalogueReviewReason(), assessment.reason())) {
@@ -287,6 +436,18 @@ public class ProductCatalogImportService {
                 changed = true;
             }
         }
+        // A source refresh that changes an already-reviewed product must send it
+        // back to moderation. Do not let an imported edit silently inherit an
+        // administrator's approval of the previous product data.
+        if (!mendeleyReferenceRow && changed && product.getCatalogueReviewedAt() != null) {
+            product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+            product.setCatalogueReviewReason(
+                    "Approved retail source data changed after the previous review; administrator re-review is required.");
+            product.setCatalogueReviewedAt(null);
+            product.setCatalogueReviewedBy(null);
+            changed = true;
+        }
+
         product.setCatalogueImportedAt(Instant.now());
         return changed;
     }
@@ -323,8 +484,8 @@ public class ProductCatalogImportService {
     private String identityKey(ProductImportItem item, String barcode) {
         String identity = barcode != null
                 ? "gtin|" + barcode
-                : String.join("|", normalized(item.brand()), normalized(item.name()),
-                    normalized(item.packSize()), normalized(item.variantGroupKey()));
+                : String.join("|", "source-record", normalized(item.sourceRecordId()),
+                    normalized(item.identityDiscriminator()));
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(identity.getBytes(StandardCharsets.UTF_8));

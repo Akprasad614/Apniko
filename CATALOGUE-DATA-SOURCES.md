@@ -1,148 +1,113 @@
-# Apniko master catalogue — data and import policy
+# Apniko master catalogue — source policy
 
-## What the master catalogue represents
+## Product-information-only rule
 
-The master catalogue describes products that can be listed by many shops. It is not a stock feed and it is not a price list. A product imported here does **not** become available at any shop. A shopkeeper must add it to that shop's inventory and set that shop's selling price and quantity.
+The catalogue contains structured product information only. Product photographs,
+image URLs, image upload, image moderation, product-image storage and image
+source integrations are out of scope and must not be reintroduced.
 
-The existing `shop_inventory.price` is the local selling price. Imported MRP, where present, is stored separately on the shared product as a sourced reference value. An imported MRP is never copied into a shop's selling price.
+## Excluded sources
 
-## Sources reviewed
+- Open Food Facts / Open Facts and derivatives such as PackSense datasets based on it.
+- BigBasket scraping, copied retailer listings, retailer mirrors and undocumented endpoints.
+- Unapproved Kaggle datasets, scraped pages, fabricated or synthetic catalogues.
 
-### PackSense India / Open Food Facts
+A dataset is not approved merely because it is publicly downloadable. Its
+provenance, licence, allowed commercial use, attribution obligations and field
+semantics must be checked before integration.
 
-- Dataset: [PackSense India product catalogue](https://huggingface.co/datasets/PackSense/packsense-india)
-- Snapshot represented by the pinned download: 3 November 2026.
-- Dataset card reports 25,209 rows. It reports 21,999 product names and 17,157 brands; pack quantity fields are present on only a subset of rows.
-- Licence: ODbL-1.0 for the database; individual contents are under the Database Contents Licence (DbCL-1.0).
-- The PackSense CSV contains no images or image links.
-- Data is user-contributed and may be incomplete, outdated, miscategorised or incorrect. The dataset card also records invalid/unverified product statuses and quality flags.
+## Inspected reference dataset
 
-The importer therefore accepts only rows with a product name, a valid GTIN, an accepted existence status and zero open error flags. It maps available product taxonomy to Apniko's own category tree. It does not import images, nutrition values, or any source price as a local selling price. MRP is absent from this PackSense snapshot.
+The user-provided source is the *Indian Packaged Foods Nutritional Composition
+Dataset (2026)*, Mendeley Data, Version 1, DOI
+[10.17632/rhswn9z9xr.1](https://doi.org/10.17632/rhswn9z9xr.1). Its supplied
+README identifies CC BY 4.0. The inspected CSV contains 852 rows and 25 columns,
+with SHA-256:
 
-### Open Food Facts
+`f64832743d4918c428aab31fb8a3681cd2dee89f3c5f305185ec0edfabe8f303`
 
-- [API and data documentation](https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/)
-- [Licence guidance](https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/tutorials/license-be-on-the-legal-side/)
-- Database: ODbL-1.0; individual contents: DbCL-1.0; product images: CC BY-SA.
-- The Open Food Facts documentation recommends bulk CSV/JSONL data downloads for importing more than a few hundred products and warns that data quality is not guaranteed.
+This is a packaged-food nutrition/reference dataset, **not a complete retail
+SKU catalogue**. It has no verified GTIN/barcode or retail pack-size field.
+The README does not define the nutrition basis. Its row-level source and date
+metadata are mostly absent. It must not supply current shop prices, verified
+MRP, retail sizes or customer-facing nutrition facts.
 
-### OpenMRP India
+The importer retains the raw source row and attribution privately. All 852
+rows are marked `NEEDS_REVIEW` as reference candidates. They cannot be added
+to a shop or shown to customers until an independently approved source
+provides the exact retail variant identity.
 
-- [OpenMRP repository and download documentation](https://github.com/openmrp-in/openmrp)
-- [Open data dump format](https://github.com/openmrp-in/openmrp/blob/main/dump/README.md)
-- Data: ODbL-1.0; contributed media: CC BY-SA 4.0.
-- The dump publishes separate `products.csv`, `brands.csv` and `variants.csv` tables with a manifest and SHA-256 checksums. The importer joins these tables using product and brand identifiers and preserves each product/variant source record.
-- MRP is imported only when its source is one of `pack`, `brand`, `gov` or `off`. Product images are deliberately not imported in Phase 2.
+## Data mapping and non-inference rules
 
-### BigBasket / Kaggle
+- Map only item name, brand, category and subcategory from the source.
+- Preserve the source row ID, DOI, version, CSV hash, licence, attribution and
+  raw values in private source provenance.
+- Never invent GTINs, barcodes, retail pack sizes, net quantities, variants,
+  MRP, current shop price, stock, availability or nutrition facts.
+- `Serving_Size_g` is not a retail pack size or net quantity.
+- `Price_INR` is a source observation only, not current shop price or verified MRP.
+- Preserve less-than tokens and malformed numeric values verbatim; never
+  coerce or silently repair them.
+- Keep duplicate item/brand source rows distinct until the sellable variant
+  is independently identified.
+- Do not silently correct source category labels. Flag them for review.
+- A master product does not automatically become inventory at any shop.
 
-The previously discussed BigBasket dataset is **not an import source in this phase**. A verifiable reuse licence for the specific Kaggle copy was not established. Historical retailer prices must not be treated as current shop prices. Apniko does not scrape BigBasket, Amazon, JioMart or other retailers' private catalogues.
+## Importer safeguards
 
-## Open-data licensing and provenance
+`scripts/catalogue/import_catalogue.py` is a file-based Mendeley version-1
+importer. It never downloads the dataset. Dry-run is the default. It validates
+the exact schema and 852-row count, preserves source provenance and flags all
+rows for review. Apply additionally requires:
+- The exact inspected CSV SHA-256.
+- Explicit operator confirmation of CC BY 4.0 reuse and commercial-use scope.
+- An administrator JWT.
+- A local/staging HTTPS API endpoint (HTTP localhost is allowed for development).
 
-Each imported source record is saved in `product_catalogue_source_records` with source name, source record ID, source URL, licence identifier, attribution text, source modification timestamp and any reported MRP/source. Multiple sources can therefore be deduplicated to one product without losing provenance.
+No product import or database mutation has been performed as part of the
+Phase 3–4 code changes.
 
-ODbL-licensed source data carries attribution and share-alike obligations when a database is shared. Apniko must preserve the applicable licence notices and make the relevant ODbL-derived database available under compatible terms when it conveys a derivative database. This implementation records provenance and the source licence; it is not a substitute for a legal review of Apniko's intended commercial distribution model.
+## Future source admission
 
-Do not add source images in this phase. Image reuse has separate licences and is handled by the dedicated product-image phase.
+A future retail source must have a documented source owner, commercial-use
+rights, stable source identifiers, exact sellable-variant data (including
+barcode and printed pack size where relevant), category mapping, field-level
+provenance and an update policy. The source must be explicitly approved before
+an adapter or import is added.
 
-## Product identity and deduplication
+## Approved commercial retail-source intake
 
-1. GTIN-8, GTIN-12, GTIN-13 and GTIN-14 are normalized and check-digit validated.
-2. A valid barcode is the primary identity key.
-3. When there is no barcode, Apniko hashes normalized brand, product name, pack size and variant group into a stable identity key.
-4. A matching barcode attaches another source record to the existing product rather than creating a second product.
-5. A different source does not overwrite non-empty master data already curated from another source. It can fill missing fields. A re-import from the same source can refresh that source's fields.
-6. Shop inventory, selling prices, stock quantities, orders and customer baskets are never modified by catalogue imports.
+The Mendeley reference importer is not a retail SKU importer. A separate
+source-neutral CSV tool is available at
+`scripts/catalogue/import_approved_retail_catalogue.py`. It accepts only a
+strict schema for sellable retail variants: stable source record ID, product
+name, barcode/GTIN, printed pack size, net quantity/unit, category and
+subcategory, with optional MRP and provenance fields. Unknown fields are
+rejected, including image and photo URLs. GTIN check digits and numeric fields
+are validated locally before any API call.
 
-## India-first category tree
+This tool does not fetch, scrape or mirror retailer websites. The operator
+must obtain a lawful export or written permission from the source owner. Before
+an API import can proceed, the backend runtime must be configured with the
+exact source name, HTTPS URL, licence, permission reference, and two explicit
+true flags confirming reviewed reuse rights and commercial-use permission.
+Those flags default to false. Do not enable them based only on public
+availability or an unreviewed email/website statement.
 
-The starter taxonomy contains main categories and subcategories for:
+The admin API repeats the exact source allowlist check and requires a verified
+GTIN, pack size and net quantity. New retail rows always enter
+`NEEDS_REVIEW`; an administrator must verify the retail variant and approve
+it before customer publication. A successful import does not set shop prices,
+stock or availability.
 
-- Fruits & Vegetables
-- Dairy, Bakery & Eggs
-- Foodgrains, Oil & Masala
-- Snacks & Branded Foods
-- Beverages
-- Cleaning & Household
-- Beauty & Hygiene
-- Baby Care
-- Gourmet & World Food
-- Kitchen, Garden & Pets
-- Eggs, Meat & Fish
-- Other Essentials
+The example deployment file contains blank/false placeholders for these
+settings. Keep private agreement files and credentials off Git; store only an
+operator-approved permission reference in the runtime configuration and
+preserve the applicable provenance in the source-record audit table.
 
-The category list is seeded idempotently when the backend starts. The public category tree is available at `GET /api/catalogue/categories`; administrators can add a root category or one level of subcategory using `POST /api/catalogue/categories`.
+## Local catalogue reset
 
-## Download and dry-run
-
-Create the small importer environment once from the backend repository root:
-
-```bash
-python3 -m venv .venv-catalogue
-source .venv-catalogue/bin/activate
-python -m pip install -r scripts/catalogue/requirements.txt
-```
-
-The download client uses HTTPS-only requests, validates the permitted source hosts (including approved Hugging Face redirects), and refuses non-local HTTP API destinations. The importer uses the Python environment above for each command.
-
-```bash
-python scripts/catalogue/import_catalogue.py download --source packsense
-python scripts/catalogue/import_catalogue.py import \
-  --source packsense \
-  --file data/catalogue/source/packsense-india.csv \
-  --limit 100
-```
-
-The PackSense downloader verifies both the pinned SHA-256 and the dataset's reported 25,209-row count. The import command performs local validation and prints eligible/excluded counts; without `--apply`, it does not call the API.
-
-To download OpenMRP:
-
-```bash
-python scripts/catalogue/import_catalogue.py download --source openmrp
-python scripts/catalogue/import_catalogue.py import \
-  --source openmrp \
-  --products data/catalogue/source/products.csv \
-  --brands data/catalogue/source/brands.csv \
-  --variants data/catalogue/source/variants.csv \
-  --limit 100
-```
-
-## Apply to the local development database
-
-1. Start the backend against the intended local database. Hibernate's existing `ddl-auto=update` setting creates the new catalogue columns and provenance/category tables.
-2. Sign in as an active administrator and set the returned JWT in `APNIKO_ADMIN_TOKEN`.
-3. Run the dry-run first and inspect the product count and exclusions.
-4. Apply in small batches (default 250, maximum 500):
-
-```bash
-export APNIKO_ADMIN_TOKEN='YOUR_ADMIN_JWT'
-python scripts/catalogue/import_catalogue.py import \
-  --source packsense \
-  --file data/catalogue/source/packsense-india.csv \
-  --batch-size 250 \
-  --apply
-```
-
-The API is admin-only: `POST /api/admin/catalogue/import`. The server independently validates the HTTPS source URL, allowed licence identifier, category/subcategory membership, barcode checksum, field lengths, quantity and MRP ranges.
-
-Keep source files and import reports out of public issue trackers if the source data's licence or contents do not permit redistribution. The downloaded CSV is stored under `data/catalogue/source/` and should not be committed as an unreviewed snapshot.
-
-## Operational notes
-
-- The importer is repeatable. Re-running the same source records updates or counts unchanged entries instead of creating duplicates.
-- Import errors are returned per row and capped at 100 messages per API batch.
-- Rejected rows must be reviewed at source; do not weaken validation just to increase the row count.
-- Imported MRP is informational and can be stale. A shopkeeper's current selling price remains independent.
-- The Phase 3 product image system must separately record image attribution and image licence; this importer intentionally does not transfer image URLs.
-
-
-## Grocery catalogue experience and supplier feeds
-
-The customer catalogue should be product-first, mobile-first and image-led. The same master product identities and approved photographs are used by customer shopping cards and shopkeeper catalogue/inventory screens. See `CATALOGUE-EXPERIENCE-STANDARD.md` for the complete Phase 2 and Phase 3 release standard.
-
-The existing PackSense snapshot is a product-data source only; it contains no photographs. OpenMRP is another product-data source. Neither source should be represented as a complete, current, manufacturer-authorised Indian grocery catalogue. Keep community-contributed and imported records subject to quality review.
-
-For a BigBasket-like breadth of branded products and pack variants, prefer feeds provided by manufacturers, brands and authorised distributors. The partner must confirm that it has the right to supply product records and grant Apniko the required database and image display rights. Record the source, licence/permission and attribution before import. The new Phase 3 photo pipeline records manufacturer/supplier permission references separately from open-data licences.
-
-BigBasket's, Instamart's and Flipkart Minutes' retailer listings, descriptions, prices, product images, logos and underlying catalogues are not Apniko import sources. Their shopping patterns may inform an independently designed experience. A dataset mirrored on Kaggle is not automatically reusable: verify the actual dataset licence and provenance before import. Retailer prices and availability are never used as a substitute for shop-specific prices and inventory.
+The backup-first helper is
+`scripts/catalogue/reset-local-catalogue.sh`. It is local-only. The project
+owner ran it on 2026-11-22 and verified the backup and zero counters. Do not
+rerun the destructive reset simply to re-verify it.

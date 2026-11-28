@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,8 +47,15 @@ class CustomerMarketplaceServiceTest {
         var result = service.getActiveShops();
 
         assertEquals(1, result.size());
-        assertEquals("Local Fresh", result.get(0).getName());
-        assertTrue(result.get(0).isActive());
+        assertEquals("Local Fresh", result.get(0).name());
+        assertTrue(result.get(0).active());
+        assertEquals(
+                List.of("id", "name", "address", "active", "deliveryMode",
+                        "latitude", "longitude", "distanceKm"),
+                Arrays.stream(result.get(0).getClass().getRecordComponents())
+                        .map(component -> component.getName())
+                        .toList()
+        );
     }
 
     @Test
@@ -122,6 +130,29 @@ class CustomerMarketplaceServiceTest {
         );
     }
 
+
+    @Test
+    void searchWithoutShopIdQueriesAcrossActiveShops() {
+        when(inventoryRepository.searchMarketplace(
+                eq("milk"), isNull(), isNull(), isNull(), isNull(),
+                eq(ProductCatalogueReviewStatus.ACTIVE), any(Pageable.class)))
+                .thenAnswer(invocation -> new PageImpl<>(
+                        List.of(), invocation.getArgument(6), 0));
+
+        Page<?> result = service.searchProducts(
+                " milk ", null, null, null, null,
+                0, 8, "name", "asc");
+
+        assertTrue(result.isEmpty());
+        verify(inventoryRepository).searchMarketplace(
+                eq("milk"), isNull(), isNull(), isNull(), isNull(),
+                eq(ProductCatalogueReviewStatus.ACTIVE),
+                argThat(pageable -> pageable.getPageNumber() == 0
+                        && pageable.getPageSize() == 8)
+        );
+        verifyNoInteractions(shopRepository);
+    }
+
     @Test
     void priceComparisonRejectsUnknownProduct() {
         when(productRepository.existsById(999L)).thenReturn(false);
@@ -144,11 +175,56 @@ class CustomerMarketplaceServiceTest {
                 101L, ProductCatalogueReviewStatus.ACTIVE);
     }
 
+    @Test
+    void nearbyShopsAreSortedByDistanceAndExcludeInactiveUnpinnedAndDistantShops() {
+        Shop near = shop(1L, "Near Store", true);
+        when(near.getLatitude()).thenReturn(12.9716);
+        when(near.getLongitude()).thenReturn(77.5946);
+
+        Shop farther = shop(2L, "Further Store", true);
+        when(farther.getLatitude()).thenReturn(12.9816);
+        when(farther.getLongitude()).thenReturn(77.5946);
+
+        Shop noPin = shop(3L, "Unpinned Store", true);
+        when(noPin.getLatitude()).thenReturn(null);
+        when(noPin.getLongitude()).thenReturn(null);
+
+        Shop inactive = shop(4L, "Inactive Store", false);
+        when(inactive.getLatitude()).thenReturn(12.9716);
+        when(inactive.getLongitude()).thenReturn(77.5946);
+
+        Shop outsideRadius = shop(5L, "Outside Radius", true);
+        when(outsideRadius.getLatitude()).thenReturn(13.10);
+        when(outsideRadius.getLongitude()).thenReturn(77.5946);
+
+        when(shopRepository.findAll()).thenReturn(
+                List.of(outsideRadius, farther, noPin, inactive, near));
+
+        var result = service.getNearbyShops(12.9716, 77.5946, 5.0);
+
+        assertEquals(List.of(1L, 2L), result.stream().map(item -> item.id()).toList());
+        assertEquals(0.0, result.get(0).distanceKm());
+        assertTrue(result.get(1).distanceKm() > result.get(0).distanceKm());
+    }
+
+    @Test
+    void nearbySearchRejectsInvalidCoordinatesAndRadius() {
+        assertThrows(BadRequestException.class,
+                () -> service.getNearbyShops(91.0, 77.5, 10.0));
+        assertThrows(BadRequestException.class,
+                () -> service.getNearbyShops(12.9, 181.0, 10.0));
+        assertThrows(BadRequestException.class,
+                () -> service.getNearbyShops(12.9, 77.5, 51.0));
+        verifyNoInteractions(shopRepository);
+    }
+
     private Shop shop(Long id, String name, boolean active) {
         Shop shop = mock(Shop.class);
         when(shop.getId()).thenReturn(id);
         when(shop.getName()).thenReturn(name);
         when(shop.isActive()).thenReturn(active);
+        when(shop.getAddress()).thenReturn("Main Road");
+        when(shop.getDeliveryMode()).thenReturn(com.localcart.entity.DeliveryMode.SHOP_DELIVERY);
         return shop;
     }
 }

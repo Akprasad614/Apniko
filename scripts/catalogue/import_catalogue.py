@@ -1,645 +1,409 @@
 #!/usr/bin/env python3
-"""Download, validate, deduplicate and import licensed India-first catalogue data."""
+"""Validate and import the Mendeley Indian Packaged Foods dataset into Apniko.
 
+Dry-run is the default. The script never downloads the dataset. Ingredients,
+nutrition values and observed source prices are retained in private provenance
+metadata, not mapped to product descriptions, shop prices, MRP or pack sizes.
+Applying requires explicit licence/commercial-use confirmation and an admin JWT.
+"""
 from __future__ import annotations
 
 import argparse
 import csv
 import hashlib
 import json
+import os
 import re
 import sys
-import time
-import requests
-from urllib.parse import urljoin, urlsplit
-from collections import defaultdict
-from decimal import Decimal, InvalidOperation
+import unicodedata
+from collections import Counter
 from pathlib import Path
-from typing import Iterable
+from urllib.parse import urlsplit
 
-PACKSENSE_URL = (
-    "https://huggingface.co/datasets/PackSense/packsense-india/"
-    "resolve/main/india_products.csv"
+import requests
+
+SOURCE_NAME = "Mendeley Indian Packaged Foods Dataset (2026)"
+SOURCE_LICENSE = "CC-BY-4.0"
+SOURCE_URL = "https://data.mendeley.com/datasets/rhswn9z9xr/1"
+DOI = "10.17632/rhswn9z9xr.1"
+DATASET_TITLE = "Indian Packaged Foods Nutritional Composition Dataset (2026)"
+DATASET_VERSION = "1"
+EXPECTED_ROWS = 852
+APPROVED_SOURCE_SHA256 = "f64832743d4918c428aab31fb8a3681cd2dee89f3c5f305185ec0edfabe8f303"
+MAX_BATCH_SIZE = 250
+
+EXPECTED_HEADERS = (
+    "S.No", "Item name", "Brand_Name", "Category", "Sub_Category",
+    "Ingredients", "Serving_Size_g", "Calories_kcal", "Carbohydrates_g",
+    "Proteins_g", "Total_Fat_g", "Saturated_Fat_g", "Trans_Fat_g",
+    "Sugar_g", "Sodium_mg", "Dietary_Fiber_g", "Cholesterol_mg",
+    "Calcium_mg", "Vitamin", "Iron_mg", "Price_INR", "Source_of_Data",
+    "Collection_Date", "Collected_By", "Remarks",
 )
-PACKSENSE_SHA256 = (
-    "9007b7a48fe9bc129e6a90a6fc7dfb4dfdcb6a72f53b3a3aabc74eda0d5d1951"
+NUMERIC_FIELDS = (
+    "Serving_Size_g", "Calories_kcal", "Carbohydrates_g", "Proteins_g",
+    "Total_Fat_g", "Saturated_Fat_g", "Trans_Fat_g", "Sugar_g",
+    "Sodium_mg", "Dietary_Fiber_g", "Cholesterol_mg", "Calcium_mg",
+    "Iron_mg", "Price_INR",
 )
-PACKSENSE_ROWS = 25209
-PACKSENSE_SOURCE_URL = "https://huggingface.co/datasets/PackSense/packsense-india"
-OPENMRP_API = "https://api.openmrp.in/v1/dump"
-OPENMRP_SOURCE_URL = "https://openmrp.in/downloads"
-OFFICIAL_MRP_SOURCES = {"pack", "brand", "gov", "off"}
-BATCH_SIZE_LIMIT = 500
-SOURCE_HOSTS = {"huggingface.co", "api.openmrp.in", "openmrp.in"}
-REDIRECT_STATUSES = {301, 302, 303, 307, 308}
-
-
-def validate_source_url(url: str) -> None:
-    parsed = urlsplit(url)
-    host = (parsed.hostname or "").lower()
-    allowed_host = (
-        host in SOURCE_HOSTS
-        or host.endswith(".hf.co")
-        or host.endswith(".openmrp.in")
-    )
-    if (
-        parsed.scheme.lower() != "https"
-        or not host
-        or not allowed_host
-        or parsed.username is not None
-        or parsed.password is not None
-        or (parsed.port is not None and parsed.port != 443)
-    ):
-        raise ValueError("Source requests must use HTTPS to a configured catalogue host")
-
-
-def safe_source_get(url: str, timeout: tuple[int, int] = (10, 60)):
-    current = url
-    for _ in range(6):
-        validate_source_url(current)
-        response = requests.get(
-            current,
-            headers={"User-Agent": "ApnikoCatalogueImporter/1.0"},
-            timeout=timeout,
-            stream=True,
-            allow_redirects=False,
-        )
-        if response.status_code in REDIRECT_STATUSES:
-            location = response.headers.get("Location")
-            response.close()
-            if not location:
-                raise ValueError("Catalogue source returned a redirect without a location")
-            current = urljoin(current, location)
-            continue
-        return response
-    raise ValueError("Catalogue source exceeded the allowed redirect limit")
-
-
-def validate_api_base_url(base_url: str) -> str:
-    parsed = urlsplit(base_url)
-    host = (parsed.hostname or "").lower()
-    local_http_hosts = {"localhost", "127.0.0.1", "::1"}
-    if (
-        parsed.scheme.lower() not in {"http", "https"}
-        or not host
-        or parsed.username is not None
-        or parsed.password is not None
-        or (parsed.scheme.lower() == "http" and host not in local_http_hosts)
-    ):
-        raise ValueError("Apniko API must use HTTPS, or HTTP on localhost only")
-    return base_url.rstrip("/")
-
-
-def valid_gtin(value: str | None) -> bool:
-    """Return true for a valid GTIN-8/12/13/14 including its check digit."""
-    if not value:
-        return False
-    code = re.sub(r"\s+", "", value)
-    if not re.fullmatch(r"(?:\d{8}|\d{12}|\d{13}|\d{14})", code):
-        return False
-    total = 0
-    weight = 3
-    for character in reversed(code[:-1]):
-        total += int(character) * weight
-        weight = 1 if weight == 3 else 3
-    return (10 - total % 10) % 10 == int(code[-1])
+NUTRIENT_FIELDS = (
+    "Calories_kcal", "Carbohydrates_g", "Proteins_g", "Total_Fat_g",
+    "Saturated_Fat_g", "Trans_Fat_g", "Sugar_g", "Sodium_mg",
+    "Dietary_Fiber_g", "Cholesterol_mg", "Calcium_mg", "Vitamin", "Iron_mg",
+)
+NUMERIC_TOKEN = re.compile(r"^(?:<\s*)?\d+(?:\.\d+)?$")
 
 
 def clean(value: object) -> str:
-    return str(value or "").strip()
+    if value is None:
+        return ""
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", str(value))).strip()
 
 
-def decimal_value(value: object) -> Decimal | None:
-    text = clean(value).replace(",", "")
-    if not text:
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def numeric_kind(value: object) -> str:
+    raw = clean(value)
+    if not raw:
+        return "missing"
+    if NUMERIC_TOKEN.fullmatch(raw):
+        return "less_than" if raw.startswith("<") else "numeric"
+    return "malformed"
+
+
+def decimal_value(value: object) -> float | None:
+    raw = clean(value)
+    if not raw or raw.startswith("<"):
         return None
     try:
-        parsed = Decimal(text)
-    except InvalidOperation:
-        return None
-    return parsed if parsed.is_finite() and parsed > 0 else None
-
-
-def unit_value(value: object) -> str | None:
-    unit = clean(value).lower().rstrip(".")
-    mapping = {
-        "gram": "g", "grams": "g", "gm": "g", "g": "g",
-        "kilogram": "kg", "kilograms": "kg", "kg": "kg",
-        "millilitre": "ml", "milliliter": "ml", "millilitres": "ml",
-        "milliliters": "ml", "ml": "ml",
-        "litre": "l", "liter": "l", "litres": "l", "liters": "l", "l": "l",
-        "piece": "pcs", "pieces": "pcs", "pcs": "pcs", "unit": "unit",
-    }
-    return mapping.get(unit)
-
-
-def pack_size(amount: object, unit: object) -> str | None:
-    quantity = decimal_value(amount)
-    normalized_unit = unit_value(unit)
-    if quantity is None or normalized_unit is None:
-        return None
-    amount_text = format(quantity.normalize(), "f")
-    return f"{amount_text} {normalized_unit}"
-
-
-def api_quantity(amount: object, unit: object) -> tuple[float | None, str | None]:
-    """Return a DB-safe numeric quantity while retaining full packSize text."""
-    quantity = decimal_value(amount)
-    normalized_unit = unit_value(unit) if quantity is not None else None
-    if quantity is None or normalized_unit is None:
-        return None, None
-
-    normalized_quantity = quantity.normalize()
-    decimal_places = max(0, -normalized_quantity.as_tuple().exponent)
-    if quantity > Decimal("1000000") or decimal_places > 3:
-        return None, None
-
-    return float(normalized_quantity), normalized_unit
-
-def packsense_quantity(row: dict[str, str]) -> tuple[str, str]:
-    """Choose a complete PackSense quantity/unit pair without mixing columns.
-
-    product_quantity and quantity_amount describe alternate representations.
-    A value from one representation must never be paired with the other's unit.
-    """
-    candidates = (
-        (row.get("product_quantity"), row.get("product_quantity_unit")),
-        (row.get("quantity_amount"), row.get("quantity_unit")),
-    )
-    for amount, unit in candidates:
-        if decimal_value(amount) is not None and unit_value(unit) is not None:
-            return clean(amount), clean(unit)
-    return "", ""
-
-
-def category_for(
-    product_name: object,
-    *taxonomy_values: object,
-    brand_hint: object = None,
-) -> tuple[str, str]:
-    """Map known Indian retail products using names, brand descriptors and source taxonomy."""
-    def normalized_text(value: object) -> str:
-        text = clean(value).lower().replace("-", " ")
-        text = re.sub(r"[^a-z0-9 ]+", " ", text)
-        return re.sub(r"\s+", " ", text).strip()
-
-    name = normalized_text(product_name)
-    brand = normalized_text(brand_hint)
-
-    # Clear product identities take priority over broad source taxonomy tags.
-    name_checks = [
-        (("poha", "flattened rice", "beaten rice", "rice flakes"),
-         "Foodgrains, Oil & Masala", "Rice & Rice Products"),
-        (("hair oil", "massage oil", "hair serum", "hair mask", "shampoo", "conditioner"),
-         "Beauty & Hygiene", "Hair Care"),
-        (("retinol", "skin care", "skincare", "face serum", "face wash",
-          "facial cleanser", "moisturizer", "moisturiser", "sunscreen"),
-         "Beauty & Hygiene", "Skin Care"),
-        (("toothpaste", "toothbrush", "mouthwash", "oral care"),
-         "Beauty & Hygiene", "Oral Care"),
-        (("body wash", "bathing soap", "body lotion", "bath and body"),
-         "Beauty & Hygiene", "Bath & Body"),
-        (("mustard oil", "sunflower oil", "groundnut oil", "rice bran oil",
-          "coconut oil", "olive oil", "soybean oil", "edible oil", "cooking oil",
-          "vegetable oil", "palmolein", "kachi ghani", "ghee"),
-         "Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
-        (("croissant", "pastry", "rusk", "bun", "pav", "bread", "bakery", "cake",
-          "tortilla", "wrap", "roti", "chapati", "paratha", "naan", "pita", "flatbread"),
-         "Dairy, Bakery & Eggs", "Bread & Bakery"),
-        (("chutney", "pickle", "achar", "achaar", "schezwan sauce", "relish"),
-         "Gourmet & World Food", "Sauces, Spreads & Condiments"),
-        (("energy bar", "protein bar", "cereal bar", "granola bar"),
-         "Snacks & Branded Foods", "Breakfast & Cereals"),
-    ]
-    for words, category, subcategory in name_checks:
-        if any(word in name for word in words):
-            return category, subcategory
-
-    # Some source product names are abbreviated (for example, "15g Blueberry"),
-    # while the brand field contains the retail identity (for example, "Greek Yogurt").
-    brand_checks = [
-        (("yogurt", "yoghurt", "curd", "paneer", "cheese"),
-         "Dairy, Bakery & Eggs", "Curd, Paneer & Cheese"),
-        (("hair care", "shampoo", "conditioner"),
-         "Beauty & Hygiene", "Hair Care"),
-        (("skin care", "skincare", "serum", "sunscreen"),
-         "Beauty & Hygiene", "Skin Care"),
-    ]
-    for words, category, subcategory in brand_checks:
-        if any(word in brand for word in words):
-            return category, subcategory
-
-    taxonomy_text = " ".join(
-        normalized_text(value) for value in taxonomy_values if clean(value)
-    )
-    all_text = f"{taxonomy_text} {name} {brand}".strip()
-
-    checks = [
-        (("baby", "diaper", "nappy", "infant"), "Baby Care", "Diapers & Wipes"),
-        (("pet food", "dog food", "cat food", "pet care"), "Kitchen, Garden & Pets", "Pet Food & Supplies"),
-        (("leafy", "spinach", "lettuce", "methi", "greens"), "Fruits & Vegetables", "Leafy Greens"),
-        (("laundry", "detergent", "dishwash", "cleaner", "cleaning", "household"), "Cleaning & Household", "Home & Surface Cleaning"),
-        (("hair care", "shampoo", "conditioner", "hair oil"), "Beauty & Hygiene", "Hair Care"),
-        (("skin care", "skincare", "cosmetic", "retinol", "serum", "sunscreen"), "Beauty & Hygiene", "Skin Care"),
-        (("oral care", "toothpaste", "toothbrush", "mouthwash"), "Beauty & Hygiene", "Oral Care"),
-        (("bath and body", "body wash", "bathing soap", "body lotion"), "Beauty & Hygiene", "Bath & Body"),
-        (("sanitary", "deodorant", "personal hygiene", "hygiene"), "Beauty & Hygiene", "Personal Hygiene"),
-        (("coffee", "tea", "cocoa"), "Beverages", "Tea, Coffee & Cocoa"),
-        (("paneer", "cheese", "yogurt", "yoghurt", "curd"), "Dairy, Bakery & Eggs", "Curd, Paneer & Cheese"),
-        (("milk", "dairy", "butter"), "Dairy, Bakery & Eggs", "Milk & Dairy"),
-        (("bread", "bakery", "cake", "tortilla", "wrap", "roti", "chapati"), "Dairy, Bakery & Eggs", "Bread & Bakery"),
-        (("egg", "eggs"), "Dairy, Bakery & Eggs", "Eggs"),
-        (("fish", "seafood"), "Eggs, Meat & Fish", "Fish & Seafood"),
-        (("meat", "poultry", "chicken"), "Eggs, Meat & Fish", "Poultry & Meat"),
-        (("chocolate", "candy", "confectionery", "sweet"), "Snacks & Branded Foods", "Chocolates & Confectionery"),
-        (("chips", "crisps", "namkeen", "salty snack"), "Snacks & Branded Foods", "Chips & Namkeen"),
-        (("biscuit", "cookie"), "Snacks & Branded Foods", "Biscuits & Cookies"),
-        (("noodle", "instant food"), "Snacks & Branded Foods", "Instant Foods & Noodles"),
-        (("energy bar", "protein bar", "cereal bar", "granola bar", "breakfast", "cereal"), "Snacks & Branded Foods", "Breakfast & Cereals"),
-        (("oil", "ghee"), "Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
-        (("spice", "masala"), "Foodgrains, Oil & Masala", "Spices & Masalas"),
-        (("pulse", "lentil", "dal"), "Foodgrains, Oil & Masala", "Pulses & Lentils"),
-        (("atta", "flour"), "Foodgrains, Oil & Masala", "Atta & Flours"),
-        (("rice",), "Foodgrains, Oil & Masala", "Rice & Rice Products"),
-        (("salt", "sugar"), "Foodgrains, Oil & Masala", "Salt & Sugar"),
-        (("sauce", "spread", "condiment", "chutney", "pickle", "achar", "achaar", "jam", "honey", "syrup", "relish"), "Gourmet & World Food", "Sauces, Spreads & Condiments"),
-        (("vegetable", "vegetables", "sabzi", "produce"), "Fruits & Vegetables", "Fresh Vegetables"),
-        (("fruit", "fruits"), "Fruits & Vegetables", "Fresh Fruits"),
-        (("beverage", "drink", "juice", "water", "soda", "soft drink"), "Beverages", "Water, Juices & Soft Drinks"),
-        (("kitchen", "garden", "homeware"), "Kitchen, Garden & Pets", "Kitchen Essentials"),
-    ]
-
-    # Source taxonomy remains stronger than broad name/brand fallbacks.
-    for text in (taxonomy_text, all_text):
-        if not text:
-            continue
-        for words, category, subcategory in checks:
-            if any(word in text for word in words):
-                return category, subcategory
-    return "Other Essentials", "Unclassified Packaged Goods"
-
-
-def is_non_grocery_or_high_risk(*values: object) -> bool:
-    text = " ".join(clean(value).lower() for value in values)
-    return any(term in text for term in (
-        "medicine", "medicines", "pharmaceutical", "drug product",
-        "mobile phone", "smartphone", "electronics", "electronic device",
-    ))
-
-
-def parse_unix_time(value: object) -> str | None:
-    text = clean(value)
-    if not text.isdigit():
-        return None
-    from datetime import datetime, timezone
-    try:
-        return datetime.fromtimestamp(int(text), tz=timezone.utc).isoformat().replace("+00:00", "Z")
-    except (OverflowError, OSError, ValueError):
-        return None
-
-
-def packsense_item(row: dict[str, str]) -> dict | None:
-    code = clean(row.get("code"))
-    name = clean(row.get("product_name"))
-    status = clean(row.get("existence_status")).lower()
-    error_flags = clean(row.get("open_error_flags")) or "0"
-
-    if status not in {"present_in_snapshot", "confirmed_exists"}:
-        return None
-    if not name or not valid_gtin(code):
-        return None
-    try:
-        if int(error_flags) > 0:
-            return None
+        return float(raw)
     except ValueError:
         return None
-    if is_non_grocery_or_high_risk(
-        name, row.get("pnns_groups_1"), row.get("pnns_groups_2"),
-        row.get("categories_tags"),
-    ):
-        return None
-
-    amount, unit = packsense_quantity(row)
-    size = pack_size(amount, unit)
-    net_quantity, normalized_unit = api_quantity(amount, unit)
-    brand = clean(row.get("brands"))
-    if brand:
-        brand = brand.split(",")[0].strip()
-    category, subcategory = category_for(
-        name, row.get("pnns_groups_1"), row.get("pnns_groups_2"),
-        row.get("categories_tags"), brand_hint=brand,
-    )
-
-    return {
-        "name": name[:120],
-        "brand": brand[:100] or None,
-        "barcode": code,
-        "packSize": size,
-        "netQuantity": net_quantity,
-        "netQuantityUnit": normalized_unit,
-        "variantGroupKey": None,
-        "description": None,
-        "category": category,
-        "subcategory": subcategory,
-        "mrp": None,
-        "mrpSource": None,
-        "sourceRecordId": code,
-        "sourceModifiedAt": parse_unix_time(row.get("last_modified_t")),
-    }
 
 
-def public_status(value: object) -> bool:
-    status = clean(value).lower()
-    return not status or status in {"approved", "published", "active", "verified"}
+def quality_warnings(row: dict[str, str], repeated_identity: bool) -> list[str]:
+    warnings: list[str] = []
+    malformed = [field for field in NUMERIC_FIELDS if numeric_kind(row.get(field)) == "malformed"]
+    if malformed:
+        warnings.append("Malformed numeric source value(s): " + ", ".join(malformed))
+
+    serving = decimal_value(row.get("Serving_Size_g"))
+    calories = decimal_value(row.get("Calories_kcal"))
+    total_fat = decimal_value(row.get("Total_Fat_g"))
+    trans_fat = decimal_value(row.get("Trans_Fat_g"))
+    carbs = decimal_value(row.get("Carbohydrates_g"))
+    fiber = decimal_value(row.get("Dietary_Fiber_g"))
+
+    # Review alerts only. The README does not specify whether nutrition is per
+    # serving or per 100 g, so values are never corrected or numerically coerced.
+    if serving is not None and serving > 500:
+        warnings.append("Reported serving size exceeds 500 g; verify source label")
+    if calories is not None and calories > 1000:
+        warnings.append("Reported calories exceed 1,000 kcal; verify source label")
+    if total_fat is not None and trans_fat is not None and trans_fat > total_fat:
+        warnings.append("Reported trans fat exceeds total fat; verify source label")
+    if carbs is not None and fiber is not None and fiber > carbs:
+        warnings.append("Reported dietary fibre exceeds carbohydrates; verify source label")
+
+    if clean(row.get("Category")).casefold() == "icereames":
+        warnings.append("Source category ICEREAMES appears misspelled; confirm taxonomy before activation")
+
+    present = [clean(row.get(field)) for field in NUTRIENT_FIELDS]
+    present = [value for value in present if value]
+    if not present or all(value in {"0", "0.0", "0.00"} for value in present):
+        warnings.append("Nutrition fields are empty or all reported numeric facts are zero")
+    if repeated_identity:
+        warnings.append("Repeated item name and brand in source; retail pack/variant is not verified")
+    return warnings
 
 
-def openmrp_items(products_file: Path, brands_file: Path, variants_file: Path) -> Iterable[dict]:
-    with brands_file.open(encoding="utf-8-sig", newline="") as handle:
-        brands = {clean(row.get("id")): clean(row.get("name")) for row in csv.DictReader(handle)}
-
-    with products_file.open(encoding="utf-8-sig", newline="") as handle:
-        products = {
-            clean(row.get("id")): row
-            for row in csv.DictReader(handle)
-            if clean(row.get("id")) and public_status(row.get("moderation_status"))
-        }
-
-    with variants_file.open(encoding="utf-8-sig", newline="") as handle:
-        for variant in csv.DictReader(handle):
-            product = products.get(clean(variant.get("product_id")))
-            if not product or not public_status(variant.get("moderation_status")):
-                continue
-            barcode = clean(variant.get("barcode")) or None
-            if barcode and not valid_gtin(barcode):
-                continue
-
-            size = pack_size(variant.get("pack_size"), variant.get("unit"))
-            net_quantity, normalized_unit = api_quantity(
-                variant.get("pack_size"), variant.get("unit")
-            )
-            mrp = None
-            mrp_source = clean(variant.get("mrp_source")).lower() or None
-            mrp_paise = decimal_value(variant.get("mrp_paise"))
-            if mrp_paise is not None and mrp_source in OFFICIAL_MRP_SOURCES:
-                mrp = float(mrp_paise / Decimal("100"))
-            else:
-                mrp_source = None
-
-            brand = brands.get(clean(product.get("brand_id"))) or None
-            category, subcategory = category_for(
-                product.get("name"), product.get("category"), brand_hint=brand
-            )
-            product_id = clean(product.get("id"))
-            variant_id = clean(variant.get("id"))
-            yield {
-                "name": clean(product.get("name"))[:120],
-                "brand": brand[:100] if brand else None,
-                "barcode": barcode,
-                "packSize": size or clean(variant.get("label"))[:80] or None,
-                "netQuantity": net_quantity,
-                "netQuantityUnit": normalized_unit,
-                "variantGroupKey": clean(product.get("group_key"))[:120] or None,
-                "description": clean(product.get("description"))[:1000] or None,
-                "category": category,
-                "subcategory": subcategory,
-                "mrp": mrp,
-                "mrpSource": mrp_source,
-                "sourceRecordId": f"{product_id}:{variant_id}",
-                "sourceModifiedAt": None,
-            }
-
-
-def download_file(url: str, destination: Path, expected_sha256: str | None = None) -> str:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    digest = hashlib.sha256()
-    temporary = destination.with_suffix(destination.suffix + ".part")
-    response = None
-    try:
-        response = safe_source_get(url, timeout=(10, 90))
-        response.raise_for_status()
-        with temporary.open("wb") as output:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    digest.update(chunk)
-                    output.write(chunk)
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
-    finally:
-        if response is not None:
-            response.close()
-    actual = digest.hexdigest()
-    if expected_sha256 and actual.lower() != expected_sha256.lower():
-        temporary.unlink(missing_ok=True)
-        raise ValueError(
-            f"SHA-256 mismatch for {destination.name}: expected {expected_sha256}, got {actual}"
-        )
-    temporary.replace(destination)
-    return actual
-
-
-def download_packsense(output_dir: Path) -> Path:
-    output = output_dir / "packsense-india.csv"
-    digest = download_file(PACKSENSE_URL, output, PACKSENSE_SHA256)
-    with output.open(encoding="utf-8-sig", newline="") as handle:
-        rows = sum(1 for _ in csv.DictReader(handle))
-    if rows != PACKSENSE_ROWS:
-        raise ValueError(f"PackSense snapshot row count changed: expected {PACKSENSE_ROWS}, got {rows}")
-    print(f"Downloaded PackSense India: {rows:,} source rows; SHA-256 {digest}")
-    return output
-
-
-def download_openmrp(output_dir: Path) -> dict[str, Path]:
-    with safe_source_get(f"{OPENMRP_API}/manifest", timeout=(10, 30)) as response:
-        response.raise_for_status()
-        manifest = response.json()
-    manifest_path = output_dir / "openmrp-manifest.json"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-
-    downloaded: dict[str, Path] = {}
-    for item in manifest.get("files", []):
-        table = clean(item.get("table")).lower()
-        file_format = clean(item.get("format")).lower()
-        filename = clean(item.get("name") or item.get("path"))
-        if not filename and table in {"brands", "products", "variants"} and file_format == "csv":
-            filename = f"{table}.csv"
-        if not filename.endswith(".csv") or table not in {"brands", "products", "variants"}:
-            continue
-        expected = clean(item.get("sha256")) or None
-        destination = output_dir / f"{table}.csv"
-        url = f"{OPENMRP_API}/file/{filename}"
-        digest = download_file(url, destination, expected)
-        downloaded[table] = destination
-        print(f"Downloaded OpenMRP {table}: {item.get('rows', '?')} rows; SHA-256 {digest}")
-
-    missing = {"brands", "products", "variants"} - downloaded.keys()
-    if missing:
-        raise ValueError(f"OpenMRP manifest did not provide required CSV files: {', '.join(sorted(missing))}")
-    return downloaded
-
-
-def send_batch(base_url: str, token: str, source: str, batch: list[dict], timeout: int = 120) -> dict:
-    if not batch:
-        return {}
-    if len(batch) > BATCH_SIZE_LIMIT:
-        raise ValueError(f"Batch exceeds {BATCH_SIZE_LIMIT} rows")
-    if source == "packsense":
-        metadata = {
-            "sourceName": "PackSense India / Open Food Facts",
-            "sourceUrl": PACKSENSE_SOURCE_URL,
-            "sourceLicense": "ODbL-1.0",
-            "attribution": (
-                "PackSense India product catalogue, built 2026-11-03 from Open Food Facts; "
-                "ODbL-1.0 database, individual contents DbCL-1.0."
-            ),
-        }
-    else:
-        metadata = {
-            "sourceName": "OpenMRP",
-            "sourceUrl": OPENMRP_SOURCE_URL,
-            "sourceLicense": "ODbL-1.0",
-            "attribution": "OpenMRP India product database; ODbL-1.0. Product media is not imported.",
-        }
-
-    payload = {**metadata, "products": batch}
-    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    api_root = validate_api_base_url(base_url)
-    response = requests.post(
-        f"{api_root}/api/admin/catalogue/import",
-        data=body,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "ApnikoCatalogueImporter/1.0",
+def make_source_metadata(row: dict[str, str], row_id: int, file_hash: str,
+                         warnings: list[str]) -> str:
+    # All source cell values stay strings. '<0.1', comma decimals and malformed
+    # tokens are preserved exactly rather than rounded, guessed or discarded.
+    payload = {
+        "dataset": {
+            "title": DATASET_TITLE,
+            "doi": DOI,
+            "version": DATASET_VERSION,
+            "license": "CC BY 4.0",
+            "fileSha256": file_hash,
+            "sourceRowId": row_id,
         },
-        timeout=timeout,
-        allow_redirects=False,
+        "sourceValues": {header: row.get(header, "") for header in EXPECTED_HEADERS},
+        "fieldHandling": {
+            "Serving_Size_g": "Source serving-size field only; not retail pack size or net quantity",
+            "nutrition": "Raw source values retained; README does not specify per-serving or per-100-g basis",
+            "Price_INR": "Dataset observation only; not current shop price or verified MRP",
+            "Ingredients": "Retained as source text; backend has no separately verified ingredient display field",
+        },
+        "qualityWarnings": warnings,
+    }
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def load_mendeley_csv(path: Path, limit: int = 0) -> tuple[list[dict], dict]:
+    if not path.is_file():
+        raise ValueError(f"CSV file not found: {path}")
+    if limit < 0:
+        raise ValueError("--limit must be zero or a positive integer")
+
+    file_hash = sha256_file(path)
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        headers = tuple(reader.fieldnames or ())
+        missing = sorted(set(EXPECTED_HEADERS) - set(headers))
+        extra = sorted(set(headers) - set(EXPECTED_HEADERS))
+        if missing or extra:
+            raise ValueError(
+                "CSV schema does not match supplied README. "
+                f"Missing columns: {missing or 'none'}; extra columns: {extra or 'none'}"
+            )
+        rows = []
+        for line_number, row in enumerate(reader, start=2):
+            if None in row:
+                raise ValueError(f"CSV row {line_number} contains extra/unmapped columns")
+            rows.append({header: (row.get(header) or "") for header in EXPECTED_HEADERS})
+
+    row_count = len(rows)
+    if row_count != EXPECTED_ROWS:
+        raise ValueError(f"Expected {EXPECTED_ROWS} data rows from README; found {row_count}")
+
+    ids = []
+    for line_number, row in enumerate(rows, start=2):
+        raw_id = clean(row.get("S.No"))
+        if not raw_id.isdigit() or int(raw_id) <= 0:
+            raise ValueError(f"CSV row {line_number} has invalid S.No: {raw_id!r}")
+        ids.append(int(raw_id))
+        if not clean(row.get("Item name")):
+            raise ValueError(f"CSV row {line_number} has no Item name")
+        if not clean(row.get("Category")) or not clean(row.get("Sub_Category")):
+            raise ValueError(f"CSV row {line_number} has no source category/sub-category")
+    if len(set(ids)) != len(ids):
+        raise ValueError("S.No contains duplicates; refusing unstable source-record identifiers")
+
+    identities = [
+        (clean(row["Item name"]).casefold(), clean(row["Brand_Name"]).casefold())
+        for row in rows
+    ]
+    identity_counts = Counter(identities)
+    repeated = {key for key, count in identity_counts.items() if count > 1}
+    repeated_rows = sum(identity_counts[key] for key in repeated)
+
+    records = []
+    review_rows = quality_warning_rows = malformed_rows = less_than_rows = empty_nutrition_rows = 0
+    for row in rows[:limit or None]:
+        row_id = int(row["S.No"])
+        identity = (clean(row["Item name"]).casefold(), clean(row["Brand_Name"]).casefold())
+        warnings = quality_warnings(row, identity in repeated)
+        malformed = any(numeric_kind(row.get(field)) == "malformed" for field in NUMERIC_FIELDS)
+        less_than = any(numeric_kind(row.get(field)) == "less_than" for field in NUMERIC_FIELDS)
+        if malformed:
+            malformed_rows += 1
+        if less_than:
+            less_than_rows += 1
+        if any("Nutrition fields are empty" in warning for warning in warnings):
+            empty_nutrition_rows += 1
+        if warnings:
+            quality_warning_rows += 1
+
+        # This research dataset does not identify a sellable retail variant:
+        # it has no verified GTIN/barcode or retail pack-size field. Every row
+        # must remain a non-published candidate until those facts are sourced
+        # independently. Nutrition and source-price values stay provenance only.
+        review_notes = [
+            "Reference dataset row only: verified retail GTIN/barcode and retail pack size are not supplied; do not publish as a sellable variant until independently verified."
+        ]
+        review_notes.extend(warnings)
+        review_reason = "; ".join(review_notes)
+        review_rows += 1
+
+        source_record_id = f"mendeley-ipf-2026-v1:{row_id:04d}"
+        records.append({
+            "name": clean(row["Item name"])[:120],
+            "brand": clean(row["Brand_Name"])[:100] or None,
+            "barcode": None,
+            "packSize": None,
+            "netQuantity": None,
+            "netQuantityUnit": None,
+            "variantGroupKey": None,
+            "description": None,
+            "category": clean(row["Category"])[:80],
+            "subcategory": clean(row["Sub_Category"])[:100],
+            "mrp": None,
+            "mrpSource": None,
+            "sourceRecordId": source_record_id,
+            "sourceModifiedAt": None,
+            "sourceMetadataJson": make_source_metadata(row, row_id, file_hash, warnings),
+            "identityDiscriminator": source_record_id,
+            "sourceReviewReason": review_reason,
+        })
+
+    stats = {
+        "source_rows": row_count,
+        "received": row_count if limit == 0 else min(row_count, limit),
+        "eligible": len(records),
+        "duplicate_identity_groups": len(repeated),
+        "duplicate_identity_rows": repeated_rows,
+        "review_required_rows": review_rows,
+        "rows_with_data_quality_warnings": quality_warning_rows,
+        "rows_with_malformed_numeric_values": malformed_rows,
+        "rows_with_less_than_values": less_than_rows,
+        "rows_with_empty_or_zero_nutrition": empty_nutrition_rows,
+        "dataset_sha256": file_hash,
+        "missing_by_field": {
+            field: sum(not clean(row.get(field)) for row in rows)
+            for field in EXPECTED_HEADERS
+        },
+    }
+    return records, stats
+
+
+def validate_api_url(value: str) -> str:
+    parsed = urlsplit(value)
+    host = (parsed.hostname or "").lower()
+    local = host in {"localhost", "127.0.0.1", "::1"}
+    if parsed.scheme != "https" and not (parsed.scheme == "http" and local):
+        raise ValueError("Apniko API must use HTTPS, or HTTP on localhost only")
+    if not host or parsed.username or parsed.password:
+        raise ValueError("Apniko API URL is invalid")
+    return value.rstrip("/")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("file", type=Path, help="Locally held Mendeley CSV; never downloaded")
+    parser.add_argument("--api-url", default=os.environ.get("APNIKO_API_URL", "http://localhost:8080"))
+    parser.add_argument("--limit", type=int, default=0, help="Optional row limit; 0 validates all 852 rows")
+    parser.add_argument("--batch-size", type=int, default=100)
+    parser.add_argument("--license-confirmed", action="store_true",
+                        help="Confirm the supplied dataset files identify CC BY 4.0 and no applicable exclusion")
+    parser.add_argument("--commercial-use-confirmed", action="store_true",
+                        help="Confirm the CC BY 4.0 grant covers Apniko's intended commercial use")
+    parser.add_argument("--permission-reference", default=DOI)
+    parser.add_argument("--apply", action="store_true", help="Submit validated records to the admin import API")
+    return parser.parse_args()
+
+
+def run(args: argparse.Namespace, session: requests.Session | None = None) -> int:
+    if args.limit < 0 or not 1 <= args.batch_size <= MAX_BATCH_SIZE:
+        print("Use --limit >= 0 and --batch-size 1..250.", file=sys.stderr)
+        return 2
+    records, stats = load_mendeley_csv(args.file, args.limit)
+    print("Source:", SOURCE_NAME)
+    print("DOI:", DOI)
+    print("Licence: CC BY 4.0 (as stated in the supplied README)")
+    print("Mode:", "APPLY" if args.apply else "DRY RUN")
+    print("Source rows:", stats["source_rows"])
+    print("Rows in this run:", stats["received"])
+    print("Eligible product records:", stats["eligible"])
+    print("Repeated name+brand groups:", stats["duplicate_identity_groups"])
+    print("Rows in repeated name+brand groups:", stats["duplicate_identity_rows"])
+    print("Rows requiring retail identity verification:", stats["review_required_rows"])
+    print("Rows with additional source-quality warnings:", stats["rows_with_data_quality_warnings"])
+    print("Rows with malformed numeric cells:", stats["rows_with_malformed_numeric_values"])
+    print("Rows with <threshold nutrient values:", stats["rows_with_less_than_values"])
+    print("Rows with empty/all-zero nutrition:", stats["rows_with_empty_or_zero_nutrition"])
+    print("CSV SHA-256:", stats["dataset_sha256"])
+    print("Imported as current shop price/MRP: 0")
+    print("Imported as retail pack size/net quantity/barcode: 0")
+    print("Product images imported: 0")
+    print("First eligible products:")
+    for item in records[:8]:
+        print("  -", item["name"], "|", item["brand"] or "brand not listed",
+              "|", item["category"], "/", item["subcategory"])
+
+    if not records:
+        print("No eligible rows to import.")
+        return 0
+    if not args.apply:
+        print("Dry run only. No API calls or database changes were made.")
+        print("Apply remains blocked until the operator verifies licence scope and intended commercial use.")
+        return 0
+
+    if not args.license_confirmed or not args.commercial_use_confirmed:
+        print("Apply blocked: both --license-confirmed and --commercial-use-confirmed are required.", file=sys.stderr)
+        return 2
+    if stats["dataset_sha256"] != APPROVED_SOURCE_SHA256:
+        print(
+            "Apply blocked: CSV SHA-256 does not match the inspected Mendeley version-1 file. "
+            "Re-inspect the source before applying.",
+            file=sys.stderr,
+        )
+        return 2
+    if args.permission_reference.strip() != DOI:
+        print(f"Apply blocked: permission reference must be dataset DOI {DOI}.", file=sys.stderr)
+        return 2
+    token = os.environ.get("APNIKO_ADMIN_TOKEN", "").strip()
+    if not token:
+        print("Set APNIKO_ADMIN_TOKEN to an active administrator JWT.", file=sys.stderr)
+        return 2
+
+    base = validate_api_url(args.api_url)
+    attribution = (
+        "Duddela Sai Prashanth, Ananya Devadiga, Saathwik Saathwik, Priya R Kamath "
+        "and Rakshith Bhandary (2026), Indian Packaged Foods Nutritional Composition "
+        "Dataset (2026), Version 1, Mendeley Data, DOI: 10.17632/rhswn9z9xr.1, "
+        "CC BY 4.0. Apniko modifications: field validation, source-row preservation, "
+        "duplicate review flags and product identity normalization."
     )
+    client = session or requests.Session()
+    headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
+    inserted = updated = unchanged = rejected = 0
     try:
-        response.raise_for_status()
-    except requests.HTTPError as error:
-        detail = response.text[:2000]
-        raise RuntimeError(
-            f"Catalogue API returned HTTP {response.status_code}: {detail}"
-        ) from error
-    if 300 <= response.status_code < 400:
-        raise RuntimeError("Catalogue API redirects are not allowed for authenticated imports")
-    return response.json()
+        batches = [records[i:i + args.batch_size] for i in range(0, len(records), args.batch_size)]
+        for index, batch in enumerate(batches, start=1):
+            response = client.post(
+                base + "/api/admin/catalogue/import",
+                json={
+                    "sourceName": SOURCE_NAME,
+                    "sourceUrl": SOURCE_URL,
+                    "sourceLicense": SOURCE_LICENSE,
+                    "attribution": attribution,
+                    "reuseRightsVerified": True,
+                    "commercialUsePermitted": True,
+                    "permissionReference": DOI,
+                    "products": batch,
+                },
+                headers=headers,
+                timeout=(5, 60),
+            )
+            response.raise_for_status()
+            result = response.json()
+            inserted += int(result.get("inserted", 0))
+            updated += int(result.get("updated", 0))
+            unchanged += int(result.get("unchanged", 0))
+            rejected += int(result.get("rejected", 0))
+            print(
+                f"Batch {index}/{len(batches)}: inserted={result.get('inserted', 0)}, "
+                f"updated={result.get('updated', 0)}, unchanged={result.get('unchanged', 0)}, "
+                f"rejected={result.get('rejected', 0)}"
+            )
+            for error in result.get("errors", []):
+                print("  REJECTED:", error)
+    finally:
+        if session is None:
+            client.close()
 
-
-def load_packSense(file_path: Path, limit: int | None = None) -> tuple[list[dict], dict]:
-    result = []
-    counters = defaultdict(int)
-    seen = set()
-    with file_path.open(encoding="utf-8-sig", newline="") as handle:
-        for row in csv.DictReader(handle):
-            counters["source_rows"] += 1
-            item = packsense_item(row)
-            if item is None:
-                counters["excluded"] += 1
-                continue
-            key = item["barcode"]
-            if key in seen:
-                counters["duplicate_rows"] += 1
-                continue
-            seen.add(key)
-            result.append(item)
-            if limit and len(result) >= limit:
-                break
-    return result, dict(counters)
-
-
-def load_openmrp(products: Path, brands: Path, variants: Path,
-                 limit: int | None = None) -> tuple[list[dict], dict]:
-    result = []
-    seen = set()
-    counters = defaultdict(int)
-    for item in openmrp_items(products, brands, variants):
-        counters["eligible_variants"] += 1
-        identity = item["barcode"] or item["sourceRecordId"]
-        if identity in seen:
-            counters["duplicate_rows"] += 1
-            continue
-        seen.add(identity)
-        result.append(item)
-        if limit and len(result) >= limit:
-            break
-    counters["excluded_or_unapproved"] = counters["eligible_variants"] - len(result) - counters["duplicate_rows"]
-    return result, dict(counters)
+    print("Import summary:", json.dumps({
+        "inserted": inserted, "updated": updated,
+        "unchanged": unchanged, "rejected": rejected,
+    }))
+    return 0 if rejected == 0 else 3
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    download_parser = subparsers.add_parser("download", help="Download a pinned India-first data snapshot")
-    download_parser.add_argument("--source", choices=("packsense", "openmrp"), required=True)
-    download_parser.add_argument("--output-dir", type=Path, default=Path("data/catalogue/source"))
-
-    import_parser = subparsers.add_parser("import", help="Validate and optionally import a CSV snapshot")
-    import_parser.add_argument("--source", choices=("packsense", "openmrp"), required=True)
-    import_parser.add_argument("--file", type=Path, help="PackSense india_products.csv")
-    import_parser.add_argument("--products", type=Path, help="OpenMRP products.csv")
-    import_parser.add_argument("--brands", type=Path, help="OpenMRP brands.csv")
-    import_parser.add_argument("--variants", type=Path, help="OpenMRP variants.csv")
-    import_parser.add_argument("--base-url", default="http://localhost:8080")
-    import_parser.add_argument("--token", default=None, help="Admin JWT; APNIKO_ADMIN_TOKEN is preferred")
-    import_parser.add_argument("--batch-size", type=int, default=250)
-    import_parser.add_argument("--limit", type=int, default=None)
-    import_parser.add_argument("--apply", action="store_true", help="Send validated records to the admin API")
-
-    args = parser.parse_args()
-    if args.command == "download":
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        if args.source == "packsense":
-            download_packsense(args.output_dir)
-        else:
-            download_openmrp(args.output_dir)
-        return 0
-
-    if not 1 <= args.batch_size <= BATCH_SIZE_LIMIT:
-        parser.error(f"--batch-size must be between 1 and {BATCH_SIZE_LIMIT}")
-
-    if args.source == "packsense":
-        if not args.file:
-            parser.error("--file is required for PackSense")
-        products, counters = load_packSense(args.file, args.limit)
-    else:
-        if not all((args.products, args.brands, args.variants)):
-            parser.error("--products, --brands and --variants are required for OpenMRP")
-        products, counters = load_openmrp(args.products, args.brands, args.variants, args.limit)
-
-    print(f"Eligible products: {len(products):,}")
-    print(f"Source checks: {json.dumps(counters, ensure_ascii=False)}")
-    if not args.apply:
-        print("Dry run only. No database records were changed. Re-run with --apply to import.")
-        return 0
-
-    token = args.token or __import__("os").environ.get("APNIKO_ADMIN_TOKEN")
-    if not token:
-        parser.error("Set APNIKO_ADMIN_TOKEN or pass --token when using --apply")
-
-    totals = defaultdict(int)
-    batch_size = args.batch_size
-    for start in range(0, len(products), batch_size):
-        response = send_batch(args.base_url, token, args.source, products[start:start + batch_size])
-        for key in ("received", "inserted", "updated", "unchanged", "rejected"):
-            totals[key] += int(response.get(key, 0))
-        print(
-            f"Batch {start // batch_size + 1}: "
-            f"+{response.get('inserted', 0)} new, "
-            f"{response.get('updated', 0)} updated, "
-            f"{response.get('unchanged', 0)} unchanged, "
-            f"{response.get('rejected', 0)} rejected"
-        )
-        for error in response.get("errors", []):
-            print(f"  {error}", file=sys.stderr)
-        time.sleep(0.05)
-
-    print("Import totals:", json.dumps(dict(totals), ensure_ascii=False))
-    return 1 if totals["rejected"] else 0
+    try:
+        return run(parse_args())
+    except (OSError, ValueError, requests.RequestException) as error:
+        print("Mendeley catalogue import failed:", error, file=sys.stderr)
+        return 4
 
 
 if __name__ == "__main__":

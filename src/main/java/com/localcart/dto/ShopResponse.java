@@ -11,6 +11,8 @@ public class ShopResponse {
     private String address;
     private boolean active;
     private DeliveryMode deliveryMode = DeliveryMode.SHOP_DELIVERY;
+    private Double latitude;
+    private Double longitude;
 
     public ShopResponse() {
     }
@@ -23,6 +25,12 @@ public class ShopResponse {
     public ShopResponse(Long id, String name, String ownerName,
                         String phone, String address, boolean active,
                         DeliveryMode deliveryMode) {
+        this(id, name, ownerName, phone, address, active, deliveryMode, null, null);
+    }
+
+    public ShopResponse(Long id, String name, String ownerName,
+                        String phone, String address, boolean active,
+                        DeliveryMode deliveryMode, Double latitude, Double longitude) {
         this.id = id;
         this.name = name;
         this.ownerName = ownerName;
@@ -30,6 +38,8 @@ public class ShopResponse {
         this.address = address;
         this.active = active;
         this.deliveryMode = deliveryMode == null ? DeliveryMode.SHOP_DELIVERY : deliveryMode;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public Long getId() {
@@ -83,6 +93,11 @@ public class ShopResponse {
     public DeliveryMode getDeliveryMode() {
         return deliveryMode;
     }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
     public void setDeliveryMode(DeliveryMode deliveryMode) {
         this.deliveryMode = deliveryMode == null ? DeliveryMode.SHOP_DELIVERY : deliveryMode;

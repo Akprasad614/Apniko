@@ -367,11 +367,6 @@ public class CartService {
             itemResponse.setCategory(
                     item.getProduct().getCategory()
             );
-            itemResponse.setImageUrl(item.getProduct().getImageUrl());
-            itemResponse.setImageSourceName(item.getProduct().getImageSourceName());
-            itemResponse.setImageSourceUrl(item.getProduct().getImageSourceUrl());
-            itemResponse.setImageLicense(item.getProduct().getImageLicense());
-            itemResponse.setImageAttribution(item.getProduct().getImageAttribution());
             itemResponse.setPrice(
                     inventory.getPrice()
             );

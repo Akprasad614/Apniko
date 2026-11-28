@@ -60,6 +60,31 @@ class ShopServiceCoverageTest {
     }
 
     @Test
+    void rejectsShopCreationWithHalfCoordinatePair() {
+        User owner = user(35L, "Owner", "owner@example.com", Role.SHOPKEEPER, true);
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
+        CreateShopRequest invalid = createRequest();
+        invalid.setLatitude(12.9716);
+
+        assertThrows(BadRequestException.class,
+                () -> service.createShop("owner@example.com", invalid));
+        verify(shopRepository, never()).save(any(Shop.class));
+    }
+
+    @Test
+    void rejectsNonFiniteShopCoordinates() {
+        User owner = user(36L, "Owner", "owner@example.com", Role.SHOPKEEPER, true);
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(owner));
+        CreateShopRequest invalid = createRequest();
+        invalid.setLatitude(Double.POSITIVE_INFINITY);
+        invalid.setLongitude(77.5946);
+
+        assertThrows(BadRequestException.class,
+                () -> service.createShop("owner@example.com", invalid));
+        verify(shopRepository, never()).save(any(Shop.class));
+    }
+
+    @Test
     void rejectsUnknownShopkeeper() {
         when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class,

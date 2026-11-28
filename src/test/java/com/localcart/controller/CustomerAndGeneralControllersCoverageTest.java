@@ -6,6 +6,7 @@ import com.localcart.dto.CreateShopRequest;
 import com.localcart.dto.InitiatePaymentRequest;
 import com.localcart.dto.UpdateCartItemRequest;
 import com.localcart.dto.VerifyPaymentRequest;
+import com.localcart.dto.UserResponse;
 import com.localcart.entity.OrderDeliveryAddress;
 import com.localcart.entity.Role;
 import com.localcart.entity.User;
@@ -19,7 +20,7 @@ import com.localcart.service.NotificationService;
 import com.localcart.service.OrderService;
 import com.localcart.service.PaymentService;
 import com.localcart.service.ShopService;
-import com.localcart.service.ShopkeeperAiInsightsService;
+import com.localcart.service.ShopkeeperDemandInsightsService;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +45,7 @@ class CustomerAndGeneralControllersCoverageTest {
     private CustomerMarketplaceService marketplaceService;
     private NotificationService notificationService;
     private PaymentService paymentService;
-    private ShopkeeperAiInsightsService insightsService;
+    private ShopkeeperDemandInsightsService insightsService;
 
     @BeforeEach
     void setUp() {
@@ -57,7 +58,7 @@ class CustomerAndGeneralControllersCoverageTest {
         marketplaceService = mock(CustomerMarketplaceService.class);
         notificationService = mock(NotificationService.class);
         paymentService = mock(PaymentService.class);
-        insightsService = mock(ShopkeeperAiInsightsService.class);
+        insightsService = mock(ShopkeeperDemandInsightsService.class);
     }
 
     @AfterEach
@@ -227,8 +228,8 @@ class CustomerAndGeneralControllersCoverageTest {
     }
 
     @Test
-    void shopkeeperAiInsightsControllerDelegatesForecastReplenishmentAndSummary() {
-        ShopkeeperAiInsightsController controller = new ShopkeeperAiInsightsController(insightsService);
+    void shopkeeperDemandInsightsControllerDelegatesForecastReplenishmentAndSummary() {
+        ShopkeeperDemandInsightsController controller = new ShopkeeperDemandInsightsController(insightsService);
 
         assertEquals(200, controller.getProductForecast(1L, 10L, 7, 28)
                 .getStatusCode().value());
@@ -242,7 +243,7 @@ class CustomerAndGeneralControllersCoverageTest {
     }
 
     @Test
-    void profileControllerReturnsUnauthorizedNotFoundAndRemovesPasswordFromResponse() {
+    void profileControllerReturnsUnauthorizedNotFoundAndSafeResponseDto() {
         ProfileController controller = new ProfileController(userRepository);
         securityUtils.when(SecurityUtils::getCurrentUserEmail).thenReturn(null);
         assertEquals(401, controller.getProfile().getStatusCode().value());
@@ -259,7 +260,10 @@ class CustomerAndGeneralControllersCoverageTest {
         when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(user));
         var response = controller.getProfile();
         assertEquals(200, response.getStatusCode().value());
-        assertNull(response.getBody().getPassword());
+        assertInstanceOf(UserResponse.class, response.getBody());
+        assertEquals("Test User", response.getBody().getName());
+        assertEquals("customer@example.com", response.getBody().getEmail());
+        assertThrows(NoSuchFieldException.class, () -> UserResponse.class.getDeclaredField("password"));
     }
 
     private static User user(Long id, Role role, boolean active) {

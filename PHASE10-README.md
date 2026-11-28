@@ -72,6 +72,8 @@ For the regular API collection on port `8080`:
 4. Enter the customer password in that private environment. The login request saves the returned JWT into the private `bearerToken` variable, which is used by the remaining protected requests.
 5. Keep `baseUrl` as `http://localhost:8080`.
 
+For the **Catalogue import safety (admin)** folder in the regular API collection, enter an active administrator JWT in the private environment's `adminToken` secret variable. Both negative requests must return HTTP 403 when either `reuseRightsVerified` or `commercialUsePermitted` is false. They are designed to fail before any catalogue rows are written.
+
 For the isolated E2E collection on port `8081`:
 
 1. Import `postman/collections/Apniko-E2E.postman_collection.json`.

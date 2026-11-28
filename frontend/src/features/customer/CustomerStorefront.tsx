@@ -3,10 +3,12 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { ApiError, apiRequest } from '../../lib/api'
-import { ApprovedProductImage } from './ApprovedProductImage'
+import { CustomerDiscoverySearch } from './CustomerDiscoverySearch'
+import { NearbyShops } from './NearbyShops'
 import {
   buildMarketplaceSearchPath,
   formatRupees,
+  getPublicShopHeading,
 } from './marketplace'
 import type {
   Basket,
@@ -18,21 +20,31 @@ import './customer-storefront.css'
 
 const PAGE_SIZE = 24
 
-function categorySymbol(category: string): string {
-  const value = category.toLowerCase()
-  if (value.includes('fruit') || value.includes('vegetable')) return '🥬'
-  if (value.includes('dairy') || value.includes('bakery') || value.includes('egg')) return '🥛'
-  if (value.includes('foodgrain') || value.includes('oil') || value.includes('masala')) return '🌾'
-  if (value.includes('snack') || value.includes('branded')) return '🍪'
-  if (value.includes('beverage')) return '🥤'
-  if (value.includes('cleaning') || value.includes('household')) return '🧹'
-  if (value.includes('beauty') || value.includes('hygiene')) return '🧴'
-  if (value.includes('baby')) return '🍼'
-  if (value.includes('gourmet') || value.includes('world')) return '🍝'
-  if (value.includes('pet') || value.includes('garden')) return '🐾'
-  if (value.includes('meat') || value.includes('fish')) return '🐟'
-  return '🛒'
-}
+const QUICK_CATEGORIES = [
+  { label: 'Fruits', category: 'Fruits & Vegetables', icon: '🍎', tone: 'mint', matches: /fruit|vegetable|produce/i },
+  { label: 'Dairy', category: 'Dairy & Bakery', icon: '🥛', tone: 'sky', matches: /dairy|milk|bakery|egg/i },
+  { label: 'Snacks', category: 'Snacks', icon: '🍪', tone: 'peach', matches: /snack|biscuit|confection|branded/i },
+  { label: 'Staples', category: 'Foodgrains & Staples', icon: '🌾', tone: 'sun', matches: /grain|staple|rice|atta|oil|masala/i },
+  { label: 'Home', category: 'Home & Household', icon: '🧽', tone: 'lavender', matches: /home|household|clean|detergent/i },
+] as const
+
+const CATEGORY_FALLBACK_ICONS = ['🥬', '🥛', '🍪', '🌾', '🧽', '🥤', '🧴', '🍼']
+const CATEGORY_FALLBACK_TONES = ['mint', 'sky', 'peach', 'sun', 'lavender', 'sky', 'rose', 'peach']
+
+const CATEGORY_PAGE_FALLBACK = [
+  { label: 'Fruits & Vegetables', category: 'Fruits & Vegetables', icon: '🥬', tone: 'mint' },
+  { label: 'Spices & Herbs', category: 'Spices & Herbs', icon: '🌶️', tone: 'sun' },
+  { label: 'Meat, Fish & Eggs', category: 'Meat, Fish & Eggs', icon: '🐟', tone: 'peach' },
+  { label: 'Water & Drinks', category: 'Beverages', icon: '🥤', tone: 'sky' },
+  { label: 'Plant-based & Organic', category: 'Organic & Plant Based', icon: '🌿', tone: 'mint' },
+  { label: 'Snacks & Sweets', category: 'Snacks', icon: '🍪', tone: 'rose' },
+  { label: 'Ready Meals', category: 'Ready Meals', icon: '🍱', tone: 'peach' },
+  { label: 'Kids & Baby', category: 'Baby & Kids', icon: '🍼', tone: 'lavender' },
+  { label: 'Bakery', category: 'Bakery', icon: '🥐', tone: 'sun' },
+  { label: 'Personal Care', category: 'Personal Care', icon: '🧴', tone: 'lavender' },
+  { label: 'Dairy', category: 'Dairy & Bakery', icon: '🥛', tone: 'sky' },
+  { label: 'Home & Pets', category: 'Home & Household', icon: '🏡', tone: 'mint' },
+]
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
@@ -77,6 +89,42 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
     [shops, selectedShopId],
   )
+
+  const quickCategories = useMemo(() => {
+    if (categories.length === 0) {
+      return QUICK_CATEGORIES.map((item) => ({
+        label: item.label,
+        category: item.category,
+        icon: item.icon,
+        tone: item.tone,
+      }))
+    }
+
+    const matched = QUICK_CATEGORIES.flatMap((item) => {
+      const category = categories.find((entry) => item.matches.test(entry))
+      return category ? [{ label: item.label, category, icon: item.icon, tone: item.tone }] : []
+    })
+
+    if (matched.length >= 3) return matched
+
+    return categories.slice(0, 8).map((category, index) => ({
+      label: category,
+      category,
+      icon: CATEGORY_FALLBACK_ICONS[index % CATEGORY_FALLBACK_ICONS.length],
+      tone: CATEGORY_FALLBACK_TONES[index % CATEGORY_FALLBACK_TONES.length],
+    }))
+  }, [categories])
+
+  const categoryPageItems = useMemo(() => {
+    if (categories.length === 0) return CATEGORY_PAGE_FALLBACK
+
+    return categories.map((category, index) => ({
+      label: category,
+      category,
+      icon: CATEGORY_FALLBACK_ICONS[index % CATEGORY_FALLBACK_ICONS.length],
+      tone: CATEGORY_FALLBACK_TONES[index % CATEGORY_FALLBACK_TONES.length],
+    }))
+  }, [categories])
 
   useEffect(() => {
     if (selectedShopId !== null) {
@@ -188,9 +236,40 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
     }
   }, [selectedShopId, token])
 
+  function selectDiscoveredShop(shopId: number) {
+    setSelectedShopId(shopId)
+    setActiveCategory('')
+    setSearchInput('')
+    setAppliedSearch('')
+    setAppliedMinPrice(undefined)
+    setAppliedMaxPrice(undefined)
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setNotice('')
+  }
+
+  function selectDiscoveredProduct(product: MarketplaceInventoryItem, query: string) {
+    setSelectedShopId(product.shopId)
+    setActiveCategory('')
+    setSearchInput(query)
+    setAppliedSearch(query)
+    setAppliedMinPrice(undefined)
+    setAppliedMaxPrice(undefined)
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setNotice(`Showing “${product.productName}” at ${product.shopName}. Add it from that shop's current shelf.`)
+  }
+
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAppliedSearch(searchInput.trim())
+  }
+
+  function chooseCategory(category: string) {
+    setActiveCategory((current) => current === category ? '' : category)
+    setSearchInput('')
+    setAppliedSearch('')
+    setNotice('')
   }
 
   function applyPriceFilters(event: FormEvent<HTMLFormElement>) {
@@ -260,40 +339,114 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
   }
 
   const basketCount = basket?.items.reduce((total, item) => total + item.quantity, 0) ?? 0
+  const publicShopHeading = selectedShop ? getPublicShopHeading(selectedShop) : null
 
   return (
     <div className="customer-storefront">
       <div className={`customer-wrap customer-main customer-main--${view}`}>
-        {view === 'home' && (
+        {view === 'home' ? (
           <section className="customer-intro customer-grocery-hero" aria-labelledby="customer-title">
+            <div className="customer-grocery-hero__topline">
+              <Link className="customer-grocery-hero__brand" to="/customer/home">apniko<span>.</span></Link>
+              <span className="customer-grocery-hero__fresh-pill"><span aria-hidden="true">✳</span> Fresh finds</span>
+            </div>
             <div className="customer-grocery-hero__copy">
-              <p className="customer-eyebrow"><span /> YOUR EVERYDAY GROCERY RUN</p>
-              <h1 id="customer-title">Good food.<br /><em>Closer to home.</em></h1>
+              <h1 id="customer-title">Good food. Great prices. Happy homes.</h1>
               <p className="customer-intro__copy">
-                Shop the products your neighbourhood store actually has in stock, at the price it sets today.
+                Your neighbourhood grocery store, right in your pocket.
               </p>
             </div>
-            <div className="customer-grocery-hero__note">
-              <span aria-hidden="true">✳</span>
-              <div>
-                <strong>Local shelves, one basket.</strong>
-                <p>Choose a shop to see its products, live stock and local prices.</p>
-              </div>
-            </div>
+            <CustomerDiscoverySearch
+              shops={shops}
+              token={token}
+              onShopSelect={selectDiscoveredShop}
+              onProductSelect={selectDiscoveredProduct}
+            />
+            <nav className="customer-quick-categories" aria-label="Quick grocery categories">
+              {quickCategories.map((item) => (
+                <button
+                  className={`customer-quick-category customer-quick-category--${item.tone}${activeCategory === item.category ? ' is-selected' : ''}`}
+                  key={item.label}
+                  type="button"
+                  aria-pressed={activeCategory === item.category}
+                  onClick={() => chooseCategory(item.category)}
+                >
+                  <span aria-hidden="true">{item.icon}</span>
+                  <strong>{item.label}</strong>
+                </button>
+              ))}
+            </nav>
           </section>
+        ) : (
+          <>
+            <section className="customer-screen-heading">
+              <p className="customer-eyebrow">FIND YOUR EVERYDAY ESSENTIALS</p>
+              <h1>Shop by <em>category.</em></h1>
+              <p>Choose a category, then browse the products available from your selected neighbourhood shop.</p>
+            </section>
+            <CustomerDiscoverySearch
+              shops={shops}
+              token={token}
+              onShopSelect={selectDiscoveredShop}
+              onProductSelect={selectDiscoveredProduct}
+            />
+          </>
         )}
 
         {view === 'categories' && (
-          <section className="customer-screen-heading">
-            <p className="customer-eyebrow">FIND YOUR EVERYDAY ESSENTIALS</p>
-            <h1>Shop by <em>category.</em></h1>
-            <p>Choose a category, then browse the products available from your selected neighbourhood shop.</p>
+          <section className="customer-category-explorer" aria-label="Browse grocery categories">
+            <div className="customer-catalogue-section-heading">
+              <div>
+                <p className="customer-eyebrow">BROWSE THE AISLES</p>
+                <h2>Find your everyday essentials</h2>
+              </div>
+            </div>
+            <div className="customer-category-grid" aria-label="Product categories">
+              {categoryPageItems.map((item) => (
+                <button
+                  className={`customer-category-card customer-category-card--${item.tone}${activeCategory === item.category ? ' is-selected' : ''}`}
+                  key={item.label}
+                  type="button"
+                  aria-pressed={activeCategory === item.category}
+                  onClick={() => chooseCategory(item.category)}
+                >
+                  <span className="customer-category-card__symbol" aria-hidden="true">{item.icon}</span>
+                  <strong>{item.label}</strong>
+                  <span>Explore products <span aria-hidden="true">→</span></span>
+                </button>
+              ))}
+            </div>
           </section>
         )}
 
-
+        {view === 'home' && (
+          <section className="customer-featured-categories" aria-label="Featured grocery categories">
+            <button
+              className="customer-featured-category customer-featured-category--fresh"
+              type="button"
+              onClick={() => chooseCategory(quickCategories.find((item) => item.label === 'Fruits')?.category ?? 'Fruits & Vegetables')}
+            >
+              <span className="customer-featured-category__eyebrow">FRUITS &amp; VEG</span>
+              <strong>Everyday freshness</strong>
+              <span className="customer-featured-category__copy">Fresh picks for your kitchen</span>
+              <span className="customer-featured-category__art" aria-hidden="true">🥬</span>
+            </button>
+            <button
+              className="customer-featured-category customer-featured-category--treats"
+              type="button"
+              onClick={() => chooseCategory(quickCategories.find((item) => item.label === 'Snacks')?.category ?? 'Snacks')}
+            >
+              <span className="customer-featured-category__eyebrow">SNACKS</span>
+              <strong>Little treats</strong>
+              <span className="customer-featured-category__copy">Something for every craving</span>
+              <span className="customer-featured-category__art" aria-hidden="true">🍪</span>
+            </button>
+          </section>
+        )}
 
         <section className="shop-section" aria-labelledby="shop-section-title">
+        <NearbyShops token={token} onShopSelect={selectDiscoveredShop} />
+
           <div className="customer-section-heading">
             <div>
               <p className="customer-eyebrow">SHOP LOCAL</p>
@@ -342,12 +495,8 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
             <div className="marketplace-heading">
               <div>
                 <p className="customer-eyebrow">SHOPPING FROM</p>
-                <h2 id="marketplace-title">{selectedShop.name}</h2>
-                <p className="marketplace-heading__address">{selectedShop.address || 'Local shop'}</p>
-              </div>
-              <div className="marketplace-heading__owner">
-                <span>SHOPKEEPER</span>
-                <strong>{selectedShop.ownerName || 'Local store'}</strong>
+                <h2 id="marketplace-title">{publicShopHeading?.name}</h2>
+                <p className="marketplace-heading__address">{publicShopHeading?.address}</p>
               </div>
             </div>
 
@@ -404,54 +553,6 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
 
             <div className="marketplace-content marketplace-content--full">
               <section className="product-area" aria-label="Products">
-                {view === 'categories' && (
-                  <div className="customer-category-grid" aria-label="Product categories">
-                    {categories.map((category) => (
-                      <button
-                        className={`customer-category-card${activeCategory === category ? ' is-selected' : ''}`}
-                        key={category}
-                        type="button"
-                        aria-pressed={activeCategory === category}
-                        onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
-                      >
-                        <span className="customer-category-card__symbol" aria-hidden="true">{categorySymbol(category)}</span>
-                        <strong>{category}</strong>
-                        <span>Explore products <span aria-hidden="true">→</span></span>
-                      </button>
-                    ))}
-                    {categories.length === 0 && (
-                      <div className="customer-state customer-state--empty">
-                        <strong>Categories are being organised.</strong>
-                        <p>Choose a shop to see the categories currently available in its catalogue.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {view === 'home' && categories.length > 0 && (
-                  <section className="customer-category-preview" aria-labelledby="customer-category-preview-title">
-                    <div className="customer-catalogue-section-heading">
-                      <div>
-                        <p className="customer-eyebrow">BROWSE THE SHELVES</p>
-                        <h3 id="customer-category-preview-title">Shop by category</h3>
-                      </div>
-                      <Link to="/customer/categories">See all categories <span aria-hidden="true">→</span></Link>
-                    </div>
-                    <div className="customer-category-grid customer-category-grid--home" aria-label="Available product categories">
-                      {categories.slice(0, 8).map((category) => (
-                        <button
-                          className={`customer-category-card${activeCategory === category ? ' is-selected' : ''}`}
-                          key={category}
-                          type="button"
-                          aria-pressed={activeCategory === category}
-                          onClick={() => setActiveCategory(activeCategory === category ? '' : category)}
-                        >
-                          <span className="customer-category-card__symbol" aria-hidden="true">{categorySymbol(category)}</span>
-                          <strong>{category}</strong>
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                )}
                 <div className="category-row" aria-label="Filter by category">
                   <button
                     type="button"
@@ -489,44 +590,26 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                     {products.map((product) => {
                       const basketItem = basket?.items.find((item) => item.productId === product.productId)
                       const busy = busyProductId === product.productId
-                      const hasDiscountedMrp = product.mrp !== null
-                        && product.mrp !== undefined
-                        && product.mrp > product.price
-                      const discountPercent = hasDiscountedMrp
-                        ? Math.round(((product.mrp! - product.price) / product.mrp!) * 100)
-                        : 0
                       return (
                         <article className="catalogue-product-card" key={product.id}>
-                          <div className="catalogue-product-card__media">
-                            <ApprovedProductImage
-                              variant="card"
-                              imageUrl={product.imageUrl}
-                              productName={product.productName}
-                              sourceName={product.imageSourceName}
-                              sourceUrl={product.imageSourceUrl}
-                              license={product.imageLicense}
-                              attribution={product.imageAttribution}
-                            />
-                            {hasDiscountedMrp && discountPercent > 0 && (
-                              <span className="catalogue-product-card__discount">{discountPercent}% OFF</span>
-                            )}
-                            {(!product.available || product.stockQuantity < 1) && (
-                              <span className="catalogue-product-card__unavailable">Out of stock</span>
-                            )}
-                          </div>
                           <div className="catalogue-product-card__body">
-                            <p className="catalogue-product-card__brand">{product.brand || 'Brand not listed'}</p>
-                            <h4>{product.productName}</h4>
-                            <p className="catalogue-product-card__pack">
-                              {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Pack details not listed'}
-                            </p>
-                            {product.stockQuantity > 0 && product.stockQuantity <= 5 && product.available && (
-                              <p className="catalogue-product-card__stock">Only {product.stockQuantity} left at this shop</p>
-                            )}
+                            <div className="catalogue-product-card__details">
+                              <p className="catalogue-product-card__brand">{product.brand || 'Brand not listed'}</p>
+                              <h4>{product.productName}</h4>
+                              <p className="catalogue-product-card__pack">
+                                {[product.packSize, product.subcategory].filter(Boolean).join(' · ') || 'Variant details not listed'}
+                              </p>
+                              {product.stockQuantity > 0 && product.stockQuantity <= 5 && product.available && (
+                                <p className="catalogue-product-card__stock">Only {product.stockQuantity} left at this shop</p>
+                              )}
+                              {(!product.available || product.stockQuantity < 1) && (
+                                <span className="catalogue-product-card__unavailable">Out of stock</span>
+                              )}
+                            </div>
                             <div className="catalogue-product-card__purchase">
                               <div className="catalogue-product-card__price">
                                 <strong>{formatRupees(product.price)}</strong>
-                                {hasDiscountedMrp && <del>{formatRupees(product.mrp as number)}</del>}
+                                <span>Shop price</span>
                               </div>
                               {basketItem ? (
                                 <div className="catalogue-product-card__quantity" aria-label={`Quantity of ${product.productName} in basket`}>
@@ -544,7 +627,7 @@ export function CustomerStorefront({ view = 'home' }: { view?: 'home' | 'categor
                                   disabled={!product.available || product.stockQuantity < 1 || busy}
                                   onClick={() => void addProduct(product)}
                                 >
-                                  {busy ? 'Adding…' : 'ADD'}
+                                  {busy ? 'Adding…' : 'Add +'}
                                 </button>
                               )}
                             </div>

@@ -5,6 +5,7 @@ import { Button } from '../../components/Button'
 import { Wordmark } from '../../components/Wordmark'
 import { ApiError, apiRequest } from '../../lib/api'
 import '../shared/operations.css'
+import { NotificationCenter } from '../shared/NotificationCenter'
 
 type DeliveryTab = 'available' | 'assigned' | 'completed'
 
@@ -138,7 +139,7 @@ export function DeliveryDashboard() {
         <div className="operations-shell operations-header__inner">
           <Wordmark />
           <div className="operations-user">
-            <span>{session?.name}</span><span className="operations-role">DELIVERY</span>
+            <span>{session?.name}</span><NotificationCenter /><span className="operations-role">DELIVERY</span>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
         </div>
@@ -159,6 +160,25 @@ export function DeliveryDashboard() {
             ['assigned', 'My deliveries (' + activeAssigned.length + ')'],
             ['completed', 'Completed (' + completed.length + ')'],
           ] as const).map(([key, label]) => <button type="button" key={key} className={tab === key ? 'is-active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>)}
+        </nav>
+
+        <nav className="operations-bottom-nav operations-bottom-nav--three" aria-label="Delivery navigation">
+          {([
+            ['available', 'Available', '⌁'],
+            ['assigned', 'My deliveries', '▣'],
+            ['completed', 'Completed', '✓'],
+          ] as const).map(([key, label, symbol]) => (
+            <button
+              key={key}
+              type="button"
+              className={tab === key ? 'is-active' : ''}
+              aria-current={tab === key ? 'page' : undefined}
+              onClick={() => setTab(key)}
+            >
+              <span className="operations-bottom-nav__symbol" aria-hidden="true">{symbol}</span>
+              <span>{label}</span>
+            </button>
+          ))}
         </nav>
 
         {loading ? <div className="operations-state" role="status">Loading delivery jobs…</div> : currentOrders.length ? (

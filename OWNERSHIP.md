@@ -3,7 +3,7 @@
 - **Project:** Apniko
 - **Project owner named for this record:** Avtar Kumar
 - **Primary GitHub account:** `@Akprasad614`
-- **Repository (before the optional GitHub rename):** `https://github.com/Akprasad614/LocalCart`
+- **Repository:** `https://github.com/Akprasad614/Apniko`
 - **Record created:** 2026-11-11
 - **Status:** Independent project in active development
 

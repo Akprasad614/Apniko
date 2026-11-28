@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - "automation/**"
+      - "feature/**"
+      - "docs/**"
+      - "chore/**"
     paths:
       - "frontend/**"
       - "PRODUCT.md"
@@ -13,10 +16,19 @@ on:
       - "SECURITY-AUTOMATION-PLAN.md"
       - ".github/dependabot.yml"
       - "scripts/verify-phase5.sh"
+      - "scripts/verify-phase6.sh"
+      - "scripts/verify-phase7.sh"
+      - "scripts/install-phase7-tooling.sh"
+      - "PHASE7-STAGING-VERIFICATION.md"
+      - "PHASE6-ROLE-BASED-DELIVERY.md"
+      - "PHASE6-CUSTOMER-STOREFRONT.md"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches:
       - main
+      - "feature/**"
+      - "docs/**"
+      - "chore/**"
     paths:
       - "frontend/**"
       - "PRODUCT.md"
@@ -25,6 +37,9 @@ on:
       - "SECURITY-AUTOMATION-PLAN.md"
       - ".github/dependabot.yml"
       - "scripts/verify-phase5.sh"
+      - "scripts/verify-phase6.sh"
+      - "PHASE6-ROLE-BASED-DELIVERY.md"
+      - "PHASE6-CUSTOMER-STOREFRONT.md"
       - ".github/workflows/frontend-ci.yml"
   workflow_dispatch:
 
@@ -42,10 +57,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out Apniko
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
           cache: npm
@@ -53,6 +68,12 @@ jobs:
 
       - name: Verify frontend foundation configuration
         run: bash scripts/verify-phase5.sh
+
+      - name: Verify Phase 6 role-based workflows
+        run: bash scripts/verify-phase6.sh
+
+      - name: Verify Phase 7 end-to-end harness and safety boundaries
+        run: bash scripts/verify-phase7.sh
 
       - name: Install locked frontend dependencies
         working-directory: frontend
@@ -75,7 +96,7 @@ jobs:
         run: npm run build
 
       - name: Upload production build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: localcart-frontend-dist-${{ github.run_number }}
           path: frontend/dist/

@@ -18,11 +18,6 @@ public class InventoryResponse {
     private double price;
     private int stockQuantity;
     private boolean available;
-    private String imageUrl;
-    private String imageSourceName;
-    private String imageSourceUrl;
-    private String imageLicense;
-    private String imageAttribution;
     private int lowStockThreshold;
     private boolean lowStock;
 
@@ -68,16 +63,6 @@ public class InventoryResponse {
     public int getStockQuantity() { return stockQuantity; }
     public void setStockQuantity(int stockQuantity) { this.stockQuantity = stockQuantity; }
 
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String value) { this.imageUrl = value; }
-    public String getImageSourceName() { return imageSourceName; }
-    public void setImageSourceName(String value) { this.imageSourceName = value; }
-    public String getImageSourceUrl() { return imageSourceUrl; }
-    public void setImageSourceUrl(String value) { this.imageSourceUrl = value; }
-    public String getImageLicense() { return imageLicense; }
-    public void setImageLicense(String value) { this.imageLicense = value; }
-    public String getImageAttribution() { return imageAttribution; }
-    public void setImageAttribution(String value) { this.imageAttribution = value; }
 
     public boolean isAvailable() { return available; }
     public void setAvailable(boolean available) { this.available = available; }

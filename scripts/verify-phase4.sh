@@ -12,16 +12,27 @@ for file in "$WORKFLOW" "$PLAN" "$DOC"; do
   fi
 done
 
+# The scan must use a disposable database and a fixed local target.
 grep -Fq 'image: mysql:8.4' "$WORKFLOW"
 grep -Fq 'MYSQL_DATABASE: localcart_dast' "$WORKFLOW"
 grep -Fq 'jdbc:mysql://127.0.0.1:3306/localcart_dast' "$WORKFLOW"
+grep -Fq 'http://127.0.0.1:8080/swagger-ui/index.html' "$WORKFLOW"
+grep -Fq 'zap-baseline.py' "$WORKFLOW"
+
+# Use an ephemeral JWT and mask it before placing it in the runner environment.
 grep -Fq 'openssl rand -base64 48' "$WORKFLOW"
 grep -Fq 'echo "::add-mask::$JWT_SECRET"' "$WORKFLOW"
-grep -Fq 'zap-baseline.py' "$WORKFLOW"
-grep -Fq 'http://127.0.0.1:8080/swagger-ui/index.html' "$WORKFLOW"
-grep -Fq ' -I' "$WORKFLOW"
+
+# Warning-level passive findings must fail the job; do not use ZAP's -I ignore flag.
+if grep -Eq '(^|[[:space:]])-I([[:space:]]|$)' "$WORKFLOW"; then
+  echo "ZAP -I would make warning-level findings report-only; remove it." >&2
+  exit 1
+fi
+
 grep -Fq -- '--autooff' "$WORKFLOW"
 grep -Fq -- '--network host' "$WORKFLOW"
+grep -Fq 'Capture Swagger and OpenAPI diagnostics' "$WORKFLOW"
+grep -Fq 'endpoint-status.txt' "$WORKFLOW"
 grep -Fq ' -r localcart-zap-baseline.html' "$WORKFLOW"
 grep -Fq ' -J localcart-zap-baseline.json' "$WORKFLOW"
 grep -Fq ' -w localcart-zap-baseline.md' "$WORKFLOW"
@@ -38,4 +49,9 @@ if grep -Eq 'https?://[^ ]*(prod|production)' "$WORKFLOW"; then
   exit 1
 fi
 
-echo "Phase 4 verification passed: isolated DB, localhost target, passive ZAP mode, masked JWT, relative report paths, --autooff compatibility mode, and mandatory report outputs."
+if grep -Eq 'zap-(full|api)-scan\.py|nuclei' "$WORKFLOW"; then
+  echo "Phase 4 is passive-only; active scanners are not permitted in this workflow." >&2
+  exit 1
+fi
+
+echo "Phase 4 verification passed: isolated database, fixed localhost target, masked ephemeral JWT, passive-only ZAP scan, blocking warning policy, diagnostics, and mandatory reports."

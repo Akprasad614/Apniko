@@ -48,3 +48,22 @@ frontend/.env.*
 data/catalogue/source/
 data/catalogue/reports/
 .venv-catalogue/
+
+### Phase 7 browser test output ###
+frontend/test-results/
+frontend/playwright-report/
+
+# Local environment files and runtime data
+.env
+.env.*
+!.env.production.example
+/backups/
+
+# Python tooling and generated files
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Runtime secrets — keep only the directory placeholder
+/secrets/*
+!/secrets/.gitkeep

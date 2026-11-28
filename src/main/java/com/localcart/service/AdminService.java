@@ -4,6 +4,7 @@ import com.localcart.dto.AdminShopResponse;
 import com.localcart.dto.AssignShopOwnerRequest;
 import com.localcart.dto.CreateManagedUserRequest;
 import com.localcart.dto.UpdateActiveStatusRequest;
+import com.localcart.dto.ShopLocationRequest;
 import com.localcart.dto.UserResponse;
 import com.localcart.entity.Role;
 import com.localcart.entity.Shop;
@@ -140,6 +141,21 @@ public class AdminService {
         return toAdminShopResponse(shopRepository.save(shop));
     }
 
+    public AdminShopResponse updateShopLocation(Long shopId, ShopLocationRequest request) {
+        if (request == null || request.latitude() == null || request.longitude() == null
+                || !Double.isFinite(request.latitude()) || request.latitude() < -90 || request.latitude() > 90
+                || !Double.isFinite(request.longitude()) || request.longitude() < -180 || request.longitude() > 180) {
+            throw new BadRequestException("Enter a valid latitude and longitude for the shop pin");
+        }
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Shop not found with id " + shopId
+                ));
+        shop.setLatitude(request.latitude());
+        shop.setLongitude(request.longitude());
+        return toAdminShopResponse(shopRepository.save(shop));
+    }
+
     private UserResponse toUserResponse(User user) {
         return new UserResponse(
                 user.getId(), user.getName(), user.getEmail(),
@@ -157,7 +173,9 @@ public class AdminService {
                 owner == null ? null : owner.getEmail(),
                 shop.getPhone(),
                 shop.getAddress(),
-                shop.isActive()
+                shop.isActive(),
+                shop.getLatitude(),
+                shop.getLongitude()
         );
     }
 }

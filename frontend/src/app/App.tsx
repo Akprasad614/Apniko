@@ -12,13 +12,15 @@ import { CustomerOrders } from '../features/customer/CustomerOrders'
 import { CustomerAccount } from '../features/customer/CustomerAccount'
 import { CustomerAddresses } from '../features/customer/CustomerAddresses'
 import { CustomerFeaturePage } from '../features/customer/CustomerFeaturePage'
+import { CustomerKhatha } from '../features/customer/CustomerKhatha'
 import { ShopkeeperDashboard } from '../features/shopkeeper/ShopkeeperDashboard'
 import { AdminDashboard } from '../features/admin/AdminDashboard'
 import { DeliveryDashboard } from '../features/delivery/DeliveryDashboard'
 import { roleHomePath } from '../lib/roles'
 
 function AccountRedirect() {
-  const { session } = useAuth()
+  const { session, loading } = useAuth()
+  if (loading) return <main className="auth-page"><p role="status">Restoring your secure session…</p></main>
   return <Navigate to={session ? roleHomePath(session.role) : '/'} replace />
 }
 
@@ -40,6 +42,7 @@ export function App() {
             <Route path="account" element={<CustomerAccount />} />
             <Route path="account/addresses" element={<CustomerAddresses />} />
             <Route path="account/payment-methods" element={<CustomerFeaturePage />} />
+            <Route path="account/khatha" element={<CustomerKhatha />} />
           </Route>
           <Route path="/shopkeeper/*" element={<RequireRole allowed={['SHOPKEEPER']}><ShopkeeperDashboard /></RequireRole>} />
           <Route path="/delivery/*" element={<RequireRole allowed={['DELIVERY_PARTNER']}><DeliveryDashboard /></RequireRole>} />

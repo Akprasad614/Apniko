@@ -6,11 +6,13 @@ import { Button } from '../../components/Button'
 import { Wordmark } from '../../components/Wordmark'
 import { ApiError, apiRequest } from '../../lib/api'
 import { CatalogueReviewQueue } from './CatalogueReviewQueue'
-import { ProductPhotoReviewQueue } from './ProductPhotoReviewQueue'
+import { categoryNameExists } from './catalogueReview'
+import { AdminKhathaPanel } from './AdminKhathaPanel'
 import '../shared/operations.css'
+import { NotificationCenter } from '../shared/NotificationCenter'
 
 type StaffRole = 'SHOPKEEPER' | 'DELIVERY_PARTNER'
-type AdminTab = 'overview' | 'people' | 'shops' | 'catalogue'
+type AdminTab = 'overview' | 'people' | 'shops' | 'catalogue' | 'khatha'
 
 interface AdminUser {
   id: number
@@ -29,6 +31,8 @@ interface AdminShop {
   phone?: string | null
   address?: string | null
   active: boolean
+  latitude?: number | null
+  longitude?: number | null
 }
 
 interface AdminProduct {
@@ -95,7 +99,10 @@ export function AdminDashboard() {
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [shops, setShops] = useState<AdminShop[]>([])
+  const [shopLocationDrafts, setShopLocationDrafts] = useState<Record<number, { latitude: string; longitude: string }>>({})
   const [categories, setCategories] = useState<AdminCategory[]>([])
+  const [categoryName, setCategoryName] = useState('')
+  const [parentCategoryId, setParentCategoryId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -138,8 +145,17 @@ export function AdminDashboard() {
     else failures.push(messageFor(results[0].reason))
     if (results[1].status === 'fulfilled') setUsers(results[1].value)
     else failures.push(messageFor(results[1].reason))
-    if (results[2].status === 'fulfilled') setShops(results[2].value)
-    else failures.push(messageFor(results[2].reason))
+    if (results[2].status === 'fulfilled') {
+      const loadedShops: AdminShop[] = results[2].value
+      setShops(loadedShops)
+      setShopLocationDrafts((current) => Object.fromEntries(loadedShops.map((shop) => [
+        shop.id,
+        current[shop.id] ?? {
+          latitude: shop.latitude == null ? '' : String(shop.latitude),
+          longitude: shop.longitude == null ? '' : String(shop.longitude),
+        },
+      ])))
+    } else failures.push(messageFor(results[2].reason))
     if (results[3].status === 'fulfilled') setCategories(results[3].value)
     else failures.push(messageFor(results[3].reason))
     if (failures.length) setError(failures.join(' '))
@@ -220,6 +236,83 @@ export function AdminDashboard() {
     }
   }
 
+  function updateShopLocationDraft(shopId: number, field: 'latitude' | 'longitude', value: string) {
+    setShopLocationDrafts((current) => ({
+      ...current,
+      [shopId]: {
+        latitude: current[shopId]?.latitude ?? '',
+        longitude: current[shopId]?.longitude ?? '',
+        [field]: value,
+      },
+    }))
+  }
+
+  async function saveShopLocation(shop: AdminShop) {
+    const draft = shopLocationDrafts[shop.id]
+    const latitude = Number(draft?.latitude)
+    const longitude = Number(draft?.longitude)
+    if (!draft || !draft.latitude.trim() || !draft.longitude.trim()
+      || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+      || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      setError('Enter a valid latitude (-90 to 90) and longitude (-180 to 180).')
+      return
+    }
+
+    setBusyKey('shop-location-' + shop.id)
+    setError('')
+    setNotice('')
+    try {
+      const updated = await apiRequest<AdminShop>(
+        '/api/admin/shops/' + shop.id + '/location',
+        { method: 'PATCH', body: JSON.stringify({ latitude, longitude }) },
+        token,
+      )
+      setShops((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setShopLocationDrafts((current) => ({
+        ...current,
+        [updated.id]: {
+          latitude: updated.latitude == null ? '' : String(updated.latitude),
+          longitude: updated.longitude == null ? '' : String(updated.longitude),
+        },
+      }))
+      setNotice(updated.name + ' has been pinned for nearby-shop discovery.')
+    } catch (locationError) {
+      setError(messageFor(locationError))
+    } finally {
+      setBusyKey('')
+    }
+  }
+
+  function useCurrentLocationForShop(shop: AdminShop) {
+    if (!navigator.geolocation) {
+      setError('This browser does not provide location access. Enter the shop coordinates manually.')
+      return
+    }
+    setError('')
+    setNotice('')
+    setBusyKey('shop-geolocate-' + shop.id)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setShopLocationDrafts((current) => ({
+          ...current,
+          [shop.id]: {
+            latitude: position.coords.latitude.toFixed(6),
+            longitude: position.coords.longitude.toFixed(6),
+          },
+        }))
+        setNotice('Device location captured for ' + shop.name + '. Confirm you are physically at this shop, then save the pin.')
+        setBusyKey('')
+      },
+      (locationError) => {
+        setError(locationError.code === locationError.PERMISSION_DENIED
+          ? 'Location permission was denied. Enter the shop coordinates manually.'
+          : 'The device location could not be read. Try again or enter the shop coordinates manually.')
+        setBusyKey('')
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    )
+  }
+
   async function toggleShop(shop: AdminShop) {
     setBusyKey('shop-' + shop.id)
     setError('')
@@ -234,6 +327,50 @@ export function AdminDashboard() {
       setNotice(updated.name + ' is now ' + (updated.active ? 'active' : 'inactive') + '.')
     } catch (updateError) {
       setError(messageFor(updateError))
+    } finally {
+      setBusyKey('')
+    }
+  }
+
+  async function createCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = categoryName.trim().replace(/\\s+/g, ' ')
+    if (!name) {
+      setError('Enter a category or subcategory name.')
+      return
+    }
+
+    const duplicate = categoryNameExists(
+      categories,
+      name,
+      parentCategoryId ? Number(parentCategoryId) : null,
+    )
+    if (duplicate) {
+      setError('A category with that name already exists at this level.')
+      return
+    }
+
+    setBusyKey('create-category')
+    setError('')
+    setNotice('')
+    try {
+      await apiRequest<AdminCategory>(
+        '/api/catalogue/categories',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            parentCategoryId: parentCategoryId ? Number(parentCategoryId) : null,
+          }),
+        },
+        token,
+      )
+      setCategoryName('')
+      setParentCategoryId('')
+      await loadData(true)
+      setNotice(name + ' was added to the catalogue taxonomy.')
+    } catch (createError) {
+      setError(messageFor(createError))
     } finally {
       setBusyKey('')
     }
@@ -296,6 +433,7 @@ export function AdminDashboard() {
           <Wordmark />
           <div className="operations-user">
             <span>{session?.name}</span>
+            <NotificationCenter />
             <span className="operations-role">ADMIN</span>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
@@ -320,9 +458,31 @@ export function AdminDashboard() {
             ['people', 'People'],
             ['shops', 'Shops'],
             ['catalogue', 'Product catalogue'],
+            ['khatha', 'Khatha'],
           ] as const).map(([key, label]) => (
             <button type="button" key={key} className={tab === key ? 'is-active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => { setTab(key); setError(''); setNotice('') }}>
               {label}
+            </button>
+          ))}
+        </nav>
+
+        <nav className="operations-bottom-nav operations-bottom-nav--five" aria-label="Administration navigation">
+          {([
+            ['overview', 'Overview', '⌂'],
+            ['people', 'People', '♙'],
+            ['shops', 'Shops', '⌖'],
+            ['catalogue', 'Catalogue', '▦'],
+            ['khatha', 'Khatha', '₹'],
+          ] as const).map(([key, label, symbol]) => (
+            <button
+              key={key}
+              type="button"
+              className={tab === key ? 'is-active' : ''}
+              aria-current={tab === key ? 'page' : undefined}
+              onClick={() => { setTab(key); setError(''); setNotice('') }}
+            >
+              <span className="operations-bottom-nav__symbol" aria-hidden="true">{symbol}</span>
+              <span>{label}</span>
             </button>
           ))}
         </nav>
@@ -407,6 +567,33 @@ export function AdminDashboard() {
                     <div className="operations-shop-card__top"><div><p className="operations-eyebrow">SHOP / {shop.id}</p><h3>{shop.name}</h3></div><span className={shop.active ? 'operations-status operations-status--active' : 'operations-status'}>{shop.active ? 'Active' : 'Inactive'}</span></div>
                     <p>{shop.address || 'No address recorded'}{shop.phone ? ' · ' + shop.phone : ''}</p>
                     <div className="operations-owner"><span>Current owner</span><strong>{shop.ownerName || 'Not assigned'}</strong><small>{shop.ownerEmail || 'Choose an active shopkeeper below'}</small></div>
+                    <div className="operations-form-grid operations-form-grid--two operations-shop-location">
+                      <label>Shop latitude
+                        <input type="number" min="-90" max="90" step="0.000001"
+                          value={shopLocationDrafts[shop.id]?.latitude ?? ''}
+                          onChange={(event) => updateShopLocationDraft(shop.id, 'latitude', event.target.value)}
+                          placeholder="12.971600" />
+                      </label>
+                      <label>Shop longitude
+                        <input type="number" min="-180" max="180" step="0.000001"
+                          value={shopLocationDrafts[shop.id]?.longitude ?? ''}
+                          onChange={(event) => updateShopLocationDraft(shop.id, 'longitude', event.target.value)}
+                          placeholder="77.594600" />
+                      </label>
+                    </div>
+                    <p className="operations-help">Save a pin only after verifying it belongs to this store. Use device location while physically at the shop, or enter mapped coordinates.</p>
+                    <div className="operations-shop-location__actions">
+                      <button className="operations-text-button" type="button"
+                        disabled={busyKey === 'shop-geolocate-' + shop.id}
+                        onClick={() => useCurrentLocationForShop(shop)}>
+                        {busyKey === 'shop-geolocate-' + shop.id ? 'Locating…' : 'Use this device location'}
+                      </button>
+                      <button className="operations-button operations-button--secondary" type="button"
+                        disabled={busyKey === 'shop-location-' + shop.id}
+                        onClick={() => void saveShopLocation(shop)}>
+                        {busyKey === 'shop-location-' + shop.id ? 'Saving…' : 'Save shop pin'}
+                      </button>
+                    </div>
                     <label>Assign shopkeeper<select value={shop.ownerId ?? ''} disabled={!shopkeepers.length || busyKey === 'shop-' + shop.id} onChange={(event) => void assignOwner(shop, event.target.value)}><option value="" disabled>{shopkeepers.length ? 'Select a shopkeeper' : 'No active shopkeepers'}</option>{shopkeepers.map((owner) => <option key={owner.id} value={owner.id}>{owner.name} · {owner.email}</option>)}</select></label>
                     <button className="operations-text-button" type="button" disabled={busyKey === 'shop-' + shop.id} onClick={() => void toggleShop(shop)}>{shop.active ? 'Deactivate shop' : 'Activate shop'}</button>
                   </article>
@@ -417,6 +604,45 @@ export function AdminDashboard() {
             {tab === 'catalogue' && (
               <section>
                 <div className="operations-section-heading"><div><p className="operations-eyebrow">SHARED PRODUCTS</p><h2>Product catalogue</h2><p>Shopkeepers add these products to their own inventory and set local prices.</p></div></div>
+                <form className="operations-panel operations-form" onSubmit={(event) => void createCategory(event)}>
+                  <div>
+                    <p className="operations-eyebrow">CATALOGUE TAXONOMY</p>
+                    <h3>Add a category or subcategory</h3>
+                    <p>Keep the shared catalogue organised. Subcategories can be created under an existing top-level category.</p>
+                  </div>
+                  <div className="operations-form-grid operations-form-grid--two">
+                    <label>Level
+                      <select value={parentCategoryId} onChange={(event) => setParentCategoryId(event.target.value)}>
+                        <option value="">Top-level category</option>
+                        {categories.map((category) => <option key={category.id} value={String(category.id)}>Under {category.name}</option>)}
+                      </select>
+                    </label>
+                    <label>{parentCategoryId ? 'Subcategory name' : 'Category name'}
+                      <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} maxLength={100} required placeholder={parentCategoryId ? 'e.g. Breakfast cereals' : 'e.g. Staples'} />
+                    </label>
+                  </div>
+                  <button className="operations-button" type="submit" disabled={busyKey === 'create-category' || !categoryName.trim()}>
+                    {busyKey === 'create-category' ? 'Saving…' : 'Add ' + (parentCategoryId ? 'subcategory' : 'category')}
+                  </button>
+                  <p className="operations-help">{categories.length} top-level categories currently available. Category changes affect the shared catalogue, not shop-specific prices or stock.</p>
+                </form>
+
+                <article className="operations-panel operations-form">
+                  <div>
+                    <p className="operations-eyebrow">CONTROLLED BULK INTAKE</p>
+                    <h3>Import an approved catalogue file</h3>
+                    <p>Bulk intake is deliberately dry-run-first and uses the reviewed command-line importer. It does not scrape retailer websites or download datasets.</p>
+                  </div>
+                  <ol className="operations-help">
+                    <li>Obtain the exact source file and confirm its commercial-use licence and attribution obligations.</li>
+                    <li>Run the importer in dry-run mode first; review row counts, rejected rows and source provenance.</li>
+                    <li>Only apply an approved source over HTTPS using a short-lived administrator token stored in your secret manager.</li>
+                  </ol>
+                  <pre className="operations-code"><code>{'python3 -m venv .venv-catalogue\nsource .venv-catalogue/bin/activate\npython -m pip install -r scripts/catalogue/requirements.txt\npython scripts/catalogue/import_catalogue.py /path/to/approved-catalogue.csv'}</code></pre>
+                  <p className="operations-help">The currently integrated Mendeley file is a nutrition/reference dataset, not a retail SKU feed. Its 852 rows remain in Needs review until an independently approved source verifies each sellable retail variant. Never infer barcode, pack size, MRP or shop price from that dataset.</p>
+                  <p className="operations-help">For apply mode, use the documented <code>--apply</code>, <code>--license-confirmed</code> and <code>--commercial-use-confirmed</code> flags only after legal/source review. Keep the administrator token out of shell history and source control.</p>
+                </article>
+
                 <form className="operations-panel operations-form" onSubmit={(event) => void createProduct(event)}>
                   <div><p className="operations-eyebrow">NEW CATALOGUE ITEM</p><h3>Add a product</h3><p>Master product details are shared; each shop still controls its own selling price and stock.</p></div>
                   <div className="operations-form-grid operations-form-grid--two">
@@ -427,16 +653,16 @@ export function AdminDashboard() {
                     <label>Barcode (GTIN)<input value={productBarcode} onChange={(event) => setProductBarcode(event.target.value)} inputMode="numeric" maxLength={14} pattern="([0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14})" placeholder="EAN / GTIN barcode" /></label>
                     <label>Pack size<input value={productPackSize} onChange={(event) => setProductPackSize(event.target.value)} maxLength={80} placeholder="e.g. 500 g, 1 L, 10 pcs" /></label>
                     <label>MRP (₹)<input type="number" min="0.01" max="1000000" step="0.01" value={productMrp} onChange={(event) => setProductMrp(event.target.value)} placeholder="Printed pack MRP" /></label>
-                    <label>MRP source<select value={productMrpSource} onChange={(event) => setProductMrpSource(event.target.value)}><option value="">Not recorded</option><option value="pack">Physical pack</option><option value="brand">Brand supplied</option><option value="gov">Government source</option><option value="off">Open Food Facts</option></select></label>
+                    <label>MRP source<select value={productMrpSource} onChange={(event) => setProductMrpSource(event.target.value)}><option value="">Not recorded</option><option value="pack">Physical pack</option><option value="brand">Brand supplied</option><option value="gov">Government source</option></select></label>
                   </div>
                   <label>Product description<textarea value={productDescription} onChange={(event) => setProductDescription(event.target.value)} maxLength={1000} rows={3} placeholder="Product details, pack information or usage notes" /></label>
                   <p className="operations-help">MRP is a sourced reference value, not the shop's selling price. Enter an MRP source only when an MRP is provided.</p>
                   <button className="operations-button" type="submit" disabled={busyKey === 'create-product' || !productName.trim() || !productCategory}>{busyKey === 'create-product' ? 'Adding…' : 'Add to catalogue'}</button>
                 </form>
                 <CatalogueReviewQueue token={token} />
-                <ProductPhotoReviewQueue token={token} />
               </section>
             )}
+            {tab === 'khatha' && <AdminKhathaPanel token={token} />}
           </>
         )}
       </main>

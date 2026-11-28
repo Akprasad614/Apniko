@@ -102,6 +102,23 @@ class ProductCatalogueModerationServiceTest {
     }
 
     @Test
+    void mendeleyReferenceRowCannotBePublishedWithoutVerifiedRetailIdentity() {
+        Product product = new Product();
+        product.setName("Sample Chips");
+        product.setCatalogueSource("Mendeley Indian Packaged Foods Dataset (2026)");
+        product.setCatalogueReviewStatus(ProductCatalogueReviewStatus.NEEDS_REVIEW);
+        ReflectionTestUtils.setField(product, "id", 34L);
+        when(productRepository.findById(34L)).thenReturn(Optional.of(product));
+
+        assertThrows(BadRequestException.class, () -> service.updateReview(
+                34L,
+                new CatalogueReviewUpdateRequest(ProductCatalogueReviewStatus.ACTIVE, null),
+                "admin@example.test"));
+
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
     void hidingRequiresAReason() {
         Product product = new Product();
         ReflectionTestUtils.setField(product, "id", 32L);

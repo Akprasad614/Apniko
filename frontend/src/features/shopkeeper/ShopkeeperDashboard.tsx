@@ -4,12 +4,13 @@ import { Link } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../../components/Button'
 import { ApiError, apiRequest } from '../../lib/api'
-import { ProductPhotoCredit } from '../../components/ProductPhotoCredit'
 import {
   canAcceptShopkeeperOrderWithSavedFulfilment,
   canCancelShopkeeperOrder,
   canRejectShopkeeperOrder,
   canSaveShopkeeperOrderFulfilment,
+  analyticsBarPercent,
+  buildShopkeeperAnalyticsDateRange,
   formatInventoryMovement,
   formatShopkeeperRupees,
   formatShopkeeperStatus,
@@ -22,11 +23,18 @@ import type {
   ShopkeeperOrderHistory,
   ShopkeeperProduct,
   ShopkeeperShop,
+  ShopkeeperAnalyticsOverview,
+  ShopkeeperDailyAnalytics,
+  ShopkeeperTopProductAnalytics,
+  ShopkeeperReplenishmentRecommendation,
+  ShopkeeperAnalyticsPeriod,
   ShopDeliveryMode,
 } from './shopkeeper'
 import './shopkeeper-dashboard.css'
+import { NotificationCenter } from '../shared/NotificationCenter'
+import { ShopkeeperKhathaWorkspace } from './ShopkeeperKhathaWorkspace'
 
-type DashboardTab = 'overview' | 'orders' | 'inventory'
+type DashboardTab = 'overview' | 'orders' | 'inventory' | 'analytics' | 'khatha'
 interface CatalogueProductPage {
   content: ShopkeeperProduct[]
   number: number
@@ -96,6 +104,14 @@ export function ShopkeeperDashboard() {
   const [movements, setMovements] = useState<InventoryMovement[]>([])
   const [movementLoading, setMovementLoading] = useState(false)
   const [lowStockOnly, setLowStockOnly] = useState(false)
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<ShopkeeperAnalyticsPeriod>(7)
+  const [analyticsOverview, setAnalyticsOverview] = useState<ShopkeeperAnalyticsOverview | null>(null)
+  const [analyticsDaily, setAnalyticsDaily] = useState<ShopkeeperDailyAnalytics[]>([])
+  const [analyticsTopProducts, setAnalyticsTopProducts] = useState<ShopkeeperTopProductAnalytics[]>([])
+  const [replenishmentRecommendations, setReplenishmentRecommendations] = useState<ShopkeeperReplenishmentRecommendation[]>([])
+  const [replenishmentError, setReplenishmentError] = useState('')
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState('')
 
   const selectedShop = useMemo(
     () => shops.find((shop) => shop.id === selectedShopId) ?? null,
@@ -178,6 +194,54 @@ export function ShopkeeperDashboard() {
     }
   }, [token])
 
+  const loadAnalytics = useCallback(async () => {
+    if (selectedShopId === null) return
+
+    setAnalyticsLoading(true)
+    setAnalyticsError('')
+    const range = buildShopkeeperAnalyticsDateRange(analyticsPeriod)
+    const rangeParams = new URLSearchParams(range)
+    const productParams = new URLSearchParams({ ...range, shopId: String(selectedShopId), limit: '8' })
+
+    try {
+      const results = await Promise.allSettled([
+        apiRequest<ShopkeeperAnalyticsOverview>(
+          '/api/shopkeeper/analytics/overview?' + rangeParams.toString(), {}, token,
+        ),
+        apiRequest<ShopkeeperDailyAnalytics[]>(
+          '/api/shopkeeper/analytics/daily?' + rangeParams.toString(), {}, token,
+        ),
+        apiRequest<ShopkeeperTopProductAnalytics[]>(
+          '/api/shopkeeper/analytics/top-products?' + productParams.toString(), {}, token,
+        ),
+        apiRequest<ShopkeeperReplenishmentRecommendation[]>(
+          '/api/shopkeeper/insights/replenishment?shopId=' + selectedShopId + '&historyDays=28&leadTimeDays=3',
+          {},
+          token,
+        ),
+      ] as const)
+
+      const failures: string[] = []
+      if (results[0].status === 'fulfilled') setAnalyticsOverview(results[0].value)
+      else failures.push(messageFor(results[0].reason))
+      if (results[1].status === 'fulfilled') setAnalyticsDaily(results[1].value)
+      else failures.push(messageFor(results[1].reason))
+      if (results[2].status === 'fulfilled') setAnalyticsTopProducts(results[2].value)
+      else failures.push(messageFor(results[2].reason))
+      if (results[3].status === 'fulfilled') {
+        setReplenishmentRecommendations(results[3].value)
+        setReplenishmentError('')
+      } else {
+        setReplenishmentError(messageFor(results[3].reason))
+      }
+      setAnalyticsError(failures.join(' '))
+    } catch (loadError) {
+      setAnalyticsError(messageFor(loadError))
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }, [analyticsPeriod, selectedShopId, token])
+
   useEffect(() => {
     void loadShops()
   }, [loadShops])
@@ -195,6 +259,10 @@ export function ShopkeeperDashboard() {
     }
     void loadInventory(selectedShopId)
   }, [loadInventory, selectedShopId])
+
+  useEffect(() => {
+    if (tab === 'analytics' && selectedShopId !== null) void loadAnalytics()
+  }, [loadAnalytics, selectedShopId, tab])
 
   async function loadCataloguePage(page: number, append: boolean, query: string) {
     if (selectedShopId === null) return
@@ -518,22 +586,25 @@ export function ShopkeeperDashboard() {
   const existingProductIds = new Set(inventory.map((item) => item.productId))
   const addableProducts = catalogue.filter((product) => !existingProductIds.has(product.id))
   const greeting = session?.name.trim().split(/\s+/)[0] || 'there'
+  const analyticsMaximum = Math.max(0, ...analyticsDaily.map((day) => day.nonCancelledOrderValue))
 
   return (
     <div className="shopkeeper-app">
+      <a className="skip-link" href="#shopkeeper-main">Skip to shopkeeper content</a>
       <header className="shopkeeper-header">
         <div className="shopkeeper-shell shopkeeper-header__inner">
-          <Link to="/" className="shopkeeper-wordmark">apniko<span>.</span></Link>
+          <Link to="/shopkeeper" className="shopkeeper-wordmark">apniko<span>.</span></Link>
           <div className="shopkeeper-header__right">
             <span className="shopkeeper-header__welcome">Shopkeeper desk · {greeting}</span>
+            <NotificationCenter />
             <span className="shopkeeper-role">SHOPKEEPER</span>
             <Button tone="quiet" onClick={signOut}>Sign out</Button>
           </div>
         </div>
       </header>
 
-      <main className="shopkeeper-shell shopkeeper-main">
-        <section className="shopkeeper-intro">
+      <main id="shopkeeper-main" className="shopkeeper-main">
+        <section className="shopkeeper-shell shopkeeper-intro">
           <div>
             <p className="shopkeeper-eyebrow">YOUR DAILY COUNTER</p>
             <h1>Good to see you,<br /><em>{greeting}.</em></h1>
@@ -562,10 +633,12 @@ export function ShopkeeperDashboard() {
 
         <nav className="shopkeeper-tabs" aria-label="Shopkeeper sections">
           {([
-            ['overview', 'Overview'],
-            ['orders', 'Orders'],
-            ['inventory', 'Inventory'],
-          ] as const).map(([key, label]) => (
+            ['overview', 'Overview', '⌂'],
+            ['orders', 'Orders', '▤'],
+            ['inventory', 'Inventory', '▦'],
+            ['analytics', 'Performance', '↗'],
+            ['khatha', 'Khatha', '₹'],
+          ] as const).map(([key, label, symbol]) => (
             <button
               type="button"
               key={key}
@@ -576,11 +649,15 @@ export function ShopkeeperDashboard() {
                 setError('')
                 setNotice('')
               }}
-            >{label}</button>
+            >
+              <span className="shopkeeper-tabs__symbol" aria-hidden="true">{symbol}</span>
+              <span>{label}</span>
+            </button>
           ))}
           <span className="shopkeeper-tabs__shop">{selectedShop?.name ?? 'No shop selected'}</span>
         </nav>
 
+        <div className="shopkeeper-shell shopkeeper-content">
         {error && <div className="shopkeeper-alert shopkeeper-alert--error" role="alert">{error}</div>}
         {notice && <div className="shopkeeper-alert shopkeeper-alert--success" role="status">{notice}</div>}
 
@@ -806,6 +883,172 @@ export function ShopkeeperDashboard() {
               </section>
             )}
 
+            {tab === 'analytics' && (
+              <section className="shopkeeper-analytics" aria-labelledby="shopkeeper-analytics-title">
+                <div className="shopkeeper-section-title shopkeeper-analytics__heading">
+                  <div>
+                    <p className="shopkeeper-eyebrow">MEASURE WHAT MOVES</p>
+                    <h2 id="shopkeeper-analytics-title">Shop performance</h2>
+                    <p>Sales and order activity from your real Apniko orders. Summary figures cover all shops linked to your account; product rankings are for {selectedShop.name}.</p>
+                  </div>
+                  <div className="shopkeeper-analytics__period" role="group" aria-label="Analytics period">
+                    {([7, 30, 90] as const).map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        className={analyticsPeriod === days ? 'is-active' : ''}
+                        aria-pressed={analyticsPeriod === days}
+                        onClick={() => setAnalyticsPeriod(days)}
+                      >{days} days</button>
+                    ))}
+                  </div>
+                </div>
+
+                {analyticsError && <div className="shopkeeper-alert shopkeeper-alert--error" role="alert">{analyticsError}</div>}
+                {analyticsLoading ? (
+                  <div className="shopkeeper-empty" role="status">Gathering your shop performance…</div>
+                ) : analyticsOverview ? (
+                  <>
+                    <div className="shopkeeper-stats shopkeeper-analytics__stats">
+                      <article>
+                        <span>Orders placed</span>
+                        <strong>{analyticsOverview.totalOrders}</strong>
+                        <small>{analyticsOverview.openOrders} still open in this period</small>
+                      </article>
+                      <article>
+                        <span>Delivered orders</span>
+                        <strong>{analyticsOverview.deliveredOrders}</strong>
+                        <small>{analyticsOverview.cancelledOrders} cancelled orders</small>
+                      </article>
+                      <article>
+                        <span>Delivered sales</span>
+                        <strong>{formatShopkeeperRupees(analyticsOverview.deliveredOrderValue)}</strong>
+                        <small>Completed orders only</small>
+                      </article>
+                      <article>
+                        <span>Average order value</span>
+                        <strong>{formatShopkeeperRupees(analyticsOverview.averageNonCancelledOrderValue)}</strong>
+                        <small>Non-cancelled orders</small>
+                      </article>
+                    </div>
+
+                    <div className="shopkeeper-analytics__grid">
+                      <section className="shopkeeper-analytics__panel" aria-labelledby="shopkeeper-daily-title">
+                        <div className="shopkeeper-panel-heading">
+                          <div>
+                            <p className="shopkeeper-eyebrow">DAILY ACTIVITY</p>
+                            <h3 id="shopkeeper-daily-title">Order value by day</h3>
+                          </div>
+                          <span>{analyticsOverview.from} — {analyticsOverview.to}</span>
+                        </div>
+                        {analyticsDaily.some((day) => day.totalOrders > 0 || day.nonCancelledOrderValue > 0) ? (
+                          <div className={analyticsPeriod > 7
+                            ? 'shopkeeper-analytics__bars shopkeeper-analytics__bars--wide'
+                            : 'shopkeeper-analytics__bars'}>
+                            {analyticsDaily.map((day) => {
+                              const width = analyticsBarPercent(day.nonCancelledOrderValue, analyticsMaximum)
+                              const dateLabel = new Intl.DateTimeFormat('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                              }).format(new Date(day.date + 'T00:00:00'))
+                              return (
+                                <div className="shopkeeper-analytics__day" key={day.date}>
+                                  <div className="shopkeeper-analytics__bar-track" role="img"
+                                    aria-label={dateLabel + ': ' + formatShopkeeperRupees(day.nonCancelledOrderValue) + ' in non-cancelled orders'}>
+                                    <span className="shopkeeper-analytics__bar-fill" style={{ height: width + '%' }} />
+                                  </div>
+                                  <strong>{formatShopkeeperRupees(day.nonCancelledOrderValue)}</strong>
+                                  <small>{dateLabel}</small>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="shopkeeper-analytics__empty">
+                            <strong>No orders recorded in this period.</strong>
+                            <p>Daily activity will appear here after customers place orders.</p>
+                          </div>
+                        )}
+                      </section>
+
+                      <section className="shopkeeper-analytics__panel shopkeeper-analytics__top-products" aria-labelledby="shopkeeper-top-products-title">
+                        <div className="shopkeeper-panel-heading">
+                          <div>
+                            <p className="shopkeeper-eyebrow">YOUR SELECTED SHOP</p>
+                            <h3 id="shopkeeper-top-products-title">Top products</h3>
+                          </div>
+                        </div>
+                        {analyticsTopProducts.length ? (
+                          <ol>
+                            {analyticsTopProducts.map((product, index) => (
+                              <li key={product.productId}>
+                                <span className="shopkeeper-analytics__rank">{String(index + 1).padStart(2, '0')}</span>
+                                <div>
+                                  <strong>{product.productName}</strong>
+                                  <small>{product.unitsSold} units sold</small>
+                                </div>
+                                <b>{formatShopkeeperRupees(product.orderValue)}</b>
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <div className="shopkeeper-analytics__empty">
+                            <strong>No product sales recorded yet.</strong>
+                            <p>Products will appear here when this shop has completed orders in the selected period.</p>
+                          </div>
+                        )}
+                      </section>
+                    </div>
+
+                    <section className="shopkeeper-analytics__panel shopkeeper-analytics__replenishment" aria-labelledby="shopkeeper-replenishment-title">
+                      <div className="shopkeeper-panel-heading">
+                        <div>
+                          <p className="shopkeeper-eyebrow">INVENTORY PLANNING</p>
+                          <h3 id="shopkeeper-replenishment-title">Stock guidance</h3>
+                          <p>Weighted moving-average baseline from recorded orders, using a 28-day history and 3-day lead-time assumption. Review before ordering.</p>
+                        </div>
+                      </div>
+                      {replenishmentError && <p className="shopkeeper-analytics__insight-error" role="alert">{replenishmentError}</p>}
+                      {replenishmentRecommendations.length ? (
+                        <div className="shopkeeper-analytics__recommendations">
+                          {replenishmentRecommendations.map((recommendation) => (
+                            <article key={recommendation.inventoryId} className="shopkeeper-recommendation">
+                              <div className="shopkeeper-recommendation__top">
+                                <div>
+                                  <strong>{recommendation.productName}</strong>
+                                  <small>{recommendation.currentStock} in stock · threshold {recommendation.lowStockThreshold}</small>
+                                </div>
+                                <span className={'shopkeeper-recommendation__status shopkeeper-recommendation__status--' + recommendation.status.toLowerCase()}>
+                                  {formatShopkeeperStatus(recommendation.status)}
+                                </span>
+                              </div>
+                              <div className="shopkeeper-recommendation__metrics">
+                                <span><small>Expected lead demand</small><strong>{recommendation.expectedDemandDuringLeadTime} units</strong></span>
+                                <span><small>Suggested top-up</small><strong>{recommendation.suggestedReorderQuantity} units</strong></span>
+                                <span><small>Estimated cover</small><strong>{recommendation.estimatedDaysOfCover === null ? '—' : recommendation.estimatedDaysOfCover.toFixed(1) + ' days'}</strong></span>
+                              </div>
+                              <p>{recommendation.explanation}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="shopkeeper-analytics__empty">
+                          <strong>{replenishmentError ? 'Stock guidance is unavailable.' : 'No inventory to review yet.'}</strong>
+                          <p>{replenishmentError ? 'The restock service could not return recommendations.' : 'Add verified catalogue items to this shop to see demand-based stock guidance.'}</p>
+                        </div>
+                      )}
+                    </section>
+                  </>
+                ) : (
+                  <div className="shopkeeper-empty">
+                    <h3>Performance data is unavailable.</h3>
+                    <p>Refresh the page to retry the analytics service.</p>
+                    <button type="button" className="shopkeeper-primary-button" onClick={() => void loadAnalytics()}>Try again</button>
+                  </div>
+                )}
+              </section>
+            )}
+
             {tab === 'inventory' && (
               <section className="shopkeeper-inventory">
                 <div className="shopkeeper-section-title">
@@ -850,16 +1093,6 @@ export function ShopkeeperDashboard() {
                                   className={newProductId === String(product.id) ? 'shopkeeper-catalogue-choice is-selected' : 'shopkeeper-catalogue-choice'}
                                   aria-pressed={newProductId === String(product.id)}
                                   onClick={() => setNewProductId(String(product.id))}>
-                                  <span className="shopkeeper-catalogue-choice__image">
-                                    {product.imageUrl
-                                      ? <img src={product.imageUrl} alt={product.name} loading="lazy" />
-                                      : (
-                                        <span className="shopkeeper-catalogue-choice__photo-missing">
-                                          <span aria-hidden="true">▧</span>
-                                          <small>Photo not yet available</small>
-                                        </span>
-                                      )}
-                                  </span>
                                   <span className="shopkeeper-catalogue-choice__copy">
                                     <strong>{product.name}</strong>
                                     <small>{[
@@ -871,13 +1104,6 @@ export function ShopkeeperDashboard() {
                                   </span>
                                   <span className="shopkeeper-catalogue-choice__select">{newProductId === String(product.id) ? 'Selected' : 'Select'}</span>
                                 </button>
-                                <ProductPhotoCredit
-                                  sourceName={product.imageSourceName}
-                                  sourceUrl={product.imageSourceUrl}
-                                  license={product.imageLicense}
-                                  attribution={product.imageAttribution}
-                                  className="shopkeeper-product-photo-credit"
-                                />
                               </div>
                             ))}
                           </div>
@@ -935,28 +1161,10 @@ export function ShopkeeperDashboard() {
                       const isLow = item.lowStock || item.stockQuantity <= item.lowStockThreshold
                       return (
                         <article className="shopkeeper-inventory-card" key={item.id}>
-                          <div className="shopkeeper-inventory-card__media">
-                            {item.imageUrl
-                              ? <img src={item.imageUrl} alt={item.productName} loading="lazy" />
-                              : (
-                                <div className="shopkeeper-inventory-card__photo-placeholder" role="img"
-                                  aria-label={'Verified product photo not yet available for ' + item.productName}>
-                                  <span aria-hidden="true">▧</span>
-                                  <small>Photo not yet available</small>
-                                </div>
-                              )}
+                          <div className="shopkeeper-inventory-card__body">
                             <span className={'shopkeeper-inventory-card__listing' + (isVisible ? ' is-visible' : '')}>
                               {isVisible ? 'Listed for customers' : 'Not listed'}
                             </span>
-                          </div>
-                          <ProductPhotoCredit
-                            sourceName={item.imageSourceName}
-                            sourceUrl={item.imageSourceUrl}
-                            license={item.imageLicense}
-                            attribution={item.imageAttribution}
-                            className="shopkeeper-product-photo-credit"
-                          />
-                          <div className="shopkeeper-inventory-card__body">
                             <p className="shopkeeper-inventory-card__brand">{item.brand || 'Brand not listed'}</p>
                             <h3>{item.productName}</h3>
                             <p className="shopkeeper-inventory-card__pack">
@@ -1019,10 +1227,36 @@ export function ShopkeeperDashboard() {
                 )}
               </section>
             )}
+            {tab === 'khatha' && <ShopkeeperKhathaWorkspace token={token} shopId={selectedShop.id} />}
           </>
         )}
+        </div>
       </main>
-      <footer className="shopkeeper-footer"><div className="shopkeeper-shell"><Link to="/" className="shopkeeper-wordmark">apniko<span>.</span></Link><span>Good groceries. Closer to home.</span><span>SHOPKEEPER / APNIKO</span></div></footer>
+      <nav className="shopkeeper-bottom-nav" aria-label="Shopkeeper navigation">
+        {([
+          ['overview', 'Overview', '⌂'],
+          ['orders', 'Orders', '▤'],
+          ['inventory', 'Inventory', '▦'],
+          ['analytics', 'Performance', '↗'],
+          ['khatha', 'Khatha', '₹'],
+        ] as const).map(([key, label, symbol]) => (
+          <button
+            key={key}
+            type="button"
+            className={tab === key ? 'is-active' : ''}
+            aria-current={tab === key ? 'page' : undefined}
+            onClick={() => {
+              setTab(key)
+              setError('')
+              setNotice('')
+            }}
+          >
+            <span className="shopkeeper-bottom-nav__symbol" aria-hidden="true">{symbol}</span>
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+      <footer className="shopkeeper-footer"><div className="shopkeeper-shell"><Link to="/shopkeeper" className="shopkeeper-wordmark">apniko<span>.</span></Link><span>Good groceries. Closer to home.</span><span>SHOPKEEPER / APNIKO</span></div></footer>
     </div>
   )
 }

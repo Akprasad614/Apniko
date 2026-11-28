@@ -135,11 +135,6 @@ class CartServiceTest {
         User customer = user(Role.CUSTOMER, 10L, true);
         Shop shop = shop(1L, "Local Fresh");
         Product product = product(101L, "Rice", "Staples");
-        when(product.getImageUrl()).thenReturn("https://cdn.example.test/rice-5kg.jpg");
-        when(product.getImageSourceName()).thenReturn("Open Food Facts");
-        when(product.getImageSourceUrl()).thenReturn("https://world.openfoodfacts.org/product/8901234567890");
-        when(product.getImageLicense()).thenReturn("CC BY-SA");
-        when(product.getImageAttribution()).thenReturn("Open Food Facts contributors");
         CartItem cartItem = new CartItem();
         cartItem.setProduct(product);
         cartItem.setQuantity(2);
@@ -163,11 +158,6 @@ class CartServiceTest {
         assertEquals(251.00, response.getTotalAmount(), 0.001);
         assertTrue(response.getItems().get(0).isAvailable());
         assertEquals(8, response.getItems().get(0).getAvailableStock());
-        assertEquals("https://cdn.example.test/rice-5kg.jpg", response.getItems().get(0).getImageUrl());
-        assertEquals("https://world.openfoodfacts.org/product/8901234567890",
-                response.getItems().get(0).getImageSourceUrl());
-        assertEquals("CC BY-SA", response.getItems().get(0).getImageLicense());
-        assertEquals("Open Food Facts contributors", response.getItems().get(0).getImageAttribution());
     }
 
     private void arrangeActiveCustomerAndShop() {

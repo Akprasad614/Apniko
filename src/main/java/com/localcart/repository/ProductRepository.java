@@ -2,7 +2,6 @@ package com.localcart.repository;
 
 import com.localcart.entity.Product;
 import com.localcart.entity.ProductCatalogueReviewStatus;
-import com.localcart.entity.ProductImageReviewStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,11 +18,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("""
             SELECT product
             FROM Product product
-            LEFT JOIN FETCH product.photo
             WHERE product.catalogueReviewStatus IS NULL
                OR product.catalogueReviewStatus = :visibleStatus
             """)
-    List<Product> findAllVisibleWithPhoto(
+    List<Product> findAllVisible(
             @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus
     );
     @Query("""
@@ -46,7 +44,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query(value = """
             SELECT product
             FROM Product product
-            LEFT JOIN FETCH product.photo
             WHERE (product.catalogueReviewStatus IS NULL
                    OR product.catalogueReviewStatus = :visibleStatus)
               AND NOT EXISTS (
@@ -87,43 +84,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("searchTerm") String searchTerm,
             @Param("visibleStatus") ProductCatalogueReviewStatus visibleStatus,
             Pageable pageable
-    );
-
-    @Query("""
-            SELECT product
-            FROM Product product
-            LEFT JOIN product.photo photo
-            WHERE product.barcode IS NOT NULL
-              AND TRIM(product.barcode) <> ''
-              AND (photo IS NULL OR photo.approvedImageUrl IS NULL)
-              AND (photo IS NULL OR photo.reviewStatus IS NULL
-                   OR photo.reviewStatus = :rejectedStatus)
-            """)
-    Page<Product> findProductsMissingApprovedPhoto(
-            @Param("rejectedStatus") ProductImageReviewStatus rejectedStatus,
-            Pageable pageable
-    );
-
-    @Query("""
-            SELECT COUNT(product)
-            FROM Product product
-            WHERE product.barcode IS NOT NULL
-              AND TRIM(product.barcode) <> ''
-            """)
-    long countProductsWithBarcode();
-
-    @Query("""
-            SELECT COUNT(product)
-            FROM Product product
-            LEFT JOIN product.photo photo
-            WHERE product.barcode IS NOT NULL
-              AND TRIM(product.barcode) <> ''
-              AND (photo IS NULL OR photo.approvedImageUrl IS NULL)
-              AND (photo IS NULL OR photo.reviewStatus IS NULL
-                   OR photo.reviewStatus = :rejectedStatus)
-            """)
-    long countProductsWithBarcodeMissingApprovedPhoto(
-            @Param("rejectedStatus") ProductImageReviewStatus rejectedStatus
     );
 
 }

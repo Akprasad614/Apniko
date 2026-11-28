@@ -1,0 +1,90 @@
+# Phase 5 — Admin catalogue management and bulk intake
+
+**Implementation status: complete for admin management, moderation and owner-approved retail CSV intake.**
+**Catalogue population status: source-constrained until the project owner obtains and configures a qualifying commercial retail source. No unverified products are published.**
+
+## What the administrator can do
+
+- Create a master catalogue product; create and maintain top-level categories and subcategories from the admin workspace.
+- View the paginated moderation queue for `NEEDS_REVIEW`, `ACTIVE`, and `HIDDEN` records.
+- Search review records by product name, brand, barcode, category and subcategory.
+- Approve a product, return it to review, or hide it with a recorded reason.
+- Reviewers and timestamps are retained by the backend.
+- Add a product to a shop only after it is an eligible active master catalogue item; shopkeepers then set their own shop price, stock and availability.
+
+The customer-facing admin workspace uses `AdminDashboard` and `CatalogueReviewQueue`. Administrators can create top-level categories and one-level subcategories in the workspace; the UI refreshes the category tree after creation and prevents obvious duplicate names at the same level. The backend remains authoritative for validation and uniqueness. The catalogue tab also documents the controlled CLI bulk-intake process, dry-run review, HTTPS apply requirements and credential handling. The backend import endpoint is administrator-only:
+
+- `POST /api/admin/catalogue/import`
+- `GET /api/admin/catalogue/review-queue`
+- `PATCH /api/admin/catalogue/products/{productId}/review`
+
+## Bulk intake
+
+The supported bulk workflow is the checked-in Python CLI and the admin-only batch API. It is intentionally dry-run-first; it does not scrape retailer websites or download third-party datasets itself.
+
+From the backend repository root, create the importer's isolated Python environment:
+
+```bash
+python3 -m venv .venv-catalogue
+source .venv-catalogue/bin/activate
+python -m pip install -r scripts/catalogue/requirements.txt
+```
+
+Inspect a locally obtained copy of the exact, reviewed Mendeley v1 CSV:
+
+```bash
+python scripts/catalogue/import_catalogue.py /path/to/indian-packaged-foods-v1.csv
+```
+
+The importer checks the 25-column schema, 852-row count, source checksum, row identity, source-quality issues and stable record IDs. It reports the eligibility and rejection counts without making API calls or database changes.
+
+The CLI supports small, bounded batches (maximum 250 rows), explicit `--apply`, and separate `--license-confirmed` / `--commercial-use-confirmed` attestations. Its Python unit suite is run by the Phase 2/3 intake verification in backend CI; Java service tests cover API source validation, retail-identity rejection, idempotent row linkage and moderation rules. Applying also requires the administrator token and a local or HTTPS API target. The backend independently limits batches, validates the exact allowed source and licence, and retains source provenance.
+
+**Important source limitation:** this Mendeley dataset is a packaged-food research/reference source, not a complete retail SKU feed. It lacks verified retail GTIN/barcode and retail pack size. Its rows are held in `NEEDS_REVIEW`; they cannot be made customer-visible until an administrator has independent evidence for those retail identity fields. No current selling price, MRP, pack size, stock, nutrition fact or barcode is inferred from the source.
+
+## Data-source and publication policy
+
+- Keep Open Food Facts and derivatives excluded.
+- Do not scrape BigBasket or copy retailer descriptions, pictures, prices or private feeds.
+- Do not import synthetic/example product rows.
+- Do not treat an arbitrary public dataset or Kaggle mirror as commercially reusable.
+- Admit another source only after its owner, reuse/commercial rights, attribution, record identifiers, sellable variant fields and update terms have been reviewed and documented.
+- Product photos and image infrastructure remain excluded by Phase 4.
+
+## Owner-approved commercial retail CSV intake
+
+The Mendeley importer above is retained only as a reference-data path. It cannot populate sellable retail variants. For a separately licensed retail feed, use the source-neutral importer:
+
+```bash
+python scripts/catalogue/import_approved_retail_catalogue.py /path/to/approved-retail-catalogue.csv \
+  --source-name "Approved Retail Partner" \
+  --source-url "https://partner.example/catalogue" \
+  --license "COMMERCIAL-PARTNER-LICENSE" \
+  --permission-reference "SIGNED-AGREEMENT-OR-LICENCE-REFERENCE" \
+  --attribution "Approved Retail Partner; COMMERCIAL-PARTNER-LICENSE; SIGNED-AGREEMENT-OR-LICENCE-REFERENCE; Apniko modifications."
+```
+
+The CSV must contain exactly these columns:
+
+`source_record_id,name,brand,barcode,pack_size,net_quantity,net_quantity_unit,variant_group_key,description,category,subcategory,mrp,mrp_source,source_modified_at`
+
+The loader rejects duplicate source IDs, invalid GTIN check digits, missing retail identity, invalid quantity/MRP values and extra columns. Image/photo fields are not accepted. The default is a local dry run; it never downloads or scrapes a source.
+
+Before applying, the project owner must independently review the agreement/licence and configure the exact approved source on the backend host:
+
+- `APNIKO_CATALOGUE_SOURCE_NAME`
+- `APNIKO_CATALOGUE_SOURCE_URL`
+- `APNIKO_CATALOGUE_SOURCE_LICENSE`
+- `APNIKO_CATALOGUE_SOURCE_PERMISSION_REFERENCE`
+- `APNIKO_CATALOGUE_SOURCE_RIGHTS_VERIFIED=true`
+- `APNIKO_CATALOGUE_SOURCE_COMMERCIAL_USE_PERMITTED=true`
+
+The last two settings must remain false until the permission review is complete. The request must also include both explicit CLI confirmations, an administrator JWT in `APNIKO_ADMIN_TOKEN`, and an HTTPS API URL (localhost HTTP is allowed for development). The backend repeats the source allowlist check and requires verified retail GTIN, pack size and net quantity.
+
+**All imported retail rows enter `NEEDS_REVIEW`.** A catalogue administrator must inspect the original packaging/source evidence and approve each product before it becomes customer-visible. Importing data does not create shop inventory or shop prices.
+
+## Acceptance evidence
+
+The Phase 5 admin intake verifier checks the API role gate, bounded batch contract, dry-run-first CLI, pinned source validation, review queue, and moderation tests. Backend CI runs it alongside Phase 3 and Phase 4 policy checks.
+
+**Implementation milestone:** complete. **Real retail catalogue publication:** requires a qualifying source and verified retail-variant facts; this is not fabricated or silently marked as done.

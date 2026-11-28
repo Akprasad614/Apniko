@@ -47,3 +47,26 @@ export function formatCatalogueReviewDate(value: string | null): string {
     year: 'numeric',
   }).format(date)
 }
+
+
+export interface CatalogueCategoryNode {
+  id: number
+  name: string
+  subcategories: Array<{ id: number; name: string }>
+}
+
+export function categoryNameExists(
+  categories: CatalogueCategoryNode[],
+  name: string,
+  parentCategoryId: number | null,
+): boolean {
+  const normalized = name.trim().replace(/\\s+/g, ' ').toLocaleLowerCase()
+  if (!normalized) return false
+
+  if (parentCategoryId === null) {
+    return categories.some((category) => category.name.toLocaleLowerCase() === normalized)
+  }
+
+  const parent = categories.find((category) => category.id === parentCategoryId)
+  return parent?.subcategories.some((child) => child.name.toLocaleLowerCase() === normalized) ?? false
+}

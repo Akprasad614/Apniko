@@ -5,9 +5,13 @@ on:
     branches:
       - main
       - "automation/**"
+      - "chore/**"
+      - "feature/**"
   pull_request:
     branches:
       - main
+      - "feature/**"
+      - "chore/**"
   workflow_dispatch:
 
 permissions:
@@ -40,21 +44,29 @@ jobs:
     env:
       DB_PASSWORD: localcart_ci_root_password
       SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/localcart?allowPublicKeyRetrieval=true&useSSL=false
+      APP_AUTH_COOKIE_ENABLED: "false"
+      AUTH_LOGIN_MAX_ATTEMPTS: "100"
+      AUTH_REGISTRATION_MAX_ATTEMPTS: "100"
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
 
-      - name: Generate an ephemeral JWT secret for this CI run
+      - name: Generate and mask an ephemeral JWT secret for this CI run
         shell: bash
-        run: echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
+        run: |
+          set -euo pipefail
+          jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
+          echo "::add-mask::$jwt_secret"
+          printf 'JWT_SECRET=%s\n' "$jwt_secret" >> "$GITHUB_ENV"
+          unset jwt_secret
 
       - name: Ensure Maven wrapper is executable
         run: chmod +x ./mvnw
@@ -65,8 +77,26 @@ jobs:
       - name: Verify Phase 2 catalogue import tools
         run: bash scripts/verify-phase2.sh
 
-      - name: Verify Phase 3 authentic product photo tooling
+      - name: Verify Phase 3 authentic product catalogue intake
         run: bash scripts/verify-phase3.sh
+
+      - name: Verify Phase 4 text-only catalogue architecture
+        run: bash scripts/verify-phase4-text-only.sh
+
+      - name: Verify Phase 5 admin catalogue intake and moderation
+        run: bash scripts/verify-phase5-admin-catalogue.sh
+
+      - name: Verify Phase 10 nearby-shop geolocation
+        run: bash scripts/verify-phase10-geolocation.sh
+
+      - name: Verify passive DAST security guardrails
+        run: bash scripts/verify-phase4.sh
+
+      - name: Verify Phase 13 integration, security and reliability contracts
+        run: bash scripts/verify-phase13-integration-reliability.sh
 
       - name: Run Maven verification and tests
         run: ./mvnw -B -ntp verify
+
+      - name: Verify baseline and upgrade of an existing legacy schema
+        run: bash scripts/verify-flyway-existing-schema.sh

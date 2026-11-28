@@ -1,159 +1,231 @@
+import csv
+import json
 import tempfile
 import unittest
+from argparse import Namespace
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from import_catalogue import (
-    api_quantity,
-    category_for,
-    load_packSense,
-    pack_size,
-    packsense_item,
-    valid_gtin,
+    DOI, EXPECTED_HEADERS, SOURCE_LICENSE, SOURCE_NAME,
+    load_mendeley_csv, run, validate_api_url, sha256_file,
 )
 
+ROW_COUNT = 852
 
-class CatalogueImportTests(unittest.TestCase):
-    def test_gtin_check_digit_validation(self):
-        self.assertTrue(valid_gtin("4006381333931"))
-        self.assertFalse(valid_gtin("4006381333932"))
-        self.assertFalse(valid_gtin("12345"))
 
-    def test_pack_size_normalization(self):
-        self.assertEqual(pack_size("500.00", "grams"), "500 g")
-        self.assertEqual(pack_size("1", "litre"), "1 l")
-        self.assertIsNone(pack_size("500", "unknown"))
+class MendeleyImportTests(unittest.TestCase):
+    def source_row(self, row_id, **overrides):
+        row = {field: "" for field in EXPECTED_HEADERS}
+        row.update({
+            "S.No": str(row_id),
+            "Item name": f"Sample Food {row_id}",
+            "Brand_Name": "SAMPLE BRAND",
+            "Category": "SNACKS",
+            "Sub_Category": "CHIPS",
+            "Ingredients": "Potato, oil, salt",
+            "Serving_Size_g": "100.0",
+            "Calories_kcal": "450.0",
+            "Carbohydrates_g": "50.0",
+            "Proteins_g": "5.0",
+            "Total_Fat_g": "20.0",
+            "Saturated_Fat_g": "5.0",
+            "Trans_Fat_g": "0.1",
+            "Sugar_g": "2.0",
+            "Sodium_mg": "350.0",
+            "Dietary_Fiber_g": "4.0",
+            "Cholesterol_mg": "0",
+            "Calcium_mg": "20.0",
+            "Vitamin": "",
+            "Iron_mg": "1.0",
+            "Price_INR": "50.0",
+            "Source_of_Data": "",
+            "Collection_Date": "",
+            "Collected_By": "",
+            "Remarks": "",
+        })
+        row.update(overrides)
+        return row
 
-    def test_api_quantity_respects_database_precision_and_preserves_pack_size(self):
-        self.assertEqual(api_quantity("250.0000", "g"), (250.0, "g"))
-        self.assertEqual(api_quantity("0.125", "kg"), (0.125, "kg"))
-        self.assertEqual(api_quantity("0.12345", "g"), (None, None))
-        self.assertEqual(pack_size("0.12345", "g"), "0.12345 g")
-        self.assertEqual(api_quantity("1000001", "g"), (None, None))
+    def make_csv(self, folder, rows=None, headers=EXPECTED_HEADERS):
+        path = Path(folder) / "packaged_foods_india.csv"
+        rows = rows if rows is not None else [
+            self.source_row(i) for i in range(1, ROW_COUNT + 1)
+        ]
+        with path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows([
+                {key: value for key, value in row.items() if key in headers}
+                for row in rows
+            ])
+        return path
 
-    def test_packsense_quantity_selects_a_complete_amount_unit_pair(self):
-        row = {
-            "code": "4006381333931",
-            "product_name": "Kachi Ghani Mustard Oil",
-            "brands": "Dhara",
-            "product_quantity": "1000",
-            "product_quantity_unit": "",
-            "quantity_amount": "1",
-            "quantity_unit": "l",
-            "existence_status": "present_in_snapshot",
-            "open_error_flags": "0",
+    def args(self, path, **overrides):
+        values = {
+            "file": path,
+            "api_url": "http://localhost:8080",
+            "limit": 0,
+            "batch_size": 100,
+            "license_confirmed": False,
+            "commercial_use_confirmed": False,
+            "permission_reference": DOI,
+            "apply": False,
         }
+        values.update(overrides)
+        return Namespace(**values)
 
-        item = packsense_item(row)
+    def test_maps_catalogue_identity_and_preserves_raw_source_values(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0].update({
+                "Serving_Size_g": "100",
+                "Price_INR": "39.00",
+                "Ingredients": "  Potato, salt  ",
+            })
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
 
-        self.assertIsNotNone(item)
-        self.assertEqual(item["packSize"], "1 l")
-        self.assertEqual(item["netQuantity"], 1.0)
-        self.assertEqual(item["netQuantityUnit"], "l")
-
-    def test_packsense_quantity_does_not_mix_amount_and_unit_columns(self):
-        row = {
-            "code": "4006381333931",
-            "product_name": "Sample Product",
-            "product_quantity": "1000",
-            "product_quantity_unit": "",
-            "quantity_amount": "",
-            "quantity_unit": "l",
-            "existence_status": "present_in_snapshot",
-            "open_error_flags": "0",
-        }
-
-        item = packsense_item(row)
-
-        self.assertIsNotNone(item)
+        item = records[0]
+        self.assertEqual(item["name"], "Sample Food 1")
+        self.assertEqual(item["brand"], "SAMPLE BRAND")
+        self.assertEqual(item["category"], "SNACKS")
+        self.assertEqual(item["subcategory"], "CHIPS")
+        self.assertEqual(item["sourceRecordId"], "mendeley-ipf-2026-v1:0001")
+        self.assertEqual(item["identityDiscriminator"], item["sourceRecordId"])
+        self.assertIsNone(item["barcode"])
         self.assertIsNone(item["packSize"])
         self.assertIsNone(item["netQuantity"])
-        self.assertIsNone(item["netQuantityUnit"])
-
-    def test_specific_product_name_overrides_broad_taxonomy(self):
-        self.assertEqual(
-            category_for("Poha", "Beverages", "en:water"),
-            ("Foodgrains, Oil & Masala", "Rice & Rice Products"),
-        )
-        self.assertEqual(
-            category_for("Britannia Treat croissant mixed fruit", "Fruits and Vegetables"),
-            ("Dairy, Bakery & Eggs", "Bread & Bakery"),
-        )
-        self.assertEqual(
-            category_for("Kachi Ghani Mustard Oil", "Fruits and Vegetables"),
-            ("Foodgrains, Oil & Masala", "Edible Oils & Ghee"),
-        )
-
-    def test_india_retail_category_mapping_for_observed_unclassified_products(self):
-        self.assertEqual(
-            category_for("(Suhana) SCHEZWAN CHUTNEY"),
-            ("Gourmet & World Food", "Sauces, Spreads & Condiments"),
-        )
-        self.assertEqual(
-            category_for("10 inch Tortilla Wrap"),
-            ("Dairy, Bakery & Eggs", "Bread & Bakery"),
-        )
-        self.assertEqual(
-            category_for("15g Blueberry", brand_hint="Epigamia Greek Yogurt"),
-            ("Dairy, Bakery & Eggs", "Curd, Paneer & Cheese"),
-        )
-        self.assertEqual(
-            category_for("0.3% Retinol Serum"),
-            ("Beauty & Hygiene", "Skin Care"),
-        )
-        self.assertEqual(
-            category_for("Smoothing Hair Conditioner"),
-            ("Beauty & Hygiene", "Hair Care"),
-        )
-        self.assertEqual(
-            category_for("20g Protein Bar Cranberry Blast"),
-            ("Snacks & Branded Foods", "Breakfast & Cereals"),
-        )
-
-    def test_india_retail_category_mapping(self):
-        self.assertEqual(category_for("Beverages", "Tea - coffee"), ("Beverages", "Tea, Coffee & Cocoa"))
-        self.assertEqual(category_for("Dairy", "Milk"), ("Dairy, Bakery & Eggs", "Milk & Dairy"))
-        self.assertEqual(category_for("unknown"), ("Other Essentials", "Unclassified Packaged Goods"))
-
-    def test_packsense_row_requires_name_valid_gtin_and_clean_status(self):
-        valid_row = {
-            "code": "4006381333931",
-            "product_name": "Sample Tea",
-            "brands": "Sample Brand",
-            "product_quantity": "250",
-            "product_quantity_unit": "g",
-            "pnns_groups_1": "Beverages",
-            "pnns_groups_2": "Tea and coffee",
-            "existence_status": "present_in_snapshot",
-            "open_error_flags": "0",
-            "last_modified_t": "1793700000",
-        }
-        item = packsense_item(valid_row)
-        self.assertIsNotNone(item)
-        self.assertEqual(item["category"], "Beverages")
-        self.assertEqual(item["subcategory"], "Tea, Coffee & Cocoa")
-        self.assertEqual(item["packSize"], "250 g")
         self.assertIsNone(item["mrp"])
+        self.assertIsNone(item["description"])
+        self.assertEqual(stats["eligible"], ROW_COUNT)
+        self.assertEqual(stats["review_required_rows"], ROW_COUNT)
+        self.assertIn("verified retail GTIN/barcode and retail pack size are not supplied", item["sourceReviewReason"])
 
-        invalid = dict(valid_row, existence_status="unverified")
-        self.assertIsNone(packsense_item(invalid))
-        invalid = dict(valid_row, open_error_flags="1")
-        self.assertIsNone(packsense_item(invalid))
-        invalid = dict(valid_row, code="4006381333932")
-        self.assertIsNone(packsense_item(invalid))
+        metadata = json.loads(item["sourceMetadataJson"])
+        self.assertEqual(metadata["sourceValues"]["Ingredients"], "  Potato, salt  ")
+        self.assertEqual(metadata["sourceValues"]["Price_INR"], "39.00")
+        self.assertEqual(metadata["dataset"]["doi"], DOI)
+        self.assertIn("not current shop price", metadata["fieldHandling"]["Price_INR"])
+        self.assertIn("not retail pack size", metadata["fieldHandling"]["Serving_Size_g"])
 
-    def test_load_packsense_deduplicates_by_gtin(self):
-        row = (
-            "code,product_name,brands,product_quantity,product_quantity_unit,"
-            "pnns_groups_1,pnns_groups_2,existence_status,open_error_flags,last_modified_t\n"
-            "4006381333931,Sample Tea,Sample Brand,250,g,Beverages,Tea and coffee,present_in_snapshot,0,1793700000\n"
-            "4006381333931,Sample Tea Duplicate,Sample Brand,250,g,Beverages,Tea and coffee,present_in_snapshot,0,1793700000\n"
-        )
+    def test_repeated_name_brand_rows_are_kept_separate_and_flagged(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "catalogue.csv"
-            path.write_text(row, encoding="utf-8")
-            items, stats = load_packSense(path)
-        self.assertEqual(len(items), 1)
-        self.assertEqual(stats["duplicate_rows"], 1)
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0]["Item name"] = rows[1]["Item name"] = "Duplicate Product"
+            rows[0]["Brand_Name"] = rows[1]["Brand_Name"] = "SAME BRAND"
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
+
+        self.assertEqual(stats["duplicate_identity_groups"], 1)
+        self.assertEqual(stats["duplicate_identity_rows"], 2)
+        self.assertEqual(stats["review_required_rows"], ROW_COUNT)
+        self.assertIn("Repeated item name and brand", records[0]["sourceReviewReason"])
+        self.assertIn("Repeated item name and brand", records[1]["sourceReviewReason"])
+        self.assertNotEqual(records[0]["sourceRecordId"], records[1]["sourceRecordId"])
+
+    def test_less_than_values_preserved_and_malformed_values_flagged(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0]["Trans_Fat_g"] = "<0.1"
+            rows[1]["Proteins_g"] = "5.928.8"
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
+
+        self.assertEqual(stats["rows_with_less_than_values"], 1)
+        self.assertEqual(stats["rows_with_malformed_numeric_values"], 1)
+        values = json.loads(records[0]["sourceMetadataJson"])["sourceValues"]
+        self.assertEqual(values["Trans_Fat_g"], "<0.1")
+        self.assertIn("Malformed numeric source value", records[1]["sourceReviewReason"])
+
+    def test_preserves_suspect_source_taxonomy_and_flags_it_for_review(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[0]["Category"] = "ICEREAMES"
+            path = self.make_csv(folder, rows)
+            records, stats = load_mendeley_csv(path)
+
+        self.assertEqual(records[0]["category"], "ICEREAMES")
+        self.assertIn("appears misspelled", records[0]["sourceReviewReason"])
+
+    def test_rejects_schema_that_differs_from_readme(self):
+        with tempfile.TemporaryDirectory() as folder:
+            headers = tuple(field for field in EXPECTED_HEADERS if field != "Brand_Name")
+            path = self.make_csv(folder, headers=headers)
+            with self.assertRaisesRegex(ValueError, "does not match supplied README"):
+                load_mendeley_csv(path)
+
+    def test_rejects_duplicate_source_row_ids(self):
+        with tempfile.TemporaryDirectory() as folder:
+            rows = [self.source_row(i) for i in range(1, ROW_COUNT + 1)]
+            rows[1]["S.No"] = "1"
+            path = self.make_csv(folder, rows)
+            with self.assertRaisesRegex(ValueError, "S.No contains duplicates"):
+                load_mendeley_csv(path)
+
+    def test_dry_run_never_calls_api(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = self.make_csv(folder)
+            session = Mock()
+            result = run(self.args(path), session=session)
+        self.assertEqual(result, 0)
+        session.post.assert_not_called()
+
+    def test_apply_requires_explicit_licence_and_commercial_scope_confirmation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = self.make_csv(folder)
+            session = Mock()
+            result = run(self.args(path, apply=True), session=session)
+        self.assertEqual(result, 2)
+        session.post.assert_not_called()
+
+    def test_apply_rejects_csv_that_differs_from_inspected_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = self.make_csv(folder)
+            session = Mock()
+            with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
+                result = run(self.args(
+                    path, apply=True, license_confirmed=True,
+                    commercial_use_confirmed=True,
+                ), session=session)
+        self.assertEqual(result, 2)
+        session.post.assert_not_called()
+
+    def test_apply_sends_mendeley_provenance_and_never_sets_retail_facts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = self.make_csv(folder)
+            session = Mock()
+            response = Mock()
+            response.json.return_value = {
+                "inserted": 1, "updated": 0, "unchanged": 0, "rejected": 0, "errors": []
+            }
+            response.raise_for_status.return_value = None
+            session.post.return_value = response
+            with patch.dict("os.environ", {"APNIKO_ADMIN_TOKEN": "test-token"}):
+                with patch("import_catalogue.APPROVED_SOURCE_SHA256", sha256_file(path)):
+                    result = run(self.args(
+                        path, apply=True, license_confirmed=True,
+                        commercial_use_confirmed=True,
+                    ), session=session)
+
+        self.assertEqual(result, 0)
+        payload = session.post.call_args.kwargs["json"]
+        self.assertEqual(payload["sourceName"], SOURCE_NAME)
+        self.assertEqual(payload["sourceLicense"], SOURCE_LICENSE)
+        self.assertEqual(payload["sourceUrl"], "https://data.mendeley.com/datasets/rhswn9z9xr/1")
+        self.assertTrue(payload["reuseRightsVerified"])
+        self.assertTrue(payload["commercialUsePermitted"])
+        item = payload["products"][0]
+        self.assertIsNone(item["mrp"])
+        self.assertIsNone(item["packSize"])
+        self.assertIsNone(item["barcode"])
+        self.assertFalse(any("image" in field.casefold() or "photo" in field.casefold() for field in item))
+        self.assertTrue(item["sourceMetadataJson"].startswith("{"))
+
+    def test_api_url_requires_https_except_localhost(self):
+        self.assertEqual(validate_api_url("http://localhost:8080/"), "http://localhost:8080")
+        with self.assertRaises(ValueError):
+            validate_api_url("http://api.example.com")
 
 
 if __name__ == "__main__":
